@@ -1,0 +1,8 @@
+defaults:
+  - base_synchronous_mt_strategy
+  - population: simple_population
+  - genome_factory: toy
+  - fitness: toy_mae
+
+output_directory: "output/test"
+nsteps: 32000
