@@ -1,6 +1,9 @@
+import random
+
 from evolution.edge_generator import EdgeGenerator
 from evolution.node_generator import NodeGenerator
 
+from reproduction.add_edge import AddEdge
 from reproduction.add_node import AddNode
 from reproduction.reproduction_method import ReproductionMethod
 from reproduction.reproduction_selector import ReproductionSelector
@@ -32,6 +35,7 @@ class EXAGPReproductionSelector(ReproductionSelector):
         )
 
         self.reproduction_methods = [
+            AddEdge(node_generator, edge_generator, weight_generator),
             AddNode(node_generator, edge_generator, weight_generator),
         ]
 
@@ -42,5 +46,7 @@ class EXAGPReproductionSelector(ReproductionSelector):
         Returns:
             A randomly selected reproduction method.
         """
+
+        random.shuffle(self.reproduction_methods)
 
         return self.reproduction_methods[0]

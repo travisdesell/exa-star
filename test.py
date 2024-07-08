@@ -61,9 +61,9 @@ if __name__ == "__main__":
 
     exagp = EXAGP(seed_genome=seed_genome)
 
-    optimizer = optim.Adam(seed_genome.parameters(), lr=0.001)
 
     for genome_number in range(100):
+        optimizer = optim.Adam(seed_genome.parameters(), lr=0.001)
         new_genome = exagp.generate_genome()
         new_genome.train(
             input_series=input_series,
@@ -72,3 +72,5 @@ if __name__ == "__main__":
             iterations=10,
         )
         exagp.insert_genome(new_genome)
+
+    exagp.population_strategy.population[0].plot()

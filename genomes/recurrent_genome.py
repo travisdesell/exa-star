@@ -86,4 +86,7 @@ class RecurrentGenome(Genome):
             optimizer.zero_grad()
 
         self.fitness = loss.detach().item()
+
+        # reset all the gradients so we can deepcopy the genome and its tensors
+        self.reset()
         print(f"final fitness (loss): {self.fitness}, type: {type(self.fitness)}")

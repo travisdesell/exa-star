@@ -53,7 +53,7 @@ class MinimalRecurrentGenome(RecurrentGenome):
                     input_node=input_node,
                     output_node=output_node,
                     max_sequence_length=max_sequence_length,
-                    time_skip=2,
+                    time_skip=0,
                 )
                 if input_node.parameter_name == output_node.parameter_name:
                     # set the weight to 1 as a default (use the previous value as the forecast)
