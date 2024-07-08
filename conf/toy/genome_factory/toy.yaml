@@ -1,0 +1,11 @@
+defaults:
+  - base_toy_genome
+  - mutation_operators@mutation_operators.basic: toy_genome_mutation
+  - crossover_operators@crossover_operators.basic: toy_genome_crossover
+target_path: "README.md"
+mutation_operators:
+  basic:
+    range: 10
+crossover_operators:
+  basic:
+    weight: 0.25
