@@ -160,7 +160,7 @@ cs.store(
 )
 
 
-@hydra.main(version_base=None, config_name="es_config")
+@hydra.main(version_base=None, config_path="../conf/toy", config_name="config")
 def main(cfg: EvolutionaryStrategyConfig) -> None:
     es = instantiate(cfg)
     es.run()
