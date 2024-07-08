@@ -1,5 +1,6 @@
-# neoexamm
-(soon to be) generic evolutionary framework
+# EXA-STAR
+(soon to be) generic evolutionary algorithm framework with a focus on neuroevolution.
+
 Here is an ANT:
 ```
       _,-'\   /|   .    .    /`.
