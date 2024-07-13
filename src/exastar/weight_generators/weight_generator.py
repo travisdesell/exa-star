@@ -3,9 +3,9 @@ from abc import ABC, abstractmethod
 from genomes.genome import Genome
 
 
-class WeightGenerator(ABC):
+class WeightGenerator[G: Genome](ABC):
     @abstractmethod
-    def __call__(self, genome: Genome, **kwargs: dict):
+    def __call__(self, genome: G, **kwargs: dict):
         """
         Will set any weights of the genome that are None,
         given the child class weight initialization strategy.

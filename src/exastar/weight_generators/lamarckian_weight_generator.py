@@ -5,7 +5,7 @@ from genomes.genome import Genome
 from weight_generators.weight_generator import WeightGenerator
 
 
-class LamarckianWeightGenerator(WeightGenerator):
+class LamarckianWeightGenerator[G: Genome](WeightGenerator[G]):
     def __init__(self):
         """Initializes a Lamarckian weight generator, which will set any
         weight that is None in the genome using Lamarckian weight
@@ -15,7 +15,7 @@ class LamarckianWeightGenerator(WeightGenerator):
         """
         pass
 
-    def __call__(self, genome: Genome, **kwargs: dict):
+    def __call__(self, genome: G, **kwargs: dict):
         """
         Iterates through all weights of the given genome and sets their
         values using Lamarckian weight initializaiton. Edge and node weights

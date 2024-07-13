@@ -1,32 +1,53 @@
-from abc import ABC, abstractmethod
-from functools import total_ordering
-from typing import Any, Dict, Tuple
+from abc import abstractmethod
+from typing import Any, Dict, Optional, Tuple, Type
 
 
-@total_ordering
-class ComparableMixin(ABC):
+class ComparableMixin:
+    """
+    If you are using multiple inheritence, it is pertinent that this class is inherited before any interfaces
+    or abstract classes. Failure to do so will mess up the order of constructor calls.
+    """
+
+    def __init__(self, type: Optional[Type] = None, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._comparison_parent_type: Optional[Type] = type
 
     @abstractmethod
     def _cmpkey(self) -> Tuple: ...
 
     def _compare(self, other, f):
-        if type(other) != type(self):
+        if self._comparison_parent_type \
+            and (not isinstance(self, self._comparison_parent_type)
+                 or not isinstance(other, self._comparison_parent_type)):
             raise TypeError(
-                f"ComparableMixing comparisons must be called with identical types."
+                f"ComparableMixing comparisons must match the self._comparison_parent_type = "
+                f"{self._comparison_parent_type}"
             )
 
         a, b = self._cmpkey(), other._cmpkey()
 
         if len(a) != len(b):
-            raise TypeError(f"cmp key must have fixed length")
+            raise TypeError("_cmpkey must have fixed length")
 
         return f(self._cmpkey(), other._cmpkey())
 
     def __lt__(self, other):
         return self._compare(other, lambda a, b: a < b)
 
+    def __le__(self, other):
+        return self._compare(other, lambda a, b: a <= b)
+
+    def __gt__(self, other):
+        return self._compare(other, lambda a, b: a > b)
+
+    def __ge__(self, other):
+        return self._compare(other, lambda a, b: a >= b)
+
     def __eq__(self, other):
         return self._compare(other, lambda a, b: a == b)
+
+    def __ne__(self, other):
+        return self._compare(other, lambda a, b: a != b)
 
 
 def constmethod(func):
@@ -51,6 +72,13 @@ def constmethod(func):
     return wrapper
 
 
+def overrides(interface_class):
+    def overrider(method):
+        assert (method.__name__ in dir(interface_class))
+        return method
+    return overrider
+
+
 class LogDataProvider[T]:
 
     def __init__(self) -> None: ...
@@ -67,6 +95,7 @@ class LogDataProvider[T]:
         return {f"{prefix}{k}{suffix}": v for k, v in data.items()}
 
     @abstractmethod
+    @constmethod
     def get_log_data(self, aggregator: T) -> Dict[str, Any]: ...
 
 

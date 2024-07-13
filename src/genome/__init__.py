@@ -89,6 +89,19 @@ class ToyGenome(Genome):
         }
 
 
+class MSEValue[G: Genome](FitnessValue):
+
+    @classmethod
+    def max(cls) -> Self:
+        return cls(sys.float_info.max)
+
+    def __init__(self, mse: float) -> None:
+        self.mse: float = mse
+
+    def _cmpkey(self) -> Tuple:
+        return (-self.mse, )
+
+
 class ToyMAEValue(FitnessValue[ToyGenome]):
     @classmethod
     def max(cls) -> Self:
@@ -169,7 +182,8 @@ class GenomeFactory[G: Genome](ABC, LogDataProvider):
         self.operators: Tuple[GenomeOperator[G]] = cast(
             Tuple[GenomeOperator[G]],
             tuple(
-                list(mutation_operators.values()) + list(crossover_operators.values())
+                list(mutation_operators.values()) +
+                list(crossover_operators.values())
             ),
         )
         self.mutation_operators: Tuple[MutationOperator[G], ...] = tuple(

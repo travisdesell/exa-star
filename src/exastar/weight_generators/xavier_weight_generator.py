@@ -5,7 +5,7 @@ from genomes.genome import Genome
 from weight_generators.weight_generator import WeightGenerator
 
 
-class XavierWeightGenerator(WeightGenerator):
+class XavierWeightGenerator[G: Genome](WeightGenerator[G]):
     def __init__(self):
         """Initializes a Xavier weight generator, which will set any
         weight that is None in the genome using Xavier weight
@@ -15,7 +15,7 @@ class XavierWeightGenerator(WeightGenerator):
         """
         pass
 
-    def __call__(self, genome: Genome, **kwargs: dict):
+    def __call__(self, genome: G, **kwargs: dict):
         """
         Iterates through all weights of the given genome and sets their
         values using Xavier weight initializaiton. Edge and node weights

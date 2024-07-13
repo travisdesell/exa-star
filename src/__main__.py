@@ -123,17 +123,17 @@ class SynchronousMTStrategyConfig(EvolutionaryStrategyConfig):
 # in particular the `_target_` field.
 cs = ConfigStore.instance()
 
-## Strategies
+# Strategies
 cs.store(name="base_evolutionary_strategy", node=EvolutionaryStrategyConfig)
 cs.store(
     name="base_synchronous_mt_strategy",
     node=SynchronousMTStrategyConfig,
 )
 
-## Genomes
+# Genomes
 cs.store(group="genome_factory", name="base_toy_genome", node=ToyGenomeFactoryConfig)
 
-## Genome Operations
+# Genome Operations
 cs.store(
     group="genome_factory/mutation_operators",
     name="base_toy_genome_mutation",
@@ -146,13 +146,13 @@ cs.store(
     node=ToyGenomeCrossoverConfig,
 )
 
-## Fitness
+# Fitness
 cs.store(group="fitness", name="base_toy_mae", node=ToyMAEConfig)
 
-## Populations
+# Populations
 cs.store(group="population", name="base_simple_population", node=SimplePopulationConfig)
 
-## Log data providers
+# Log data providers
 cs.store(
     group="log_data_providers",
     name="base_print_best_toy_genome",

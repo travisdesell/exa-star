@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import List
 
 import pandas as pd
 import torch
@@ -14,13 +15,16 @@ class TimeSeries:
         dictionary needs to be provided.
 
         Args:
-            series_dictionary: is a dictionary of column names to tensors of values (1 per
-                time step).
+            series_dictionary: is a dictionary of column names to tensors of values (1 per time step).
         """
         self.series_dictionary = series_dictionary
 
+        self.input_series_names: List[str] = []
+        self.output_series_names: List[str] = []
+
         # validate that the length of each series is the same and save that length
-        self.series_length = None
+        self.series_length: int = -1
+
         for series_name, series in self.series_dictionary.items():
             shape = series.shape
             print(f"'{series_name}' shape {shape}")
@@ -54,7 +58,7 @@ class TimeSeries:
         series_dictionary = {}
         for series_name, values in csv_dict.items():
             logger.info(f"{series_name} type: {values.dtype}")
-            if values.dtype in [
+            if values.dtype in {
                 "float64",
                 "float32",
                 "float16",
@@ -66,7 +70,7 @@ class TimeSeries:
                 "int8",
                 "uint8",
                 "bool",
-            ]:
+            }:
                 series_dictionary[series_name] = torch.tensor(values.to_numpy())
             else:
                 logger.warning(
@@ -107,7 +111,8 @@ class TimeSeries:
         return TimeSeries(series_dictionary=output_series)
 
     def slice(self, start_row: int, end_row: int) -> TimeSeries:
-        """Copies a time slice of this time series and returns it as a new time series.
+        """
+        Copies a time slice of this time series and returns it as a new time series.
 
         Args:
             start_row: the first row of the time slice
