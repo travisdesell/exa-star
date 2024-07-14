@@ -7,6 +7,7 @@ from genomes.node import Node
 class RecurrentEdge(Edge):
     def __init__(
         self,
+        innovation_number: int,
         input_node: Node,
         output_node: Node,
         max_sequence_length: int,
@@ -24,16 +25,25 @@ class RecurrentEdge(Edge):
                 the output node
         """
         super().__init__(
+            innovation_number=innovation_number,
             input_node=input_node,
             output_node=output_node,
             max_sequence_length=max_sequence_length,
         )
         self.time_skip = time_skip
-        self.weight = None
+        self.weights = [None]
+
+    def __repr__(self) -> str:
+        """
+        Returns:
+            An easily readable string representation of this object.
+        """
+        return f"RecurrentEdge {self.innovation_number} from Node {self.input_node.innovation_number} to Node {self.output_node.innovation_number}, time skip: {self.time_skip}, weights: {self.weights}"
 
     def reset(self):
         """Resets the edge gradients for the next forward pass."""
-        self.weight.grad = None
+        for weight in self.weights:
+            weight.grad = None
 
     def fire_recurrent_preinput(self):
         """For edges with a time skip > 0, we need to fire inputs for time steps where
@@ -52,7 +62,7 @@ class RecurrentEdge(Edge):
         """
         # print(f"recurrent edge forward, value: {value}, weight: {self.weight}: {value * self.weight}")
 
-        output_value = value * self.weight
+        output_value = value * self.weights[0]
 
         self.output_node.input_fired(
             time_step=time_step + self.time_skip, value=output_value

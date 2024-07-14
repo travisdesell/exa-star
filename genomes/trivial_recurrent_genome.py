@@ -54,6 +54,7 @@ class TrivialRecurrentGenome(RecurrentGenome):
             for input_node in self.input_nodes:
                 if input_node.parameter_name == output_node.parameter_name:
                     edge = RecurrentEdge(
+                        innovation_number=InnovationGenerator.get_innovation_number(),
                         input_node=input_node,
                         output_node=output_node,
                         max_sequence_length=max_sequence_length,
@@ -61,5 +62,6 @@ class TrivialRecurrentGenome(RecurrentGenome):
                     )
 
                     # set the weight to 1 as a default (use the previous value as the forecast)
-                    edge.weight = torch.tensor(1.0, requires_grad=True)
+                    edge.weights[0] = torch.tensor(0.0, requires_grad=True)
+                    # edge.weights[0] = torch.tensor(1.0, requires_grad=True)
                     self.add_edge(edge)

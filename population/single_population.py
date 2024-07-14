@@ -26,6 +26,12 @@ class SinglePopulation(PopulationStrategy):
         self.seed_genome = seed_genome
         self.reproduction_selector = reproduction_selector
 
+        # the seed genome will have a generation number of 0
+        # and all other genomes will have incrementing generation
+        # numbers afterwards
+        seed_genome.generation_number = 0
+        self.generated_genomes = 1
+
     def generate_genome(self) -> Genome:
         """Generates a genome given the reproduction selector.
         Returns:
@@ -58,6 +64,8 @@ class SinglePopulation(PopulationStrategy):
 
                 child_genome = reproduction_method(parent_genomes)
 
+        child_genome.generation_number = self.generated_genomes
+        self.generated_genomes += 1
         return child_genome
 
     def insert_genome(self, genome: Genome):
@@ -73,7 +81,7 @@ class SinglePopulation(PopulationStrategy):
         print()
         print("POPULATION:")
         for i, genome in enumerate(self.population):
-            print(f"genome[{i}] fitness: {genome.fitness}")
+            print(f"genome[{i}] generated: {genome.generation_number}, fitness: {genome.fitness}")
 
         if len(self.population) > self.population_size:
             self.population = self.population[0 : self.population_size]

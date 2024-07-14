@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 class Edge(ABC):
     def __init__(
         self,
+        innovation_number: int,
         input_node: genomes.node.Node,
         output_node: genomes.node.Node,
         max_sequence_length: int,
@@ -23,6 +24,7 @@ class Edge(ABC):
             max_sequence_length: is the maximum length of any time series
                 to be processed by the neural network this edge is part of
         """
+        self.innovation_number = innovation_number
         self.max_sequence_length = max_sequence_length
 
         self.input_node = input_node
@@ -30,6 +32,8 @@ class Edge(ABC):
 
         self.input_node.add_output_edge(self)
         self.output_node.add_input_edge(self)
+
+        self.disabled = False
 
     @abstractmethod
     def reset(self):

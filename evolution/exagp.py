@@ -10,6 +10,7 @@ from population.single_population import SinglePopulation
 
 from weight_generators.weight_generator import WeightGenerator
 from weight_generators.kaiming_weight_generator import KaimingWeightGenerator
+from weight_generators.lamarckian_weight_generator import LamarckianWeightGenerator
 
 
 class EXAGP:
@@ -22,7 +23,8 @@ class EXAGP:
         seed_genome: Genome,
         node_generator: NodeGenerator = EXAGPNodeGenerator(),
         edge_generator: EdgeGenerator = EXAGPEdgeGenerator(max_time_skip=10),
-        weight_generator: WeightGenerator = KaimingWeightGenerator(),
+        weight_generator: WeightGenerator = LamarckianWeightGenerator(),
+        # weight_generator: WeightGenerator = KaimingWeightGenerator(),
     ):
         """Initializes an EXA-GP graph based genetic programming algorithm.
         Will use defaults unless otherwise specified.

@@ -38,16 +38,16 @@ class KaimingWeightGenerator(WeightGenerator):
             if hasattr(node, "weights"):
                 i = 0
                 for i in range(len(node.weights)):
-                    node.weights[i] = torch.tensor(
-                        torch.randn(1).item() / math.sqrt(fan_in),
-                        requires_grad=True,
-                    )
+                    if node.weights[i] is None:
+                        node.weights[i] = torch.tensor(
+                            torch.randn(1).item() / math.sqrt(fan_in),
+                            requires_grad=True,
+                        )
 
             for edge in node.input_edges:
-                if edge.weight is None:
-                    edge.weight = torch.tensor(
-                        torch.randn(1).item() / math.sqrt(fan_in),
-                        requires_grad=True,
-                    )
-
-        pass
+                for i in range(len(edge.weights)):
+                    if edge.weights[i] is None:
+                        edge.weights[i] = torch.tensor(
+                            torch.randn(1).item() / math.sqrt(fan_in),
+                            requires_grad=True,
+                        )

@@ -50,6 +50,7 @@ class MinimalRecurrentGenome(RecurrentGenome):
 
             for input_node in self.input_nodes:
                 edge = RecurrentEdge(
+                    innovation_number=InnovationGenerator.get_innovation_number(),
                     input_node=input_node,
                     output_node=output_node,
                     max_sequence_length=max_sequence_length,
@@ -57,8 +58,8 @@ class MinimalRecurrentGenome(RecurrentGenome):
                 )
                 if input_node.parameter_name == output_node.parameter_name:
                     # set the weight to 1 as a default (use the previous value as the forecast)
-                    edge.weight = torch.tensor(1.0, requires_grad=True)
+                    edge.weights[0] = torch.tensor(1.0, requires_grad=True)
                 else:
-                    edge.weight = torch.tensor(0.0, requires_grad=True)
+                    edge.weights[0] = torch.tensor(0.0, requires_grad=True)
 
                 self.add_edge(edge)

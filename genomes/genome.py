@@ -22,7 +22,9 @@ class Genome(ABC):
         self.input_nodes = []
         self.output_nodes = []
         self.nodes = []
+        self.node_map = {}
         self.edges = []
+        self.edge_map = {}
         self.generation_number = generation_number
         self.fitness = None
 
@@ -57,6 +59,7 @@ class Genome(ABC):
 
         self.input_nodes.append(input_node)
         self.nodes.append(input_node)
+        self.node_map[input_node.innovation_number] = input_node
 
     def add_node(self, node: Node):
         """Adds an non-input and non-output node when creating this genome
@@ -64,6 +67,7 @@ class Genome(ABC):
             node: is the node to add to the computational graph
         """
         self.nodes.append(node)
+        self.node_map[node.innovation_number] = node
 
     def add_output_node(self, output_node: Node):
         """Adds an output node when creating this genome
@@ -73,6 +77,7 @@ class Genome(ABC):
 
         self.output_nodes.append(output_node)
         self.nodes.append(output_node)
+        self.node_map[output_node.innovation_number] = output_node
 
     def add_edge(self, edge: Edge):
         """Adds an edge when creating this gnome
@@ -80,6 +85,7 @@ class Genome(ABC):
             edge: is the edge to add
         """
         self.edges.append(edge)
+        self.edge_map[edge.innovation_number] = edge
 
     def reset(self):
         """Resets all the node and edge values for another
@@ -100,7 +106,10 @@ class Genome(ABC):
 
         parameters = []
         for edge in self.edges:
-            parameters.append(edge.weight)
+            parameters.extend(edge.weights)
+
+        for node in self.nodes:
+            parameters.extend(node.weights)
 
         return parameters
 
@@ -137,3 +146,20 @@ class Genome(ABC):
     def forward(self):
         """Performs a forward pass through a computational graph."""
         pass
+
+
+    def __repr__(self) -> str:
+        """
+        Returns:
+            An easily readable string representation of this genome.
+        """
+        result = f"Genome {self.generation_number} : fitness: {self.fitness}\n"
+        result += f"{type(self)}\n"
+
+        for node in sorted(self.nodes):
+            result += f"\t{node}\n"
+            for edge in node.output_edges:
+                result += f"\t\t{edge}\n"
+
+        return result
+

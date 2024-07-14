@@ -31,6 +31,11 @@ class Node(ABC):
 
         self.value = [torch.tensor(0.0)] * self.max_sequence_length
 
+        # by default nodes have no weights
+        self.weights = []
+
+        self.disabled = False
+
     def __repr__(self) -> str:
         """Provides an easily readable string representation of this node."""
         return f"[node {type(self)}, innovation: {self.innovation_number}, depth: {self.depth}]"
@@ -123,6 +128,8 @@ class Node(ABC):
         """
         self.inputs_fired = [0] * self.max_sequence_length
         self.value = [torch.tensor(0.0)] * self.max_sequence_length
+        for weight in self.weights:
+            weight.grad = None
 
     def accumulate(self, time_step: int, value: torch.Tensor):
         """
@@ -151,12 +158,13 @@ class Node(ABC):
             # have recurrent connections feeding into them that
             # all recurrent edges have fired
             logger.error(
-                f"Calling forward on input node '{self.parameter_name}' at time "
+                f"Calling forward on input node '{self}' at time "
                 f"step {time_step}, where all incoming recurrent edges have not "
                 f"yet been fired. len(self.input_edges): {len(self.input_edges)} "
                 f", self.inputs_fired: {self.inputs_fired}"
             )
             exit(1)
+
 
         for output_edge in self.output_edges:
             output_edge.forward(time_step=time_step, value=self.value[time_step])

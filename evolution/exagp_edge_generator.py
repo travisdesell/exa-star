@@ -7,6 +7,7 @@ from genomes.genome import Genome
 from genomes.node import Node
 from genomes.recurrent_edge import RecurrentEdge
 
+from innovation.innovation_generator import InnovationGenerator
 
 class EXAGPEdgeGenerator(EdgeGenerator):
     """This is an edge generator for the EXA-GP algorithm. It will
@@ -46,6 +47,7 @@ class EXAGPEdgeGenerator(EdgeGenerator):
             time_skip = int(random.uniform(1, self.max_time_skip))
 
         new_edge = RecurrentEdge(
+            innovation_number=InnovationGenerator.get_innovation_number(),
             input_node=input_node,
             output_node=output_node,
             max_sequence_length=target_genome.max_sequence_length,
