@@ -1,5 +1,4 @@
 import copy
-import numpy as np
 import random
 
 from evolution.edge_generator import EdgeGenerator
@@ -43,7 +42,7 @@ class MergeNode(ReproductionMethod):
         return 1
 
     def __call__(self, parent_genomes: list[Genome]) -> Genome:
-        """ Given the parent genome, create a child genome which is a copy
+        """Given the parent genome, create a child genome which is a copy
         of the parent with a random node added.
         Args:
             parent_genomes: a list of parent genomes to create the child genome from.
@@ -56,10 +55,13 @@ class MergeNode(ReproductionMethod):
         # calculate the depth of the new node (exclusive of 0.0 and 1.0 so it
         # is not at the same depth as the input or output nodes.
 
-
         child_genome = copy.deepcopy(parent_genomes[0])
 
-        possible_nodes = [node for node in child_genome.nodes if not isinstance(node, InputNode) and not isinstance(node, OutputNode)]
+        possible_nodes = [
+            node
+            for node in child_genome.nodes
+            if not isinstance(node, InputNode) and not isinstance(node, OutputNode)
+        ]
 
         if len(possible_nodes) < 2:
             return None
@@ -95,7 +97,10 @@ class MergeNode(ReproductionMethod):
                     recurrent = True
 
                 new_edge = self.edge_generator(
-                    target_genome=child_genome, input_node=input_node, output_node=new_node, recurrent=recurrent
+                    target_genome=child_genome,
+                    input_node=input_node,
+                    output_node=new_node,
+                    recurrent=recurrent,
                 )
                 print(f"\tcreating input edge: {new_edge}")
                 child_genome.add_edge(new_edge)
@@ -112,7 +117,10 @@ class MergeNode(ReproductionMethod):
                     recurrent = True
 
                 new_edge = self.edge_generator(
-                    target_genome=child_genome, input_node=new_node, output_node=output_node, recurrent=recurrent
+                    target_genome=child_genome,
+                    input_node=new_node,
+                    output_node=output_node,
+                    recurrent=recurrent,
                 )
                 print(f"\tcreating output edge: {new_edge}")
                 child_genome.add_edge(new_edge)

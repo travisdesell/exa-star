@@ -83,7 +83,9 @@ class SinglePopulation(PopulationStrategy):
         print()
         print("POPULATION:")
         for i, genome in enumerate(self.population):
-            print(f"genome[{i}] generated: {genome.generation_number}, fitness: {genome.fitness}")
+            print(
+                f"genome[{i}] generated: {genome.generation_number}, fitness: {genome.fitness}"
+            )
 
         if len(self.population) > self.population_size:
             self.population = self.population[0 : self.population_size]

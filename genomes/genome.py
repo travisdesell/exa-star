@@ -147,7 +147,6 @@ class Genome(ABC):
         """Performs a forward pass through a computational graph."""
         pass
 
-
     def __repr__(self) -> str:
         """
         Returns:
@@ -162,4 +161,3 @@ class Genome(ABC):
                 result += f"\t\t{edge}\n"
 
         return result
-

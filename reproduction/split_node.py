@@ -1,5 +1,4 @@
 import copy
-import numpy as np
 import random
 
 from evolution.edge_generator import EdgeGenerator
@@ -43,7 +42,7 @@ class SplitNode(ReproductionMethod):
         return 1
 
     def __call__(self, parent_genomes: list[Genome]) -> Genome:
-        """ Given the parent genome, create a child genome which is a copy
+        """Given the parent genome, create a child genome which is a copy
         of the parent with a random node added.
         Args:
             parent_genomes: a list of parent genomes to create the child genome from.
@@ -56,10 +55,13 @@ class SplitNode(ReproductionMethod):
         # calculate the depth of the new node (exclusive of 0.0 and 1.0 so it
         # is not at the same depth as the input or output nodes.
 
-
         child_genome = copy.deepcopy(parent_genomes[0])
 
-        possible_nodes = [node for node in child_genome.nodes if not isinstance(node, InputNode) and not isinstance(node, OutputNode)]
+        possible_nodes = [
+            node
+            for node in child_genome.nodes
+            if not isinstance(node, InputNode) and not isinstance(node, OutputNode)
+        ]
 
         if len(possible_nodes) < 1:
             return None
@@ -110,13 +112,19 @@ class SplitNode(ReproductionMethod):
         assert len(node2_input_edges) >= 1
         assert len(node2_output_edges) >= 1
 
-        for child_node, input_edges, output_edges in [(node1, node1_input_edges, node1_output_edges), (node2, node2_input_edges, node2_output_edges)]:
+        for child_node, input_edges, output_edges in [
+            (node1, node1_input_edges, node1_output_edges),
+            (node2, node2_input_edges, node2_output_edges),
+        ]:
 
             # set the input and output edges for each split node
             for input_edge in input_edges:
                 recurrent = input_edge.time_skip > 0
                 new_edge = self.edge_generator(
-                    target_genome=child_genome, input_node=input_edge.input_node, output_node=child_node, recurrent=recurrent
+                    target_genome=child_genome,
+                    input_node=input_edge.input_node,
+                    output_node=child_node,
+                    recurrent=recurrent,
                 )
                 child_node.add_input_edge(new_edge)
                 child_genome.add_edge(new_edge)
@@ -124,7 +132,10 @@ class SplitNode(ReproductionMethod):
             for output_edge in output_edges:
                 recurrent = output_edge.time_skip > 0
                 new_edge = self.edge_generator(
-                    target_genome=child_genome, input_node=child_node, output_node=output_edge.output_node, recurrent=recurrent
+                    target_genome=child_genome,
+                    input_node=child_node,
+                    output_node=output_edge.output_node,
+                    recurrent=recurrent,
                 )
                 child_node.add_output_edge(new_edge)
                 child_genome.add_edge(new_edge)

@@ -38,7 +38,11 @@ class RecurrentEdge(Edge):
         Returns:
             An easily readable string representation of this object.
         """
-        return f"RecurrentEdge {self.innovation_number} from Node {self.input_node.innovation_number} to Node {self.output_node.innovation_number}, time skip: {self.time_skip}, weights: {self.weights}"
+        return (
+            f"RecurrentEdge {self.innovation_number} from Node {self.input_node.innovation_number} "
+            f"to Node {self.output_node.innovation_number}, time skip: {self.time_skip}, "
+            f"weights: {self.weights}"
+        )
 
     def reset(self):
         """Resets the edge gradients for the next forward pass."""

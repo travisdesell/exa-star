@@ -1,13 +1,10 @@
 import copy
-import numpy as np
 import random
 
 from evolution.edge_generator import EdgeGenerator
 from evolution.node_generator import NodeGenerator
 
 from genomes.genome import Genome
-from genomes.input_node import InputNode
-from genomes.output_node import OutputNode
 
 from reproduction.reproduction_method import ReproductionMethod
 
@@ -43,7 +40,7 @@ class SplitEdge(ReproductionMethod):
         return 1
 
     def __call__(self, parent_genomes: list[Genome]) -> Genome:
-        """ Given the parent genome, create a child genome which is a copy
+        """Given the parent genome, create a child genome which is a copy
         of the parent with an edge split.
         Args:
             parent_genomes: a list of parent genomes to create the child genome from.
@@ -77,16 +74,21 @@ class SplitEdge(ReproductionMethod):
         child_genome.add_node(new_node)
 
         input_edge = self.edge_generator(
-            target_genome=child_genome, input_node=input_node, output_node=new_node, recurrent=recurrent
+            target_genome=child_genome,
+            input_node=input_node,
+            output_node=new_node,
+            recurrent=recurrent,
         )
         child_genome.add_edge(input_edge)
 
         output_edge = self.edge_generator(
-            target_genome=child_genome, input_node=new_node, output_node=output_node, recurrent=recurrent
+            target_genome=child_genome,
+            input_node=new_node,
+            output_node=output_node,
+            recurrent=recurrent,
         )
         child_genome.add_edge(output_edge)
 
         self.weight_generator(child_genome)
 
         return child_genome
-

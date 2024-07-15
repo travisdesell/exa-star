@@ -1,5 +1,4 @@
 import copy
-import numpy as np
 import random
 
 from evolution.edge_generator import EdgeGenerator
@@ -41,7 +40,7 @@ class EnableEdge(ReproductionMethod):
         return 1
 
     def __call__(self, parent_genomes: list[Genome]) -> Genome:
-        """ Given the parent genome, create a child genome which is a copy
+        """Given the parent genome, create a child genome which is a copy
         of the parent with an edge split.
         Args:
             parent_genomes: a list of parent genomes to create the child genome from.
@@ -61,5 +60,3 @@ class EnableEdge(ReproductionMethod):
         target_edge.disabled = False
 
         return child_genome
-
-

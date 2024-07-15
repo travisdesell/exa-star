@@ -80,4 +80,3 @@ if __name__ == "__main__":
     print(f"{exagp.population_strategy.population[0]}")
 
     exagp.population_strategy.population[0].plot()
-

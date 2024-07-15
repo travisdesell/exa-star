@@ -1,4 +1,3 @@
-import math
 import numpy as np
 import torch
 
@@ -7,10 +6,11 @@ from weight_generators.weight_generator import WeightGenerator
 
 
 class LamarckianWeightGenerator(WeightGenerator):
-    def __init__(self,
-            c1: float = -1.0,
-            c2: float = 0.5,
-        ):
+    def __init__(
+        self,
+        c1: float = -1.0,
+        c2: float = 0.5,
+    ):
         """Initializes a Lamarckian weight generator, which will set any
         weight that is None in the genome using Lamarckian weight
         initialization.
@@ -38,12 +38,12 @@ class LamarckianWeightGenerator(WeightGenerator):
         """
 
         more_fit_parent = None
-        if 'more_fit_parent' in kwargs.keys():
-            more_fit_paremt = kwargs['more_fit_parent']
+        if "more_fit_parent" in kwargs.keys():
+            more_fit_parent = kwargs["more_fit_parent"]
 
         less_fit_parent = None
-        if 'less_fit_parent' in kwargs.keys():
-            less_fit_paremt = kwargs['less_fit_parent']
+        if "less_fit_parent" in kwargs.keys():
+            less_fit_parent = kwargs["less_fit_parent"]
 
         weights_list = []
         more_fit_weights_list = []
@@ -57,17 +57,26 @@ class LamarckianWeightGenerator(WeightGenerator):
                     all_weights.append(weight.detach().item())
 
             more_fit_weights = None
-            if more_fit_parent is not None and node.innovation_number in more_fit_parent.node_map.keys():
-                more_fit_weights = more_fit_parent.node_map[node.innovation_number].weights
+            if (
+                more_fit_parent is not None
+                and node.innovation_number in more_fit_parent.node_map.keys()
+            ):
+                more_fit_weights = more_fit_parent.node_map[
+                    node.innovation_number
+                ].weights
 
             more_fit_weights_list.append(more_fit_weights)
 
             less_fit_weights = None
-            if less_fit_parent is not None and node.innovation_number in less_fit_parent.node_map.keys():
-                less_fit_weights = less_fit_parent.node_map[node.innovation_number].weights
+            if (
+                less_fit_parent is not None
+                and node.innovation_number in less_fit_parent.node_map.keys()
+            ):
+                less_fit_weights = less_fit_parent.node_map[
+                    node.innovation_number
+                ].weights
 
             less_fit_weights_list.append(less_fit_weights)
-
 
         for edge in genome.edges:
             weights_list.append(edge.weights)
@@ -76,17 +85,26 @@ class LamarckianWeightGenerator(WeightGenerator):
                     all_weights.append(weight.detach().item())
 
             more_fit_weights = None
-            if more_fit_parent is not None and edge.innovation_number in more_fit_parent.edge_map.keys():
-                more_fit_weights = more_fit_parent.edge_map[edge.innovation_number].weights
+            if (
+                more_fit_parent is not None
+                and edge.innovation_number in more_fit_parent.edge_map.keys()
+            ):
+                more_fit_weights = more_fit_parent.edge_map[
+                    edge.innovation_number
+                ].weights
 
             more_fit_weights_list.append(more_fit_weights)
 
             less_fit_weights = None
-            if less_fit_parent is not None and edge.innovation_number in less_fit_parent.edge_map.keys():
-                less_fit_weights = less_fit_parent.edge_map[edge.innovation_number].weights
+            if (
+                less_fit_parent is not None
+                and edge.innovation_number in less_fit_parent.edge_map.keys()
+            ):
+                less_fit_weights = less_fit_parent.edge_map[
+                    edge.innovation_number
+                ].weights
 
             less_fit_weights_list.append(less_fit_weights)
-
 
         n_weights = len(all_weights)
         all_weights = np.array(all_weights)
@@ -95,12 +113,15 @@ class LamarckianWeightGenerator(WeightGenerator):
         print(f"all weights len: {n_weights} -- {all_weights}")
         print(f"weights avg: {weights_avg}, std: {weights_std}")
 
-
         r = (torch.rand(1).item() * (self.c2 - self.c1)) + self.c1
 
-        for weights, more_fit_weights, less_fit_weights in zip(weights_list, more_fit_weights_list, less_fit_weights_list):
-            print(f"weights: {weights} - more fit weights: {more_fit_weights} - less fit weights: {less_fit_weights}")
-       
+        for weights, more_fit_weights, less_fit_weights in zip(
+            weights_list, more_fit_weights_list, less_fit_weights_list
+        ):
+            print(
+                f"weights: {weights} - more fit weights: {more_fit_weights} - less fit weights: {less_fit_weights}"
+            )
+
             # node was not in either parent, randomly initialize
             if more_fit_weights is None and less_fit_weights is None:
                 for i in range(len(weights)):
@@ -109,7 +130,9 @@ class LamarckianWeightGenerator(WeightGenerator):
                             (torch.randn(1).item() * weights_std) + weights_avg,
                             requires_grad=True,
                         )
-                        print(f"weight normal random wtih avg {weights_avg} and std {weights_std} set to: {weights[i]}")
+                        print(
+                            f"weight normal random wtih avg {weights_avg} and std {weights_std} set to: {weights[i]}"
+                        )
             elif more_fit_weights is None:
                 # no more fit parent, use weights from less fit parent
 
@@ -127,7 +150,9 @@ class LamarckianWeightGenerator(WeightGenerator):
                 for i in range(len(weights)):
                     diff = less_fit_weights[i] - more_fit_weights[i]
                     line_search_value = (r * diff) + more_fit_weights[i]
-                    print(f"line search value: {line_search_value}, c1: {c1}, c2: {c2}, r: {r}, diff: {diff}")
+                    print(
+                        f"line search value: {line_search_value}, c1: {self.c1}, c2: {self.c2}, r: {r}, diff: {diff}"
+                    )
 
                     weights[i] = torch.tensor(
                         line_search_value,

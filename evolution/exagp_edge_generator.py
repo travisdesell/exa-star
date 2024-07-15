@@ -9,6 +9,7 @@ from genomes.recurrent_edge import RecurrentEdge
 
 from innovation.innovation_generator import InnovationGenerator
 
+
 class EXAGPEdgeGenerator(EdgeGenerator):
     """This is an edge generator for the EXA-GP algorithm. It will
     generate feed forward or recurrent edges randomly within the
@@ -25,7 +26,11 @@ class EXAGPEdgeGenerator(EdgeGenerator):
         pass
 
     def __call__(
-        self, target_genome: Genome, input_node: Node, output_node: Node, recurrent: bool
+        self,
+        target_genome: Genome,
+        input_node: Node,
+        output_node: Node,
+        recurrent: bool,
     ) -> Edge:
         """Creates a new feed forward or recurrent edge for the computational graph.
         For the basic version this will select either a feed forward (time skip = 0)

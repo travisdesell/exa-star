@@ -1,5 +1,4 @@
 import copy
-import numpy as np
 import random
 
 from evolution.edge_generator import EdgeGenerator
@@ -43,7 +42,7 @@ class AddEdge(ReproductionMethod):
         return 1
 
     def __call__(self, parent_genomes: list[Genome]) -> Genome:
-        """ Given the parent genome, create a child genome which is a copy
+        """Given the parent genome, create a child genome which is a copy
         of the parent with a random edge added.
         Args:
             parent_genomes: a list of parent genomes to create the child genome from.
@@ -62,7 +61,9 @@ class AddEdge(ReproductionMethod):
 
         # potential output nodes need to be deeper than the input node
         potential_outputs = [
-            node for node in child_genome.nodes if not isinstance(node, InputNode) and node.depth > input_node.depth
+            node
+            for node in child_genome.nodes
+            if not isinstance(node, InputNode) and node.depth > input_node.depth
         ]
         print(f"potential outputs: {potential_outputs}")
         random.shuffle(potential_outputs)
@@ -81,4 +82,3 @@ class AddEdge(ReproductionMethod):
         self.weight_generator(child_genome)
 
         return child_genome
-

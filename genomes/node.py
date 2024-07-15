@@ -165,6 +165,5 @@ class Node(ABC):
             )
             exit(1)
 
-
         for output_edge in self.output_edges:
             output_edge.forward(time_step=time_step, value=self.value[time_step])
