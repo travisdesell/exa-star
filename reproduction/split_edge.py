@@ -56,16 +56,35 @@ class SplitEdge(ReproductionMethod):
         random.shuffle(potential_edges)
 
         target_edge = potential_edges[0]
+        target_edge.disabled = True
 
         input_node = target_edge.input_node
         output_node = target_edge.output_node
 
         print(f"adding edge from input {input_node} to output {output_node}")
 
-        edge = self.edge_generator(
-            target_genome=child_genome, input_node=input_node, output_node=output_node
+        recurrent = target_edge.time_skip > 0
+
+        # generate a random depth between the two parent nodes that isn't the
+        # same as either
+        child_depth = input_node.depth
+
+        if input_node.depth != output_node.depth:
+            while child_depth == input_node.depth or child_depth == output_node.depth:
+                child_depth = random.uniform(input_node.depth, output_node.depth)
+
+        new_node = self.node_generator(depth=child_depth, target_genome=child_genome)
+        child_genome.add_node(new_node)
+
+        input_edge = self.edge_generator(
+            target_genome=child_genome, input_node=input_node, output_node=new_node, recurrent=recurrent
         )
-        child_genome.add_edge(edge)
+        child_genome.add_edge(input_edge)
+
+        output_edge = self.edge_generator(
+            target_genome=child_genome, input_node=new_node, output_node=output_node, recurrent=recurrent
+        )
+        child_genome.add_edge(output_edge)
 
         self.weight_generator(child_genome)
 

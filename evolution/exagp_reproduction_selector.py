@@ -4,7 +4,19 @@ from evolution.edge_generator import EdgeGenerator
 from evolution.node_generator import NodeGenerator
 
 from reproduction.add_edge import AddEdge
+from reproduction.enable_edge import EnableEdge
+from reproduction.disable_edge import DisableEdge
+from reproduction.add_recurrent_edge import AddRecurrentEdge
+from reproduction.split_edge import SplitEdge
+
 from reproduction.add_node import AddNode
+from reproduction.enable_node import EnableNode
+from reproduction.disable_node import DisableNode
+from reproduction.split_node import SplitNode
+from reproduction.merge_node import MergeNode
+
+from reproduction.clone import Clone
+
 from reproduction.reproduction_method import ReproductionMethod
 from reproduction.reproduction_selector import ReproductionSelector
 
@@ -36,7 +48,16 @@ class EXAGPReproductionSelector(ReproductionSelector):
 
         self.reproduction_methods = [
             AddEdge(node_generator, edge_generator, weight_generator),
+            DisableEdge(node_generator, edge_generator, weight_generator),
+            EnableEdge(node_generator, edge_generator, weight_generator),
+            AddRecurrentEdge(node_generator, edge_generator, weight_generator),
+            SplitEdge(node_generator, edge_generator, weight_generator),
             AddNode(node_generator, edge_generator, weight_generator),
+            EnableNode(node_generator, edge_generator, weight_generator),
+            DisableNode(node_generator, edge_generator, weight_generator),
+            MergeNode(node_generator, edge_generator, weight_generator),
+            SplitNode(node_generator, edge_generator, weight_generator),
+            Clone(node_generator, edge_generator, weight_generator),
         ]
 
     def __call__(self) -> ReproductionMethod:

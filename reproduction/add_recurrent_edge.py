@@ -14,7 +14,7 @@ from reproduction.reproduction_method import ReproductionMethod
 from weight_generators.weight_generator import WeightGenerator
 
 
-class AddEdge(ReproductionMethod):
+class AddRecurrentEdge(ReproductionMethod):
     """Creates an Add Edge mutation as a reproduction method."""
 
     def __init__(
@@ -47,26 +47,20 @@ class AddEdge(ReproductionMethod):
         of the parent with a random edge added.
         Args:
             parent_genomes: a list of parent genomes to create the child genome from.
-                Add Edge only uses the first
+                AddRecurrentEdge only uses the first
         Returns:
             A new genome to evaluate.
         """
         child_genome = copy.deepcopy(parent_genomes[0])
 
-        potential_inputs = [
-            node for node in child_genome.nodes if not isinstance(node, OutputNode)
-        ]
-        print(f"potential inputs: {potential_inputs}")
-        random.shuffle(potential_inputs)
-        input_node = potential_inputs[0]
+        potential_nodes = child_genome.nodes
+        # recurrent connections can go from any node to any other node (including
+        # between the same node, so we can just shuffle with replacement
+        random.shuffle(potential_nodes)
+        input_node = potential_nodes[0]
 
-        # potential output nodes need to be deeper than the input node
-        potential_outputs = [
-            node for node in child_genome.nodes if not isinstance(node, InputNode) and node.depth > input_node.depth
-        ]
-        print(f"potential outputs: {potential_outputs}")
-        random.shuffle(potential_outputs)
-        output_node = potential_outputs[0]
+        random.shuffle(potential_nodes)
+        output_node = potential_nodes[0]
 
         print(f"adding edge from input {input_node} to output {output_node}")
 
@@ -74,11 +68,12 @@ class AddEdge(ReproductionMethod):
             target_genome=child_genome,
             input_node=input_node,
             output_node=output_node,
-            recurrent=False,
+            recurrent=True,
         )
         child_genome.add_edge(edge)
 
         self.weight_generator(child_genome)
 
         return child_genome
+
 

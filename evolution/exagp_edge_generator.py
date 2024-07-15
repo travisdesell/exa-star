@@ -25,7 +25,7 @@ class EXAGPEdgeGenerator(EdgeGenerator):
         pass
 
     def __call__(
-        self, target_genome: Genome, input_node: Node, output_node: Node
+        self, target_genome: Genome, input_node: Node, output_node: Node, recurrent: bool
     ) -> Edge:
         """Creates a new feed forward or recurrent edge for the computational graph.
         For the basic version this will select either a feed forward (time skip = 0)
@@ -37,12 +37,13 @@ class EXAGPEdgeGenerator(EdgeGenerator):
             target_genome: is the genome the edge will be created for.
             input_node: is the edge's input node.
             output_node: is the edge's output node.
+            recurrent: is if the edge can be recurrent (time skip > 1) or not.
         Returns:
             A new edge for an EXA-GP computational graph.
         """
 
         time_skip = 0
-        if random.uniform(0, 1.0) < 0.5:
+        if recurrent:
             # this will be a recurrent edge
             time_skip = int(random.uniform(1, self.max_time_skip))
 

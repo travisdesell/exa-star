@@ -44,6 +44,7 @@ class SinglePopulation(PopulationStrategy):
 
             while child_genome is None:
                 reproduction_method = self.reproduction_selector()
+                print(f"REPRODUCITON METHOD: {type(reproduction_method)}")
                 # keep trying to generate children from the seed genome
                 child_genome = reproduction_method([self.seed_genome])
 
@@ -54,6 +55,7 @@ class SinglePopulation(PopulationStrategy):
 
             while child_genome is None:
                 reproduction_method = self.reproduction_selector()
+                print(f"REPRODUCITON METHOD: {type(reproduction_method)}")
                 # keep trying to generate children from the seed genome
 
                 potential_parents = self.population

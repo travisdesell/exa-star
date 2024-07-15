@@ -6,16 +6,14 @@ from evolution.edge_generator import EdgeGenerator
 from evolution.node_generator import NodeGenerator
 
 from genomes.genome import Genome
-from genomes.input_node import InputNode
-from genomes.output_node import OutputNode
 
 from reproduction.reproduction_method import ReproductionMethod
 
 from weight_generators.weight_generator import WeightGenerator
 
 
-class AddEdge(ReproductionMethod):
-    """Creates an Add Edge mutation as a reproduction method."""
+class EnableEdge(ReproductionMethod):
+    """Creates a EnableEdge mutation as a reproduction method."""
 
     def __init__(
         self,
@@ -23,7 +21,7 @@ class AddEdge(ReproductionMethod):
         edge_generator: EdgeGenerator,
         weight_generator: WeightGenerator,
     ):
-        """Initialies a new AddEdge reproduction method.
+        """Initialies a new EnableEdge reproduction method.
         Args:
             node_generator: is used to generate a new node (perform the node type selection).
             edge_generator: is used to generate a new edge (perform the edge type selection).
@@ -44,41 +42,24 @@ class AddEdge(ReproductionMethod):
 
     def __call__(self, parent_genomes: list[Genome]) -> Genome:
         """ Given the parent genome, create a child genome which is a copy
-        of the parent with a random edge added.
+        of the parent with an edge split.
         Args:
             parent_genomes: a list of parent genomes to create the child genome from.
-                Add Edge only uses the first
+                EnableEdge only uses the first
         Returns:
-            A new genome to evaluate.
+            A new genome to evaluate, None if there were no edges to disable.
         """
         child_genome = copy.deepcopy(parent_genomes[0])
 
-        potential_inputs = [
-            node for node in child_genome.nodes if not isinstance(node, OutputNode)
-        ]
-        print(f"potential inputs: {potential_inputs}")
-        random.shuffle(potential_inputs)
-        input_node = potential_inputs[0]
+        potential_edges = [edge for edge in child_genome.edges if edge.disabled]
 
-        # potential output nodes need to be deeper than the input node
-        potential_outputs = [
-            node for node in child_genome.nodes if not isinstance(node, InputNode) and node.depth > input_node.depth
-        ]
-        print(f"potential outputs: {potential_outputs}")
-        random.shuffle(potential_outputs)
-        output_node = potential_outputs[0]
+        if len(potential_edges) == 0:
+            return None
 
-        print(f"adding edge from input {input_node} to output {output_node}")
-
-        edge = self.edge_generator(
-            target_genome=child_genome,
-            input_node=input_node,
-            output_node=output_node,
-            recurrent=False,
-        )
-        child_genome.add_edge(edge)
-
-        self.weight_generator(child_genome)
+        random.shuffle(potential_edges)
+        target_edge = potential_edges[0]
+        target_edge.disabled = False
 
         return child_genome
+
 
