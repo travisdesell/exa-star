@@ -3,6 +3,8 @@ defaults:
   - population: simple_population
   - genome_factory: toy
   - fitness: toy_mae
+  - dataset: base_toy_dataset
 
 output_directory: "output/test"
 nsteps: 32000
+  

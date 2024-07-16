@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 from collections.abc import MutableSequence
+from dataclasses import dataclass
 from typing import cast
 
+from __main__ import MutationOperatorConfig
 from exastar.genome import EXAStarGenome
 from exastar.component import Node, InputNode, OutputNode, Edge, RecurrentEdge
 from exastar.weight_generators.weight_generator import WeightGenerator
@@ -25,7 +27,12 @@ class NodeGenerator[G: EXAStarGenome](ABC):
         Returns:
             A new node for a computational graph.
         """
-        pass
+        ...
+
+
+@dataclass
+class NodeGeneratorConfig:
+    ...
 
 
 class EXAGPNodeGenerator(NodeGenerator[EXAStarGenome]):
@@ -39,7 +46,7 @@ class EXAGPNodeGenerator(NodeGenerator[EXAStarGenome]):
         """
         Initializes a node generator for EXA-GP.
         """
-        pass
+        super().__init__()
 
     def __call__(self, depth: float, target_genome: EXAStarGenome, rng: np.random.Generator) -> Node:
         """
@@ -60,6 +67,11 @@ class EXAGPNodeGenerator(NodeGenerator[EXAStarGenome]):
         return new_node
 
 
+@dataclass
+class EXAGPNodeGeneratorConfig(NodeGeneratorConfig):
+    _target_ = "exastar.genome_operators.EXAGPNodeGenerator"
+
+
 class EdgeGenerator[G: EXAStarGenome](ABC):
     @abstractmethod
     def __call__(
@@ -75,6 +87,11 @@ class EdgeGenerator[G: EXAStarGenome](ABC):
             A new edge for for a computational graph
         """
         pass
+
+
+@dataclass
+class EdgeGeneratorConfig:
+    ...
 
 
 class RecurrentEdgeGenerator(EdgeGenerator[EXAStarGenome]):
@@ -121,6 +138,13 @@ class RecurrentEdgeGenerator(EdgeGenerator[EXAStarGenome]):
             time_skip = rng.integers(1, self.max_time_skip)
 
         return RecurrentEdge(input_node, output_node, target_genome.max_sequence_length, time_skip)
+
+
+@dataclass
+class RecurrentEdgeGeneratorConfig(EdgeGeneratorConfig):
+    _target_ = "exastar.genome_operators.RecurrentEdgeGenerator"
+    max_time_skip: int
+    p_recurrent: float
 
 
 class AddNode[G: EXAStarGenome](MutationOperator[G]):
@@ -240,3 +264,11 @@ class AddNode[G: EXAStarGenome](MutationOperator[G]):
         self.weight_generator(child_genome)
 
         return child_genome
+
+
+@dataclass
+class AddNodeConfig(MutationOperatorConfig):
+    _target_ = "exastar.genome_operators.AddNode"
+    node_generator_config: NodeGeneratorConfig
+    edge_generator_config: EdgeGeneratorConfig
+    weight_generator_config: WeightGeneratorConfig

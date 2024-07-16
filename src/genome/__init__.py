@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from typing import (
-    Any,
     Callable,
     cast,
     Dict,
@@ -11,14 +11,15 @@ from typing import (
 )
 import sys
 
+from dataset import Dataset
+from util.log import LogDataProvider
+from util.typing import ComparableMixin, constmethod
+
 import numpy as np
 from pandas.core.frame import functools
 
-from util.typing import ComparableMixin, constmethod, LogDataProvider
-
 
 class FitnessValue[G: Genome](ComparableMixin):
-    """ """
 
     @classmethod
     @abstractmethod
@@ -34,12 +35,17 @@ class FitnessValue[G: Genome](ComparableMixin):
         ...
 
 
-class Fitness[G: Genome]:
+class Fitness[G: Genome, D: Dataset]:
 
     def __init__(self) -> None: ...
 
     @abstractmethod
-    def compute(self, genome: G) -> FitnessValue[G]: ...
+    def compute(self, genome: G, dataset: D) -> FitnessValue[G]: ...
+
+
+@dataclass
+class FitnessConfig:
+    pass
 
 
 class Genome(ABC, LogDataProvider):
@@ -53,40 +59,9 @@ class Genome(ABC, LogDataProvider):
     @constmethod
     def clone(self) -> Self: ...
 
-    def evaluate(self, f: Fitness[Self]) -> FitnessValue[Self]:
-        self.fitness = f.compute(self)
+    def evaluate[D: Dataset](self, f: Fitness[Self, D], dataset: D) -> FitnessValue[Self]:
+        self.fitness = f.compute(self, dataset)
         return self.fitness
-
-
-class ToyGenome(Genome):
-
-    def __init__(self, target: str, dna: List[np.ndarray], **kwargs) -> None:
-        super().__init__(**kwargs)
-
-        self.target: str = target
-        self.dna: List[np.ndarray] = dna
-
-    def clone(self) -> Self:
-        return type(self)(self.target, self.dna)
-
-    def as_string(self) -> str:
-        s = []
-
-        def tochr(c):
-            if c >= 0x20:
-                return chr(c)
-            else:
-                return "#"
-
-        for chromosome in self.dna:
-            s.append("".join(map(tochr, chromosome)))
-
-        return "\n".join(s)
-
-    def get_log_data(self, aggregator: None) -> Dict[str, Any]:
-        return {
-            "fitness": self.fitness,
-        }
 
 
 class MSEValue[G: Genome](FitnessValue):
@@ -102,38 +77,16 @@ class MSEValue[G: Genome](FitnessValue):
         return (-self.mse, )
 
 
-class ToyMAEValue(FitnessValue[ToyGenome]):
-    @classmethod
-    def max(cls) -> Self:
-        return cls(sys.float_info.max)
-
-    def __init__(self, mae: float) -> None:
-        self.mae: float = mae
-
-    def _cmpkey(self) -> Tuple:
-        return (-self.mae,)
-
-
-class ToyMAE(Fitness[ToyGenome]):
-    def compute(self, genome: ToyGenome) -> ToyMAEValue:
-        value = genome.as_string()
-
-        total = 0.0
-        for ct, c in zip(genome.target, value):
-            ordt = ord(ct)
-            ordv = ord(c)
-
-            total += abs(ordt - ordv) ** 0.5
-
-        norm = len(value) * 256.0
-        return ToyMAEValue(total / norm)
-
-
 class GenomeOperator[G: Genome](ABC):
 
     def __init__(self, weight: float) -> None:
         # Relative weight used for computing genome operator probabilities.
         self.weight: float = weight
+
+
+@dataclass(kw_only=True)
+class GenomeOperatorConfig:
+    weight: float = field(default=1.0)
 
 
 class MutationOperator[G: Genome](GenomeOperator[G]):
@@ -158,6 +111,16 @@ class CrossoverOperator[G: Genome](GenomeOperator[G]):
         ...
 
 
+@dataclass
+class MutationOperatorConfig(GenomeOperatorConfig):
+    ...
+
+
+@dataclass
+class CrossoverOperatorConfig(GenomeOperatorConfig):
+    ...
+
+
 class GenomeProvider[G: Genome]:
 
     def __init__(self) -> None: ...
@@ -169,7 +132,7 @@ class GenomeProvider[G: Genome]:
     def get_genome(self) -> G: ...
 
 
-class GenomeFactory[G: Genome](ABC, LogDataProvider):
+class GenomeFactory[G: Genome, D: Dataset](ABC, LogDataProvider):
 
     def __init__(
         self,
@@ -196,7 +159,7 @@ class GenomeFactory[G: Genome](ABC, LogDataProvider):
         self.rng: np.random.Generator = np.random.default_rng()
 
     @abstractmethod
-    def get_seed_genome(self) -> G: ...
+    def get_seed_genome(self, dataset: D) -> G: ...
 
     def _choice[T: GenomeOperator](self, operators: Tuple[T, ...]) -> T:
         weights = [o.weight for o in operators]
@@ -231,76 +194,9 @@ class GenomeFactory[G: Genome](ABC, LogDataProvider):
             return functools.partial(self.get_crossover(), provider.get_parents())
 
 
-class ToyGenomeMutation(MutationOperator[ToyGenome]):
-
-    def __init__(self, range: int, max_mutations: int, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.range: int = range
-        self.max_mutations: int = max_mutations
-
-    def __call__(
-        self, genome: ToyGenome, rng: np.random.Generator
-    ) -> Optional[ToyGenome]:
-        n_mutations: int = 1 + rng.integers(self.max_mutations - 1)
-
-        total_len = sum(len(chromosome) for chromosome in genome.dna)
-        ps = [len(chromosome) / total_len for chromosome in genome.dna]
-
-        for _ in range(n_mutations):
-            target_chromosome = rng.choice(len(genome.dna), p=ps)
-            target_gene = rng.integers(len(genome.dna[target_chromosome]))
-
-            genome.dna[target_chromosome][target_gene] += rng.integers(
-                -self.range, self.range, dtype=np.int8
-            )
-
-        return genome
-
-
-class ToyGenomeCrossover(CrossoverOperator[ToyGenome]):
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def __call__(
-        self, parents: List[ToyGenome], rng: np.random.Generator
-    ) -> Optional[ToyGenome]:
-        g0, g1 = parents[:2]
-
-        dna = []
-
-        for ic, chrom in enumerate(g0.dna):
-            if len(g0.dna[ic]) <= 1:
-                choice = rng.integers(2)
-                dna.append(parents[choice].dna[ic])
-                continue
-
-            partition = rng.integers(1, len(chrom) - 1)
-            new_chrom = np.concatenate(
-                (g0.dna[ic][:partition], g1.dna[ic][partition:]), axis=None
-            )
-            dna.append(new_chrom)
-
-        return ToyGenome(g0.target, dna)
-
-
-class ToyGenomeFactory(GenomeFactory[ToyGenome]):
-
-    def __init__(self, target_path: str, **kwargs) -> None:
-        super().__init__(**kwargs)
-
-        with open(target_path, "r") as f:
-            self.target: str = f.read()
-
-    def get_seed_genome(self) -> ToyGenome:
-        lines = self.target.split("\n")
-
-        dna = []
-        for line in lines:
-            line += " "
-            dna.append(self.rng.integers(256, size=len(line), dtype=np.uint8))
-
-        return ToyGenome(self.target, dna)
-
-    def get_log_data(self, aggregator: Any) -> Dict[str, Any]:
-        return {}
+@dataclass
+class GenomeFactoryConfig:
+    mutation_operators: Dict[str, MutationOperatorConfig] = field(default_factory=dict)
+    crossover_operators: Dict[str, CrossoverOperatorConfig] = field(
+        default_factory=dict
+    )

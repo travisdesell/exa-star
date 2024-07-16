@@ -1,4 +1,6 @@
 from __future__ import annotations
+from abc import ABC
+from dataclasses import dataclass
 from typing import List, Tuple
 
 from config import configclass
@@ -6,6 +8,15 @@ from config import configclass
 from loguru import logger
 import pandas as pd
 import torch
+
+
+class Dataset(ABC):
+    ...
+
+
+@dataclass
+class DatasetConfig:
+    ...
 
 
 class TimeSeries(Dataset):
@@ -130,7 +141,7 @@ class TimeSeries(Dataset):
         return TimeSeries(slice_series_dictionary)
 
 
-@configclass(name="base_time_series_dataset", group="datasets")
-class TimeSeriesConfig:
+@configclass(name="base_time_series_dataset", group="datasets", target=TimeSeries.create_from_csv)
+class TimeSeriesConfig(DatasetConfig):
     _target_ = "exastar.time_series.TimeSeries.create_from_csv"
     filenames: Tuple[str]

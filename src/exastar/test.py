@@ -1,11 +1,11 @@
 from evolution.exagp import EXAGP
 
-from genomes.minimal_recurrent_genome import MinimalRecurrentGenome
-from genomes.trivial_recurrent_genome import TrivialRecurrentGenome
+from exastar.genome import MinimalRecurrentGenome
+from exastar.genome import TrivialRecurrentGenome
 
 from torch import optim
 
-from time_series.time_series import TimeSeries
+from exastar.time_series import TimeSeries
 
 if __name__ == "__main__":
     csv_filename = (
@@ -60,7 +60,6 @@ if __name__ == "__main__":
     )
 
     exagp = EXAGP(seed_genome=seed_genome)
-
 
     for genome_number in range(100):
         optimizer = optim.Adam(seed_genome.parameters(), lr=0.001)

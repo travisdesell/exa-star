@@ -2,14 +2,16 @@ from __future__ import annotations
 from abc import abstractmethod
 import bisect
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from itertools import chain, product
 from typing import Any, cast, Dict, List, Optional, Self, Set
 
+from config import configclass, GenomeFactoryConfig
 from exastar.component import Edge, RecurrentEdge, Node, InputNode, OutputNode
 from genome import CrossoverOperator, Fitness, Genome, GenomeFactory, MSEValue, MutationOperator
-from time_series.time_series import TimeSeries
-from util.typing import constmethod, overrides, LogDataProvider
+from exastar.time_series import TimeSeries, TimeSeriesConfig
+from util.typing import constmethod, overrides
+from util.log import LogDataProvider
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -173,30 +175,64 @@ class EXAStarGenome[E: Edge](torch.nn.Module, Genome):
         plt.show()
 
 
-class EXAStarMSE(Fitness[EXAStarGenome]):
+class EXAStarTimeSeriesRegressionFitness[G: EXAStarGenome](Fitness[G, TimeSeries]):
+
     def __init__(self, dataset: TimeSeries) -> None:
+        super().__init__()
         self.dataset: TimeSeries = dataset
 
-    def compute(self, genome: EXAStarGenome) -> MSEValue[EXAStarGenome]:
+
+@configclass(name="base_exastar_time_series_regression_fitness", group="fitness",
+             target=EXAStarTimeSeriesRegressionFitness)
+class EXAStarFitnessConfig:
+    dataset: TimeSeriesConfig
+
+
+class EXAStarMSE(EXAStarTimeSeriesRegressionFitness[EXAStarGenome]):
+
+    def __init__(self, dataset: TimeSeries) -> None:
+        super().__init__(dataset)
+
+    def compute(self, genome: EXAStarGenome, dataset: TimeSeries) -> MSEValue[EXAStarGenome]:
         ...
 
 
-class EXAStarGenomeFactory[G: EXAStarGenome](GenomeFactory[G]):
+@configclass(name="base_exastar_mse", group="fitness", target=EXAStarMSE)
+class EXAStarMSEConfig(EXAStarFitnessConfig):
+    ...
+
+
+class SeedGenomeFactory[G: EXAStarGenome]:
+
+    @abstractmethod
+    def __call__(self, dataset: TimeSeries) -> G:
+        ...
+
+
+@dataclass
+class SeedGenomeFactoryConfig:
+    ...
+
+
+class EXAStarGenomeFactory[G: EXAStarGenome](GenomeFactory[G, TimeSeries]):
 
     def __init__(
         self,
         mutation_operators: Dict[str, MutationOperator[G]],
-        crossover_operators: Dict[str, CrossoverOperator[G]]
+        crossover_operators: Dict[str, CrossoverOperator[G]],
+        seed_genome_factory: SeedGenomeFactory[G]
     ) -> None:
         GenomeFactory.__init__(self, mutation_operators, crossover_operators)
 
-        self.seed_genome: Optional[G] = None
+        self.seed_genome_factory: SeedGenomeFactory = seed_genome_factory
 
-    def get_seed_genome(self) -> G:
-        if not self.seed_genome:
-            raise AttributeError("no seed genome was supplied")
-        else:
-            return self.seed_genome.clone()
+    def get_seed_genome(self, dataset: TimeSeries) -> G:
+        return self.seed_genome_factory(dataset)
+
+
+@configclass(name="base_exastar_genome_factory_config", group="genome_factory", target=EXAStarGenomeFactory)
+class EXAStarGenomeFactoryConfig(GenomeFactoryConfig):
+    seed_genome_factory: SeedGenomeFactoryConfig
 
 
 class RecurrentGenome(EXAStarGenome[Edge]):
@@ -329,13 +365,6 @@ class RecurrentGenome(EXAStarGenome[Edge]):
         return outputs
 
 
-class SeedGenomeFactory[G: EXAStarGenome]:
-
-    @abstractmethod
-    def __call__(self, dataset: TimeSeries) -> G:
-        ...
-
-
 class TrivialRecurrentGenomeFactory(SeedGenomeFactory[RecurrentGenome]):
 
     @abstractmethod
@@ -354,16 +383,13 @@ class MinimalRecurrentGenomeFactory(SeedGenomeFactory[RecurrentGenome]):
         )
 
 
-@dataclass
-class SeedGenomeFactoryConfig:
-    pass
-
-
-@dataclass
+@configclass(name="base_trivial_recurrent_seed_genome_factory", group="genome_factory/seed_genome_factory",
+             target=TrivialRecurrentGenomeFactory)
 class TrivialRecurrentSeedGenomeFactoryConfig:
-    _target_ = "exastar.genome.TrivialRecurrentGenomeFactory"
+    ...
 
 
-@dataclass
+@configclass(name="base_minimal_recurrent_seed_genome", group="genome_factory/seed_genome_factory",
+             target=MinimalRecurrentGenomeFactory)
 class MinimalRecurrentSeedGenomeFactoryConfig:
-    _target_ = "exastar.genome.MinimalRecurrentGenomeFactory"
+    ...

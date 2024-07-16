@@ -2,12 +2,12 @@ from typing import cast, Dict, Self
 
 from evolution import EvolutionaryStrategy
 from population import Population
-from genome import GenomeFactory, Fitness
-from exastar.genome import EXAStarGenome
+from genome import Fitness
+from exastar.genome import EXAStarGenome, EXAStarFitness, EXAStarGenomeFactory, SeedGenomeFactory
 from util.typing import LogDataProvider
 
 
-class EXAGPStrategy(EvolutionaryStrategy[EXAStarGenome]):
+class EXAGPStrategy[G: EXAStarGenome](EvolutionaryStrategy[G]):
     """
     The Evolutionary eXploration of Augmenting Genetic Programs (EXA-GP)
     graph based genetic programming algorithm.
@@ -16,12 +16,12 @@ class EXAGPStrategy(EvolutionaryStrategy[EXAStarGenome]):
     def __init__(
         self,
         output_directory: str,
-        population: Population[EXAStarGenome],
-        genome_factory: GenomeFactory[EXAStarGenome],
-        fitness: Fitness[EXAStarGenome],
+        population: Population[G],
+        genome_factory: EXAStarGenomeFactory[G],
+        fitness: EXAStarFitness[EXAStarGenome],
         nsteps: int,
         providers: Dict[str, LogDataProvider[Self]],
-        seed_genome_factory: SeedGenomeFactory
+        seed_genome_factory: SeedGenomeFactory[EXAStarGenome],
     ):
         """Initializes an EXA-GP graph based genetic programming algorithm.
         Will use defaults unless otherwise specified.

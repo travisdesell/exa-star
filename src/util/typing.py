@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, Dict, Optional, Tuple, Type
+from typing import Optional, Tuple, Type
 
 
 class ComparableMixin:
@@ -9,7 +9,6 @@ class ComparableMixin:
     """
 
     def __init__(self, type: Optional[Type] = None, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
         self._comparison_parent_type: Optional[Type] = type
 
     @abstractmethod
@@ -77,52 +76,3 @@ def overrides(interface_class):
         assert (method.__name__ in dir(interface_class))
         return method
     return overrider
-
-
-class LogDataProvider[T]:
-
-    def __init__(self) -> None: ...
-
-    def prefix(self, prefix: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        return self._modify_keys(prefix, "", data)
-
-    def suffix(self, suffix: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        return self._modify_keys("", suffix, data)
-
-    def _modify_keys(
-        self, prefix: str, suffix: str, data: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        return {f"{prefix}{k}{suffix}": v for k, v in data.items()}
-
-    @abstractmethod
-    @constmethod
-    def get_log_data(self, aggregator: T) -> Dict[str, Any]: ...
-
-
-class LogDataAggregator[T](LogDataProvider):
-
-    def __init__(self, providers: Dict[str, LogDataProvider]) -> None:
-        super().__init__()
-
-        self._providers: Dict[str, LogDataProvider] = providers
-
-    def get_log_data(self, aggregator: T) -> Dict[str, Any]:
-        data: Dict[str, Any] = {}
-
-        def append_data(new_data: Dict[str, Any]):
-            intersection = new_data.keys() & data.keys()
-            if intersection:
-                raise ValueError(f"Log provider gave duplicate key(s): {intersection}")
-
-            data.update(new_data)
-
-        for _, value in self.__dict__.items():
-            if not isinstance(value, LogDataProvider):
-                continue
-
-            append_data(value.get_log_data(self))
-
-        for _, provider in self._providers.items():
-            append_data(provider.get_log_data(self))
-
-        return data

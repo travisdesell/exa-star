@@ -1,14 +1,17 @@
 from abc import abstractmethod
+from dataclasses import dataclass, field
 from typing import Any, Callable, cast, Dict, List, Optional, Self
 
 import numpy as np
 
-from genome import Genome, GenomeFactory, GenomeProvider, ToyGenome
-from util.typing import LogDataAggregator, LogDataProvider
+from config import configclass
+from dataset import Dataset
+from genome import Genome, GenomeFactory, GenomeProvider
+from util.log import LogDataAggregator, LogDataAggregatorConfig, LogDataProvider, LogDataProviderConfig
 from util.functional import is_not_none
 
 
-class Population[G: Genome](GenomeProvider, LogDataAggregator):
+class Population[G: Genome, D: Dataset](GenomeProvider, LogDataAggregator):
 
     def __init__(self, providers: Dict[str, LogDataProvider[Self]]) -> None:
         LogDataAggregator.__init__(self, providers)
@@ -17,11 +20,11 @@ class Population[G: Genome](GenomeProvider, LogDataAggregator):
         self.rng: np.random.Generator = np.random.default_rng()
 
     @abstractmethod
-    def initialize(self, genome_factory: GenomeFactory[G]) -> None: ...
+    def initialize(self, genome_factory: GenomeFactory[G, D], dataset: D) -> None: ...
 
     @abstractmethod
     def make_generation(
-        self, genome_factory: GenomeFactory[G]
+        self, genome_factory: GenomeFactory[G, D]
     ) -> List[Callable[[np.random.Generator], Optional[G]]]:
         """
         Returns a list of Tasks that correspond to a single generation. A generation may be a single genome or a large
@@ -46,32 +49,38 @@ class Population[G: Genome](GenomeProvider, LogDataAggregator):
     def get_worst_genome(self) -> G: ...
 
 
-class LogBestGenome[G: Genome](LogDataProvider[Population[G]]):
+@dataclass
+class PopulationConfig(LogDataAggregatorConfig):
+    ...
 
-    def get_log_data(self, aggregator: Population[G]) -> Dict[str, Any]:
+
+class LogBestGenome[G: Genome, D: Dataset](LogDataProvider[Population[G, D]]):
+
+    def get_log_data(self, aggregator: Population[G, D]) -> Dict[str, Any]:
         return self.prefix(
             "best_genome_", aggregator.get_best_genome().get_log_data(None)
         )
 
 
-class LogWorstGenome[G: Genome](LogDataProvider[Population[G]]):
+class LogWorstGenome[G: Genome, D: Dataset](LogDataProvider[Population[G, D]]):
 
-    def get_log_data(self, aggregator: Population[G]) -> Dict[str, Any]:
+    def get_log_data(self, aggregator: Population[G, D]) -> Dict[str, Any]:
         return self.prefix(
             "worst_genome_", aggregator.get_worst_genome().get_log_data(None)
         )
 
 
-class PrintBestToyGenome(LogDataProvider[Population[ToyGenome]]):
-
-    def get_log_data(self, aggregator: Population[ToyGenome]) -> Dict[str, Any]:
-
-        print(aggregator.get_best_genome().as_string())
-
-        return {}
+@configclass(name="base_log_best_genome", group="log_data_providers", target=LogBestGenome)
+class LogBestGenomeConfig(LogDataProviderConfig):
+    ...
 
 
-class SimplePopulation[G: Genome](Population[G]):
+@configclass(name="base_log_worst_genome", group="log_data_providers", target=LogWorstGenome)
+class LogWorstGenomeConfig(LogDataProviderConfig):
+    ...
+
+
+class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
 
     def __init__(self, size: int, n_elites: int, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -84,11 +93,11 @@ class SimplePopulation[G: Genome](Population[G]):
         # Genomes should be sorted by fitness
         self.genomes: List[G] = []
 
-    def initialize(self, genome_factory: GenomeFactory[G]) -> None:
-        self.genomes = [genome_factory.get_seed_genome() for _ in range(self.size)]
+    def initialize(self, genome_factory: GenomeFactory[G, D], dataset: D) -> None:
+        self.genomes = [genome_factory.get_seed_genome(dataset) for _ in range(self.size)]
 
     def make_generation(
-        self, genome_factory: GenomeFactory[G]
+        self, genome_factory: GenomeFactory[G, D]
     ) -> List[Callable[[np.random.Generator], Optional[G]]]:
         return [genome_factory.get_task(self) for _ in range(self.size - self.n_elites)]
 
@@ -112,3 +121,9 @@ class SimplePopulation[G: Genome](Population[G]):
 
     def get_worst_genome(self) -> G:
         return self.genomes[-1]
+
+
+@configclass(name="base_simple_population", group="population", target=SimplePopulation)
+class SimplePopulationConfig(PopulationConfig):
+    size: int = field(default=10)
+    n_elites: int = field(default=3)
