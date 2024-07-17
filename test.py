@@ -1,13 +1,20 @@
+import sys
+
 from evolution.exagp import EXAGP
 
 from genomes.minimal_recurrent_genome import MinimalRecurrentGenome
 from genomes.trivial_recurrent_genome import TrivialRecurrentGenome
+
+from loguru import logger
 
 from torch import optim
 
 from time_series.time_series import TimeSeries
 
 if __name__ == "__main__":
+    logger.remove()
+    logger.add(sys.stdout, level="INFO", backtrace=True, diagnose=True)
+
     csv_filename = (
         "/Users/travisdesell/Data/stocks/most_newest/DJI_company_2023/train/AAPL.csv"
     )

@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import math
+import matplotlib
 import matplotlib.pyplot as plt
-import networkx as nx
+import graphviz
 import torch
 
 from abc import ABC, abstractmethod
 from genomes.edge import Edge
 from genomes.node import Node
+from genomes.input_node import InputNode
+from genomes.output_node import OutputNode
 
 
 class Genome(ABC):
@@ -117,30 +121,152 @@ class Genome(ABC):
         """Display this graph using plotly"""
         figure, axes = plt.subplots()
 
-        graph = nx.Graph()
+        dot = graphviz.Digraph()
+        dot.attr(labelloc="t", label=f"Genome Fitness: {self.fitness}% MAE")
+
+        with dot.subgraph() as source_graph:
+            source_graph.attr(rank="source")
+            source_graph.attr("node", shape="doublecircle", color="green")
+            source_graph.attr(pad="0.01", nodesep="0.05", ranksep="0.9")
+            for node in sorted(self.input_nodes):
+                source_graph.node(
+                    f"node {node.innovation_number}", label=f"{node.parameter_name}"
+                )
+
+        with dot.subgraph() as sink_graph:
+            sink_graph.attr(rank="sink")
+            sink_graph.attr("node", shape="doublecircle", color="blue")
+            sink_graph.attr(pad="0.01", nodesep="0.05", ranksep="0.9")
+            for node in sorted(self.output_nodes):
+                sink_graph.node(
+                    f"node {node.innovation_number}", label=f"{node.parameter_name}"
+                )
 
         for node in self.nodes:
-            graph.add_node(str(node))
+            if not isinstance(node, InputNode) and not isinstance(node, OutputNode):
+                dot.node(f"node {node.innovation_number}")
+
+        min_weight = math.inf
+        max_weight = -math.inf
+        for edge in self.edges:
+            weight = edge.weights[0].detach().item()
+            if weight > max_weight:
+                max_weight = weight
+            if weight < min_weight:
+                min_weight = weight
 
         for edge in self.edges:
-            graph.add_edge(str(edge.input_node), str(edge.output_node))
+            weight = edge.weights[0].detach().item()
+            # color_val = weight ** 2 / (1 + weight ** 2)
 
-        fixed_positions = {}
-        count = 0
-        max_count = max(len(self.input_nodes), len(self.output_nodes))
-        for input_node in self.input_nodes:
-            fixed_positions[str(input_node)] = (0 * 100, (max_count - count) * 100)
-            count += 1
+            color_map = None
+            if weight > 0:
+                color_val = ((weight / max_weight) / 2.0) + 0.5
+                color_map = plt.get_cmap("Blues")
+            else:
+                color_val = -((weight / min_weight) / 2.0) + 0.5
+                color_map = plt.get_cmap("Reds")
 
-        for output_node in self.output_nodes:
-            fixed_positions[str(output_node)] = (1 * 100, (max_count - count) * 100)
-            count += 1
-        fixed_nodes = fixed_positions.keys()
+            color = matplotlib.colors.to_hex(color_map(color_val))
+            if edge.time_skip > 0:
+                dot.edge(
+                    f"node {edge.input_node.innovation_number}",
+                    f"node {edge.output_node.innovation_number}",
+                    color=color,
+                    label=f"skip {edge.time_skip}",
+                    style="dashed",
+                )
+            else:
+                dot.edge(
+                    f"node {edge.input_node.innovation_number}",
+                    f"node {edge.output_node.innovation_number}",
+                    color=color,
+                    label=f"skip {edge.time_skip}",
+                )
 
-        pos = nx.spring_layout(graph, seed=50, pos=fixed_positions, fixed=fixed_nodes)
-        nx.draw(G=graph, ax=axes, with_labels=True, pos=pos, font_size=10)
+        dot.view()
 
-        plt.show()
+    def calculate_reachability(self):
+        """Determines which nodes and edges are forward and backward
+        reachable so we know which to use in the forward and backward
+        training passes. Will set a `viable` field to True if all the
+        outputs of the neural network are reachable.
+        """
+
+        # first reset all reachability
+        for node in sorted(self.nodes):
+            node.forward_reachable = False
+            node.backward_reachable = False
+
+        for edge in self.edges:
+            edge.forward_reachable = False
+            edge.backward_reachable = False
+
+        # do a breadth first search forward through the network to
+        # determine forward reachability
+        nodes_to_visit = self.input_nodes.copy()
+        visited_nodes = []
+
+        while len(nodes_to_visit) > 0:
+            node = nodes_to_visit.pop(0)
+
+            if not node.disabled:
+                node.forward_reachable = True
+
+                for edge in node.output_edges:
+                    if not edge.disabled:
+                        edge.forward_reachable = True
+                        output_node = edge.output_node
+
+                        if (
+                            output_node not in visited_nodes
+                            and output_node not in nodes_to_visit
+                        ):
+                            nodes_to_visit.append(output_node)
+
+            visited_nodes.append(node)
+
+        # now do the reverse for backward reachability
+        nodes_to_visit = self.output_nodes.copy()
+        visited_nodes = []
+
+        while len(nodes_to_visit) > 0:
+            node = nodes_to_visit.pop(0)
+
+            if not node.disabled:
+                node.backward_reachable = True
+
+                for edge in node.input_edges:
+                    if not edge.disabled:
+                        edge.backward_reachable = True
+                        input_node = edge.input_node
+
+                        if (
+                            input_node not in visited_nodes
+                            and input_node not in nodes_to_visit
+                        ):
+                            nodes_to_visit.append(input_node)
+
+            visited_nodes.append(node)
+
+        # set the nodes and edges to active if they will actually be involved
+        # in computing the outputs
+        for node in self.nodes:
+            node.active = node.forward_reachable and node.backward_reachable
+            # set the required inputs for each node
+            node.required_inputs = 0
+
+        for edge in self.edges:
+            edge.active = edge.forward_reachable and edge.backward_reachable
+            if edge.active:
+                edge.output_node.required_inputs += 1
+
+        # determine if the network is viable
+        self.viable = True
+        for node in self.output_nodes:
+            if not node.forward_reachable:
+                self.viable = False
+                break
 
     @abstractmethod
     def forward(self):

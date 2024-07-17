@@ -3,3 +3,4 @@ torch
 loguru
 matplotlib
 pandas
+graphviz

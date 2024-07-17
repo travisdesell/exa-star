@@ -105,9 +105,9 @@ class Node(ABC):
             # is called on the Node.
             self.accumulate(time_step=time_step, value=value)
 
-            if self.inputs_fired[time_step] > len(self.input_edges):
+            if self.inputs_fired[time_step] > self.required_inputs:
                 logger.error(
-                    f"node inputs fired {self.inputs_fired[time_step]} > len(self.input_edges): {len(self.input_edges)}"
+                    f"node inputs fired {self.inputs_fired[time_step]} > self.required_inputs: {self.required_inputs}"
                 )
                 logger.error(
                     f"node {type(self)} '{self.parameter_name}', innovation_number: {self.innovation_number} at "
@@ -153,7 +153,7 @@ class Node(ABC):
             time_step: is the time step the input is being fired from.
         """
 
-        if self.inputs_fired[time_step] != len(self.input_edges):
+        if self.inputs_fired[time_step] != self.required_inputs:
             # check to make sure in the case of input nodes which
             # have recurrent connections feeding into them that
             # all recurrent edges have fired
@@ -166,4 +166,5 @@ class Node(ABC):
             exit(1)
 
         for output_edge in self.output_edges:
-            output_edge.forward(time_step=time_step, value=self.value[time_step])
+            if output_edge.active:
+                output_edge.forward(time_step=time_step, value=self.value[time_step])

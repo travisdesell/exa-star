@@ -42,18 +42,20 @@ class SinglePopulation(PopulationStrategy):
         if len(self.population) < self.population_size:
             # the population is still initializing
 
-            while child_genome is None:
+            while child_genome is None or not child_genome.viable:
                 reproduction_method = self.reproduction_selector()
                 print(f"REPRODUCITON METHOD: {type(reproduction_method)}")
                 # keep trying to generate children from the seed genome
                 child_genome = reproduction_method([self.seed_genome])
+                if child_genome is not None:
+                    child_genome.calculate_reachability()
 
         else:
             # the population is filled, we can use genomes in the
             # population now
             reproduction_method = self.reproduction_selector()
 
-            while child_genome is None:
+            while child_genome is None or not child_genome.viable:
                 reproduction_method = self.reproduction_selector()
                 print(f"REPRODUCITON METHOD: {type(reproduction_method)}")
                 # keep trying to generate children from the seed genome
@@ -65,6 +67,8 @@ class SinglePopulation(PopulationStrategy):
                 ]
 
                 child_genome = reproduction_method(parent_genomes)
+                if child_genome is not None:
+                    child_genome.calculate_reachability()
 
         child_genome.generation_number = self.generated_genomes
         self.generated_genomes += 1

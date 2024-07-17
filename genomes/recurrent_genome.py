@@ -31,15 +31,20 @@ class RecurrentGenome(Genome):
                 key of the dict is the predicted parameter name.
         """
         for edge in self.edges:
-            edge.fire_recurrent_preinput()
+            if edge.active:
+                edge.fire_recurrent_preinput()
 
         for time_step in range(input_series.series_length):
             for input_node in self.input_nodes:
-                x = input_series.series_dictionary[input_node.parameter_name][time_step]
-                input_node.accumulate(time_step=time_step, value=x)
+                if input_node.active:
+                    x = input_series.series_dictionary[input_node.parameter_name][
+                        time_step
+                    ]
+                    input_node.accumulate(time_step=time_step, value=x)
 
             for node in sorted(self.nodes):
-                node.forward(time_step=time_step)
+                if node.active:
+                    node.forward(time_step=time_step)
 
         outputs = {}
         for output_node in self.output_nodes:
