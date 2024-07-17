@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import abstractmethod
-from typing import List, Optional, Tuple
+from typing import List, Optional, Self, Tuple
 
 from exastar.inon import inon_t
 from util.typing import ComparableMixin, overrides
@@ -60,6 +60,14 @@ class Node(ComparableMixin, torch.nn.Module):
     @overrides(ComparableMixin)
     def _cmpkey(self) -> Tuple:
         return (self.depth, self.inon)
+
+    @overrides(object)
+    def __hash__(self) -> int:
+        return self.inon
+
+    @overrides(object)
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Node) and self.inon == other.inon
 
     def add_input_edge(self, edge: 'Edge'):
         """
@@ -303,6 +311,14 @@ class Edge(ComparableMixin, torch.nn.Module):
             f"input_node: {repr(self.input_node)}, "
             f"output_node: {repr(self.output_node)}]"
         )
+
+    @overrides(object)
+    def __hash__(self) -> int:
+        return self.inon
+
+    @overrides(object)
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Edge) and self.inon == other.inon
 
     def __lt__(self, other: object) -> bool:
         assert isinstance(other, Edge)

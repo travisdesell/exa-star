@@ -1,15 +1,23 @@
 from __future__ import annotations
+from dataclasses import field
 from typing import List, Tuple
 
+from dataset import Dataset, DatasetConfig
 from config import configclass
 
 from loguru import logger
+import numpy as np
 import pandas as pd
 import torch
 
 
 class TimeSeries(Dataset):
-    def __init__(self, series_dictionary: dict[str, torch.Tensor]):
+    def __init__(
+        self,
+        series_dictionary: dict[str, torch.Tensor],
+        input_series_names: List[str],
+        output_series_names: List[str]
+    ) -> None:
         """
         Initializes a time series object for time series tasks and verifies that
         the time series are structured correctly.  Either a filename or a pre-processed
@@ -20,20 +28,24 @@ class TimeSeries(Dataset):
         """
         self.series_dictionary = series_dictionary
 
-        self.input_series_names: List[str] = []
-        self.output_series_names: List[str] = []
+        self.input_series_names: List[str] = input_series_names
+        if not input_series_names:
+            logger.warning("input_series_names is empty!")
+
+        self.output_series_names: List[str] = output_series_names
+        if not output_series_names:
+            logger.warning("output_series_names is empty!")
 
         # validate that the length of each series is the same and save that length
         self.series_length: int = -1
 
         for series_name, series in self.series_dictionary.items():
             shape = series.shape
-            print(f"'{series_name}' shape {shape}")
 
             # each series should be a 1D tensor
             assert len(shape) == 1
 
-            if self.series_length is None:
+            if self.series_length == -1:
                 self.series_length = shape[0]
             else:
                 if self.series_length != shape[0]:
@@ -45,32 +57,32 @@ class TimeSeries(Dataset):
                     exit(1)
 
     @staticmethod
-    def create_from_csv(filename: str) -> TimeSeries:
+    def create_from_csv(filenames: List[str], input_series: List[str], output_series: List[str]) -> TimeSeries:
         """
         Initializes a TimeSeries object from a CSV file.
 
         Args:
             filename: is the CSV filename.
         """
+        filename = filenames[0]
         csv_dict = pd.read_csv(filename, encoding="UTF-8")
 
         # convert the pandas dataframe to a dict of pytorch tensors
 
         series_dictionary = {}
         for series_name, values in csv_dict.items():
-            logger.info(f"{series_name} type: {values.dtype}")
-            if values.dtype in {
-                "float64",
-                "float32",
-                "float16",
-                "complex64",
-                "complex128",
-                "int64",
-                "int32",
-                "int16",
-                "int8",
-                "uint8",
-                "bool",
+            if values.dtype.type in {
+                np.float64,
+                np.float32,
+                np.float16,
+                np.complex64,
+                np.complex128,
+                np.int64,
+                np.int32,
+                np.int16,
+                np.int8,
+                np.uint8,
+                np.bool,
             }:
                 series_dictionary[series_name] = torch.tensor(values.to_numpy())
             else:
@@ -79,7 +91,13 @@ class TimeSeries(Dataset):
                     f"'{values.dtype}' cannot be converted to a pytorch tensor."
                 )
 
-        return TimeSeries(series_dictionary=series_dictionary)
+        if not input_series:
+            input_series = list(series_dictionary.keys())
+
+        if not output_series:
+            output_series = list(series_dictionary.values())
+
+        return TimeSeries(series_dictionary, input_series, output_series)
 
     def get_inputs(self, input_series_names: list[str], offset: int) -> TimeSeries:
         """
@@ -129,8 +147,19 @@ class TimeSeries(Dataset):
 
         return TimeSeries(slice_series_dictionary)
 
+    def get_series_names(self) -> List[str]:
+        return list(self.series_dictionary.keys())
 
-@configclass(name="base_time_series_dataset", group="datasets")
-class TimeSeriesConfig:
-    _target_ = "exastar.time_series.TimeSeries.create_from_csv"
-    filenames: Tuple[str]
+
+@configclass(name="base_time_series_dataset", group="dataset", target=TimeSeries.create_from_csv, kw_only=True)
+class TimeSeriesConfig(DatasetConfig):
+    filenames: Tuple[str, ...]
+    input_series: List[str] = field(default_factory=lambda: [])
+    output_series: List[str] = field(default_factory=lambda: [])
+
+
+@configclass(name="base_aapl_time_series_dataset", group="dataset", target=TimeSeries.create_from_csv)
+class AAPLTimeSeriesConfig(TimeSeriesConfig):
+    filenames: Tuple[str, ...] = (
+        "~/Downloads/aapl.csv",
+    )

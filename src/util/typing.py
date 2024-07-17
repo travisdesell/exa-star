@@ -9,6 +9,7 @@ class ComparableMixin:
     """
 
     def __init__(self, type: Optional[Type] = None, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self._comparison_parent_type: Optional[Type] = type
 
     @abstractmethod

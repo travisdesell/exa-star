@@ -4,15 +4,26 @@ import bisect
 from copy import deepcopy
 from dataclasses import dataclass
 from itertools import chain, product
-from typing import Any, cast, Dict, List, Optional, Self, Set
+from typing import Any, cast, Dict, List, Self, Set
 
-from config import configclass, GenomeFactoryConfig
+from config import configclass
 from exastar.component import Edge, RecurrentEdge, Node, InputNode, OutputNode
-from genome import CrossoverOperator, Fitness, Genome, GenomeFactory, MSEValue, MutationOperator
+from genome import (
+    CrossoverOperator,
+    Fitness,
+    FitnessConfig,
+    FitnessValue,
+    Genome,
+    GenomeFactory,
+    GenomeFactoryConfig,
+    MSEValue,
+    MutationOperator
+)
 from exastar.time_series import TimeSeries, TimeSeriesConfig
 from util.typing import constmethod, overrides
 from util.log import LogDataProvider
 
+from loguru import logger
 import matplotlib.pyplot as plt
 import networkx as nx
 import torch
@@ -36,8 +47,10 @@ class EXAStarGenome[E: Edge](torch.nn.Module, Genome):
                 genome numbers are from genomes generated later
                 in the search.
         """
-        super().__init__()
+        torch.nn.Module.__init__(self)
+        Genome.__init__(self)
 
+        # setattr(self, "constructing", True)
         self.generation_number: int = generation_number
 
         self.input_nodes: List[InputNode] = sorted(input_nodes)
@@ -50,6 +63,7 @@ class EXAStarGenome[E: Edge](torch.nn.Module, Genome):
         self.torch_modules: torch.nn.ModuleList = torch.nn.ModuleList(edges + input_nodes + output_nodes)
 
         self._validate()
+        # self.constructing: bool = False
 
     def _validate(self):
         assert (cast(Set[Node], set(self.input_nodes)) - set(self.nodes)) == set()
@@ -72,22 +86,22 @@ class EXAStarGenome[E: Edge](torch.nn.Module, Genome):
             "Use a helper function, or create one. "
         )
 
-    def __getattr__(self, attr: str) -> Any:
-        """
-        Overridden to prevent direct access to fields that have strict ordering requirements.
-        """
-        match attr:
-            case "nodes" | "input_nodes" | "output_nodes" | "edges":
-                self._raise_access_exception()
-            case _:
-                return super().__getattr__(attr)
+    # def __getattr__(self, attr: str) -> Any:
+    #     """
+    #     Overridden to prevent direct access to fields that have strict ordering requirements.
+    #     """
+    #     match (self.constructing, attr):
+    #         case (False, "nodes" | "input_nodes" | "output_nodes" | "edges"):
+    #             self._raise_access_exception()
+    #         case _:
+    #             return super().__getattr__(attr)
 
-    def __setattr__(self, attr: str, value: Any) -> None:
-        match attr:
-            case "nodes" | "input_nodes" | "output_nodes" | "edges":
-                self._raise_access_exception()
-            case _:
-                return super().__setattr__(attr, value)
+    # def __setattr__(self, attr: str, value: Any) -> None:
+    #     match attr:
+    #         case (False, "nodes" | "input_nodes" | "output_nodes" | "edges"):
+    #             self._raise_access_exception()
+    #         case _:
+    #             return super().__setattr__(attr, value)
 
     @classmethod
     def _clone(cls, genome: EXAStarGenome) -> Self:
@@ -177,24 +191,23 @@ class EXAStarGenome[E: Edge](torch.nn.Module, Genome):
 
 class EXAStarTimeSeriesRegressionFitness[G: EXAStarGenome](Fitness[G, TimeSeries]):
 
-    def __init__(self, dataset: TimeSeries) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.dataset: TimeSeries = dataset
 
 
 @configclass(name="base_exastar_time_series_regression_fitness", group="fitness",
              target=EXAStarTimeSeriesRegressionFitness)
-class EXAStarFitnessConfig:
-    dataset: TimeSeriesConfig
+class EXAStarFitnessConfig(FitnessConfig):
+    ...
 
 
 class EXAStarMSE(EXAStarTimeSeriesRegressionFitness[EXAStarGenome]):
 
-    def __init__(self, dataset: TimeSeries) -> None:
-        super().__init__(dataset)
+    def __init__(self) -> None:
+        super().__init__()
 
     def compute(self, genome: EXAStarGenome, dataset: TimeSeries) -> MSEValue[EXAStarGenome]:
-        ...
+        return MSEValue(4)
 
 
 @configclass(name="base_exastar_mse", group="fitness", target=EXAStarMSE)
@@ -228,6 +241,9 @@ class EXAStarGenomeFactory[G: EXAStarGenome](GenomeFactory[G, TimeSeries]):
 
     def get_seed_genome(self, dataset: TimeSeries) -> G:
         return self.seed_genome_factory(dataset)
+
+    def get_log_data(self, aggregator: Any) -> Dict[str, Any]:
+        return {}
 
 
 @configclass(name="base_exastar_genome_factory_config", group="genome_factory", target=EXAStarGenomeFactory)
@@ -385,11 +401,11 @@ class MinimalRecurrentGenomeFactory(SeedGenomeFactory[RecurrentGenome]):
 
 @configclass(name="base_trivial_recurrent_seed_genome_factory", group="genome_factory/seed_genome_factory",
              target=TrivialRecurrentGenomeFactory)
-class TrivialRecurrentSeedGenomeFactoryConfig:
+class TrivialRecurrentSeedGenomeFactoryConfig(SeedGenomeFactoryConfig):
     ...
 
 
 @configclass(name="base_minimal_recurrent_seed_genome", group="genome_factory/seed_genome_factory",
              target=MinimalRecurrentGenomeFactory)
-class MinimalRecurrentSeedGenomeFactoryConfig:
+class MinimalRecurrentSeedGenomeFactoryConfig(SeedGenomeFactoryConfig):
     ...

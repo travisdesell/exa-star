@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
 from collections.abc import MutableSequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import cast
 
-from __main__ import MutationOperatorConfig
+from config import configclass
 from exastar.genome import EXAStarGenome
 from exastar.component import Node, InputNode, OutputNode, Edge, RecurrentEdge
-from exastar.weight_generators.weight_generator import WeightGenerator
-from genome import MutationOperator
+from exastar.weights import WeightGenerator, WeightGeneratorConfig
+from genome import MutationOperator, MutationOperatorConfig
 
 import numpy as np
 
@@ -35,7 +35,7 @@ class NodeGeneratorConfig:
     ...
 
 
-class EXAGPNodeGenerator(NodeGenerator[EXAStarGenome]):
+class EXAStarNodeGenerator(NodeGenerator[EXAStarGenome]):
     """
     This is a node generator for the EXA-GP algorithm. It will
     create nodes from a selection of genetic programming operation
@@ -62,14 +62,15 @@ class EXAGPNodeGenerator(NodeGenerator[EXAStarGenome]):
             A new node for an EXA-GP computational graph.
         """
 
-        new_node = Node(depth, target_genome.max_sequence_length)
+        new_node = Node(depth, target_genome.input_nodes[0].max_sequence_length)
 
         return new_node
 
 
-@dataclass
-class EXAGPNodeGeneratorConfig(NodeGeneratorConfig):
-    _target_ = "exastar.genome_operators.EXAGPNodeGenerator"
+@configclass(name="base_exagp_node_generator", group="genome_factory/node_generator",
+             target=EXAStarNodeGenerator)
+class EXAStarNodeGeneratorConfig(NodeGeneratorConfig):
+    ...
 
 
 class EdgeGenerator[G: EXAStarGenome](ABC):
@@ -86,7 +87,7 @@ class EdgeGenerator[G: EXAStarGenome](ABC):
         Returns:
             A new edge for for a computational graph
         """
-        pass
+        ...
 
 
 @dataclass
@@ -137,14 +138,13 @@ class RecurrentEdgeGenerator(EdgeGenerator[EXAStarGenome]):
             # this will be a recurrent edge
             time_skip = rng.integers(1, self.max_time_skip)
 
-        return RecurrentEdge(input_node, output_node, target_genome.max_sequence_length, time_skip)
+        return RecurrentEdge(input_node, output_node, target_genome.input_nodes[0].max_sequence_length, time_skip)
 
 
-@dataclass
+@configclass(name="base_recurrent_edge_generator", group="genome_factory/edge_generator", target=RecurrentEdgeGenerator)
 class RecurrentEdgeGeneratorConfig(EdgeGeneratorConfig):
-    _target_ = "exastar.genome_operators.RecurrentEdgeGenerator"
-    max_time_skip: int
-    p_recurrent: float
+    max_time_skip: int = field(default=10)
+    p_recurrent: float = field(default=0.25)
 
 
 class AddNode[G: EXAStarGenome](MutationOperator[G]):
@@ -154,6 +154,7 @@ class AddNode[G: EXAStarGenome](MutationOperator[G]):
 
     def __init__(
         self,
+        weight: float,
         node_generator: NodeGenerator[G],
         edge_generator: EdgeGenerator[G],
         weight_generator: WeightGenerator,
@@ -166,6 +167,7 @@ class AddNode[G: EXAStarGenome](MutationOperator[G]):
             edge_generator: is used to generate a new edge (perform the edge type selection).
             weight_generator: is used to initialize weights for newly generated nodes and edges.
         """
+        super().__init__(weight)
         self.node_generator: NodeGenerator[G] = node_generator
         self.edge_generator: EdgeGenerator[G] = edge_generator
         self.weight_generator: WeightGenerator = weight_generator
@@ -197,8 +199,6 @@ class AddNode[G: EXAStarGenome](MutationOperator[G]):
         while child_depth == 0.0 or child_depth == 1.0:
             child_depth = rng.uniform(0.0, 1.0)
 
-        print(f"adding node at child_depth: {child_depth}")
-
         input_edge_counts = []
         output_edge_counts = []
 
@@ -218,22 +218,8 @@ class AddNode[G: EXAStarGenome](MutationOperator[G]):
         n_output_avg = max(1.0, np.mean(output_edge_counts))
         n_output_std = max(1.0, np.std(output_edge_counts))
 
-        print(f"n input edge counts: {
-              len(input_edge_counts)}, {input_edge_counts}")
-        print(f"n output edge counts: {
-              len(output_edge_counts)}, {output_edge_counts}")
-
-        print(f"add node, n_input_avg: {n_input_avg}, stddev: {n_input_std}")
-        print(f"add node, n_output_avg: {
-              n_output_avg}, stddev: {n_output_std}")
-
         n_inputs = int(max(1.0, rng.normal(n_input_avg, n_input_std)))
         n_outputs = int(max(1.0, rng.normal(n_output_avg, n_output_std)))
-
-        print(
-            f"adding {n_inputs} input edges and {
-                n_outputs} output edges to the new node."
-        )
 
         new_node = self.node_generator(child_depth, child_genome, rng)
         child_genome.add_node(new_node)
@@ -245,30 +231,25 @@ class AddNode[G: EXAStarGenome](MutationOperator[G]):
             node for node in child_genome.nodes if node.depth > child_depth
         ]
 
-        print(f"potential inputs: {potential_inputs}")
-        print(f"potential outputs: {potential_outputs}")
-
         rng.shuffle(cast(MutableSequence, potential_inputs))
         rng.shuffle(cast(MutableSequence, potential_outputs))
 
         for input_node in potential_inputs[0:n_inputs]:
-            print(f"adding input node to child node: {input_node}")
             edge = self.edge_generator(child_genome, input_node, new_node, rng)
             child_genome.add_edge(edge)
 
         for output_node in potential_outputs[0:n_outputs]:
-            print(f"adding output node to child node: {output_node}")
             edge = self.edge_generator(child_genome, new_node, output_node, rng)
             child_genome.add_edge(edge)
 
-        self.weight_generator(child_genome)
+        self.weight_generator(child_genome, rng)
 
         return child_genome
 
 
-@dataclass
+@configclass(name="base_add_node_mutation", group="genome_factory/mutation_operators", target=AddNode)
 class AddNodeConfig(MutationOperatorConfig):
-    _target_ = "exastar.genome_operators.AddNode"
-    node_generator_config: NodeGeneratorConfig
-    edge_generator_config: EdgeGeneratorConfig
-    weight_generator_config: WeightGeneratorConfig
+    node_generator: NodeGeneratorConfig = field(default_factory=lambda: EXAStarNodeGeneratorConfig())
+    edge_generator: EdgeGeneratorConfig = field(
+        default_factory=lambda: RecurrentEdgeGeneratorConfig())
+    weight_generator: WeightGeneratorConfig = field(default_factory=lambda: WeightGeneratorConfig())

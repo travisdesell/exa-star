@@ -18,8 +18,9 @@ _config_groups = {
     "genome_factory/mutation_operators",
     "genome_factory/seed_genome_factory",
     "evolutionary_strategy",
+    "evolutionary_strategy/init_task",
     "fitness",
-    "datasets"
+    "dataset"
 }
 
 

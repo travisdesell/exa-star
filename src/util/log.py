@@ -3,7 +3,6 @@ from dataclasses import dataclass, field
 from typing import Any, Dict
 
 from config import configclass
-from util.typing import constmethod
 
 
 class LogDataProvider[T]:
@@ -22,7 +21,6 @@ class LogDataProvider[T]:
         return {f"{prefix}{k}{suffix}": v for k, v in data.items()}
 
     @abstractmethod
-    @constmethod
     def get_log_data(self, aggregator: T) -> Dict[str, Any]: ...
 
 

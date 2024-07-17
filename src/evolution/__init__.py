@@ -9,6 +9,7 @@ from genome import Fitness, FitnessConfig, Genome, GenomeFactory, GenomeFactoryC
 from population import Population, PopulationConfig
 from util.log import LogDataAggregator, LogDataAggregatorConfig, LogDataProvider
 
+from loguru import logger
 import numpy as np
 from pandas import DataFrame
 from pandas._typing import Axes
@@ -68,21 +69,44 @@ class EvolutionaryStrategyConfig(LogDataAggregatorConfig):
     nsteps: int = field(default=10000)
 
 
-__process_local_dataset: Dataset
+class InitTask:
+
+    def __init__(self) -> None:
+        ...
+
+    @abstractmethod
+    def run(self, values: Dict[str, Any]) -> None: ...
+
+    @abstractmethod
+    def values(self, strategy: 'SynchronousMTStrategy') -> Dict[str, Any]: ...
+
+
+@dataclass
+class InitTaskConfig:
+    ...
 
 
 class SynchronousMTStrategy[G: Genome, D: Dataset](EvolutionaryStrategy[G, D]):
+    __process_local_dataset: Dataset = cast(Dataset, None)
     rng: np.random.Generator = np.random.default_rng()
 
-    def __init__(self, parallelism: Optional[int], **kwargs):
+    def __init__(self, parallelism: Optional[int], init_tasks: Dict[str, InitTask], **kwargs):
         super().__init__(**kwargs)
-        self.parallelism: Optional[int] = parallelism
+        self.parallelism: int = parallelism if parallelism else mp.cpu_count()
 
-        def init(dataset: Dataset):
-            global __process_local_dataset
-            __process_local_dataset = dataset
+        def init(values: Dict[str, Any]) -> None:
+            process = mp.current_process()
+            for name, task in init_tasks.items():
+                logger.info(f"Running init task {name} on process {process}")
+                task.run(values)
 
-        self.pool: mp.Pool = mp.Pool(self.parallelism, initializer=init, initargs=(self.dataset, ))
+        init_task_values = {}
+        for task in init_tasks.values():
+            init_task_values.update(task.values(self))
+
+        init(init_task_values)
+
+        self.pool: mp.Pool = mp.Pool(self.parallelism, initializer=init, initargs=(init_task_values, ))
 
     def __enter__(self) -> Self:
         return self
@@ -102,7 +126,7 @@ class SynchronousMTStrategy[G: Genome, D: Dataset](EvolutionaryStrategy[G, D]):
             genome = task(SynchronousMTStrategy.rng)
 
             if genome:
-                genome.evaluate(fitness, __process_local_dataset)
+                genome.evaluate(fitness, SynchronousMTStrategy.__process_local_dataset)
 
             return genome
 
@@ -112,3 +136,21 @@ class SynchronousMTStrategy[G: Genome, D: Dataset](EvolutionaryStrategy[G, D]):
 @configclass(name="base_synchronous_mt_strategy", target=SynchronousMTStrategy)
 class SynchronousMTStrategyConfig(EvolutionaryStrategyConfig):
     parallelism: Optional[int] = field(default=None)
+    init_tasks: Dict[str, InitTaskConfig] = field(default_factory=dict)
+
+
+class DatasetInitTask(InitTask):
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def run(self, values: Dict[str, Any]) -> None:
+        SynchronousMTStrategy.__process_local_dataset = values["dataset"]
+
+    def values[G: Genome, D: Dataset](self, strategy: SynchronousMTStrategy[G, D]) -> Dict[str, Any]:
+        return {"dataset": strategy.dataset}
+
+
+@configclass(name="base_dataset_init_task", group="init_tasks", target=DatasetInitTask)
+class DatasetInitTaskConfig(InitTaskConfig):
+    ...

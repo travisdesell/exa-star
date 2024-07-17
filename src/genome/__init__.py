@@ -21,6 +21,9 @@ from pandas.core.frame import functools
 
 class FitnessValue[G: Genome](ComparableMixin):
 
+    def __init__(self) -> None:
+        super().__init__()
+
     @classmethod
     @abstractmethod
     def max(cls) -> Self: ...
@@ -45,7 +48,7 @@ class Fitness[G: Genome, D: Dataset]:
 
 @dataclass
 class FitnessConfig:
-    pass
+    ...
 
 
 class Genome(ABC, LogDataProvider):
@@ -71,6 +74,7 @@ class MSEValue[G: Genome](FitnessValue):
         return cls(sys.float_info.max)
 
     def __init__(self, mse: float) -> None:
+        super().__init__()
         self.mse: float = mse
 
     def _cmpkey(self) -> Tuple:
@@ -91,6 +95,9 @@ class GenomeOperatorConfig:
 
 class MutationOperator[G: Genome](GenomeOperator[G]):
 
+    def __init__(self, weight: float) -> None:
+        super().__init__(weight)
+
     @abstractmethod
     def __call__(self, genome: G, rng: np.random.Generator) -> Optional[G]:
         """
@@ -101,6 +108,9 @@ class MutationOperator[G: Genome](GenomeOperator[G]):
 
 
 class CrossoverOperator[G: Genome](GenomeOperator[G]):
+
+    def __init__(self, weight: float) -> None:
+        super().__init__(weight)
 
     @abstractmethod
     def __call__(self, parents: List[G], rng: np.random.Generator) -> Optional[G]:
@@ -194,7 +204,7 @@ class GenomeFactory[G: Genome, D: Dataset](ABC, LogDataProvider):
             return functools.partial(self.get_crossover(), provider.get_parents())
 
 
-@dataclass
+@dataclass(kw_only=True)
 class GenomeFactoryConfig:
     mutation_operators: Dict[str, MutationOperatorConfig] = field(default_factory=dict)
     crossover_operators: Dict[str, CrossoverOperatorConfig] = field(
