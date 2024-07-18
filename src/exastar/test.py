@@ -52,6 +52,7 @@ if __name__ == "__main__":
         output_series_names=output_series_names,
         max_sequence_length=max_sequence_length,
     )
+
     seed_genome = TrivialRecurrentGenome(
         generation_number=0,
         input_series_names=input_series_names,
@@ -61,9 +62,11 @@ if __name__ == "__main__":
 
     exagp = EXAGP(seed_genome=seed_genome)
 
-    for genome_number in range(100):
-        optimizer = optim.Adam(seed_genome.parameters(), lr=0.001)
+    for genome_number in range(500):
         new_genome = exagp.generate_genome()
+        print(f"evaluating genome: {new_genome.generation_number}")
+        optimizer = optim.Adam(new_genome.parameters(), lr=0.001)
+
         new_genome.train(
             input_series=input_series,
             output_series=output_series,
@@ -71,5 +74,9 @@ if __name__ == "__main__":
             iterations=10,
         )
         exagp.insert_genome(new_genome)
+
+    print()
+    print()
+    print(f"{exagp.population_strategy.population[0]}")
 
     exagp.population_strategy.population[0].plot()

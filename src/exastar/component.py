@@ -1,5 +1,7 @@
 from __future__ import annotations
 from abc import abstractmethod
+import bisect
+from itertools import chain
 from typing import List, Optional, Self, Tuple
 
 from exastar.inon import inon_t
@@ -76,9 +78,7 @@ class Node(ComparableMixin, torch.nn.Module):
         Args:
             edge: a new input edge for this node.
         """
-
-        if edge not in self.input_edges:
-            self.input_edges.append(edge)
+        bisect.insort(self.input_edges, edge)
 
     def add_output_edge(self, edge: 'Edge'):
         """
@@ -87,9 +87,7 @@ class Node(ComparableMixin, torch.nn.Module):
         Args:
             edge: a new output edge for this node.
         """
-
-        if edge not in self.output_edges:
-            self.output_edges.append(edge)
+        bisect.insort(self.output_edges, edge)
 
     def input_fired(self, time_step: int, value: torch.Tensor):
         """
@@ -150,6 +148,18 @@ class Node(ComparableMixin, torch.nn.Module):
         """
 
         self.value[time_step] += value
+
+    def set_enabled(self, enabled: bool) -> None:
+        self.enabled = enabled
+
+        for edge in chain(self.input_edges, self.output_edges):
+            edge.set_enabled(enabled)
+
+    def enable(self) -> None:
+        self.set_enabled(True)
+
+    def disable(self) -> None:
+        self.set_enabled(False)
 
     def forward(self, time_step: int):
         """
@@ -258,6 +268,7 @@ class Edge(ComparableMixin, torch.nn.Module):
         input_node: Node,
         output_node: Node,
         max_sequence_length: int,
+        enabled: bool,
         inon: Optional[edge_inon_t] = None
     ):
         """
@@ -272,6 +283,8 @@ class Edge(ComparableMixin, torch.nn.Module):
         """
         super().__init__(type=Edge)
 
+        self.enabled: bool = enabled
+
         self.inon: edge_inon_t = inon if inon else edge_inon_t()
         self.max_sequence_length = max_sequence_length
 
@@ -280,6 +293,34 @@ class Edge(ComparableMixin, torch.nn.Module):
 
         self.input_node.add_output_edge(self)
         self.output_node.add_input_edge(self)
+
+    def clone(self, input_node: Node, output_node: Node) -> Edge:
+        return Edge(input_node, output_node, self.max_sequence_length, self.enabled)
+
+    @overrides(torch.nn.Module)
+    def __repr__(self) -> str:
+        """
+        We just ignore the torch.nn.Module __repr__ functionality.
+        """
+        return (
+            f"[edge {type(self)}, "
+            f"enabled: {self.enabled}, "
+            f"inon: {self.inon}, "
+            f"input_node: {repr(self.input_node)}, "
+            f"output_node: {repr(self.output_node)}]"
+        )
+
+    @overrides(object)
+    def __hash__(self) -> int:
+        return self.inon
+
+    @overrides(object)
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Edge) and self.inon == other.inon
+
+    def __lt__(self, other: object) -> bool:
+        assert isinstance(other, Edge)
+        return (self.input_node.depth, self.output_node.depth) < (other.input_node.depth, self.output_node.depth)
 
     @abstractmethod
     def reset(self):
@@ -300,29 +341,14 @@ class Edge(ComparableMixin, torch.nn.Module):
         """
         ...
 
-    @overrides(torch.nn.Module)
-    def __repr__(self) -> str:
-        """
-        We just ignore the torch.nn.Module __repr__ functionality.
-        """
-        return (
-            f"[edge {type(self)}, "
-            f"inon: {self.inon}, "
-            f"input_node: {repr(self.input_node)}, "
-            f"output_node: {repr(self.output_node)}]"
-        )
+    def set_enabled(self, enabled: bool) -> None:
+        self.enabled = enabled
 
-    @overrides(object)
-    def __hash__(self) -> int:
-        return self.inon
+    def enable(self) -> None:
+        self.set_enabled(True)
 
-    @overrides(object)
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, Edge) and self.inon == other.inon
-
-    def __lt__(self, other: object) -> bool:
-        assert isinstance(other, Edge)
-        return (self.input_node.depth, self.output_node.depth) < (other.input_node.depth, self.output_node.depth)
+    def disable(self) -> None:
+        self.set_enabled(False)
 
 
 class IdentityEdge(Edge):
@@ -331,6 +357,7 @@ class IdentityEdge(Edge):
         input_node: Node,
         output_node: Node,
         max_sequence_length: int,
+        enabled: bool,
         inon: Optional[edge_inon_t] = None,
     ):
         """
@@ -343,7 +370,11 @@ class IdentityEdge(Edge):
             max_sequence_length: is the maximum length of any time series
                 to be processed by the neural network this edge is part of
         """
-        super().__init__(input_node, output_node, max_sequence_length, inon)
+        super().__init__(input_node, output_node, max_sequence_length, enabled, inon)
+
+    @overrides(Edge)
+    def clone(self, input_node: Node, output_node: Node) -> Edge:
+        return IdentityEdge(input_node, output_node, self.max_sequence_length, self.enabled)
 
     def forward(self, time_step: int, value: torch.Tensor) -> None:
         """
@@ -362,6 +393,7 @@ class RecurrentEdge(Edge):
         input_node: Node,
         output_node: Node,
         max_sequence_length: int,
+        enabled: bool,
         time_skip: int,
         inon: Optional[edge_inon_t] = None,
     ):
@@ -376,10 +408,14 @@ class RecurrentEdge(Edge):
             time_skip: how many time steps between the input node and
                 the output node
         """
-        super().__init__(input_node, output_node, max_sequence_length, inon)
+        super().__init__(input_node, output_node, max_sequence_length, enabled, inon)
 
         self.time_skip = time_skip
         self.weight = torch.nn.Parameter(torch.ones(1))
+
+    @overrides(Edge)
+    def clone(self, input_node: Node, output_node: Node) -> Edge:
+        return RecurrentEdge(input_node, output_node, self.max_sequence_length, self.enabled, self.time_skip)
 
     def reset(self):
         """

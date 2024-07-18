@@ -7,12 +7,11 @@ from itertools import chain, product
 from typing import Any, cast, Dict, List, Self, Set
 
 from config import configclass
-from exastar.component import Edge, RecurrentEdge, Node, InputNode, OutputNode
+from exastar.component import Edge, edge_inon_t, RecurrentEdge, Node, node_inon_t, InputNode, OutputNode
 from genome import (
     CrossoverOperator,
     Fitness,
     FitnessConfig,
-    FitnessValue,
     Genome,
     GenomeFactory,
     GenomeFactoryConfig,
@@ -54,13 +53,19 @@ class EXAStarGenome[E: Edge](torch.nn.Module, Genome):
         self.generation_number: int = generation_number
 
         self.input_nodes: List[InputNode] = sorted(input_nodes)
+        self.inon_to_input_node: Dict[node_inon_t, InputNode] = {n.inon: n for n in self.input_nodes}
+
         self.output_nodes: List[OutputNode] = sorted(output_nodes)
+        self.inon_to_output_node: Dict[node_inon_t, OutputNode] = {n.inon: n for n in self.output_nodes}
 
         self.nodes: List[Node] = sorted(nodes)
+        self.inon_to_node: Dict[node_inon_t, Node] = {n.inon: n for n in self.nodes}
+
         self.edges: List[E] = sorted(edges)
+        self.inon_to_edge: Dict[edge_inon_t, Edge] = {e.inon: e for e in self.edges}
 
         # Shadows `self.edges` but we need to do this for the `torch.nn.Module` interface to pick up on these.
-        self.torch_modules: torch.nn.ModuleList = torch.nn.ModuleList(edges + input_nodes + output_nodes)
+        self.torch_modules: torch.nn.ModuleList = torch.nn.ModuleList(edges + nodes)
 
         self._validate()
         # self.constructing: bool = False
@@ -131,12 +136,15 @@ class EXAStarGenome[E: Edge](torch.nn.Module, Genome):
             node: is the node to add to the computational graph
         """
         bisect.insort(self.nodes, node)
+        self.inon_to_node[node.inon] = node
         self.torch_modules.append(node)
 
         if isinstance(node, InputNode):
             bisect.insort(self.input_nodes, node)
+            self.inon_to_input_node[node.inon] = node
         elif isinstance(node, OutputNode):
             bisect.insort(self.output_nodes, node)
+            self.inon_to_output_node[node.inon] = node
 
     def add_edge(self, edge: E) -> None:
         """Adds an edge when creating this gnome
@@ -144,6 +152,7 @@ class EXAStarGenome[E: Edge](torch.nn.Module, Genome):
             edge: is the edge to add
         """
         bisect.insort(self.edges, edge)
+        self.inon_to_edge[edge.inon] = edge
         self.torch_modules.append(edge)
 
     def reset(self) -> None:
