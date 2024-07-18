@@ -74,6 +74,8 @@ class KaimingWeightGenerator[G: EXAStarGenome](WeightGenerator[G]):
     def get_weight(self, node: Node, fan_in: int, fan_out: int, rng: np.random.Generator) -> float:
         return rng.normal() / np.sqrt(fan_in)
 
+from loguru import logger
+
 
 class LamarckianWeightGenerator(WeightGenerator):
     def __init__(
@@ -182,7 +184,7 @@ class LamarckianWeightGenerator(WeightGenerator):
         for weights, more_fit_weights, less_fit_weights in zip(
             weights_list, more_fit_weights_list, less_fit_weights_list
         ):
-            print(
+            logger.debug(
                 f"weights: {weights} - more fit weights: {more_fit_weights} - less fit weights: {less_fit_weights}"
             )
 
