@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 
 from config import configclass
 from exastar.genome import EXAStarGenome
-from exastar.component import Node, Edge, RecurrentEdge
+from exastar.genome.component import Node, Edge, RecurrentEdge
 
 import numpy as np
 
@@ -44,7 +44,7 @@ class EXAStarEdgeGenerator[G: EXAStarGenome](ABC):
             A new edge for for a computational graph
         """
         assert input_node.depth < output_node.depth
-        return Edge(input_node, output_node, target_genome.max_sequence_length, True)
+        return Edge(input_node, output_node, input_node.max_sequence_length, True)
 
 
 @configclass(name="base_exagp_edge_generator", group="genome_factory/node_generator",

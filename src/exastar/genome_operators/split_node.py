@@ -3,8 +3,8 @@ from typing import Optional
 
 from config import configclass
 from exastar.genome import EXAStarGenome
+from exastar.genome.component import InputNode, OutputNode
 from exastar.genome_operators.exastar_mutation_operator import EXAStarMutationOperator, EXAStarMutationOperatorConfig
-from exastar.component import InputNode, OutputNode
 
 import numpy as np
 

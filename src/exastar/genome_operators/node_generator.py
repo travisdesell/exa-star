@@ -2,8 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from config import configclass
-from exastar.genome import EXAStarGenome
-from exastar.component import Node
+from exastar.genome import EXAStarGenome, Node
 
 import numpy as np
 

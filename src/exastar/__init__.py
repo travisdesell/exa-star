@@ -1,5 +1,4 @@
 from exastar.inon import *
-from exastar.component import *
 from exastar.genome import *
 from exastar.genome_operators import *
 from exastar.time_series import *

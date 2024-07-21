@@ -48,7 +48,7 @@ def configclass(
             logger.warning(f"The supplied group for class {config_class} is not in the set of _config_groups")
             logger.warning(f"group {group} / name {name}")
 
-        data_class = dataclass(**dataclass_args)(config_class)
+        data_class = dataclass(**dataclass_args, kw_only=True)(config_class)
 
         if target:
             @dataclass

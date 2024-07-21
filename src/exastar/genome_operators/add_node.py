@@ -1,7 +1,7 @@
 from config import configclass
 from exastar.genome import EXAStarGenome
+from exastar.genome.component import InputNode, OutputNode
 from exastar.genome_operators.exastar_mutation_operator import EXAStarMutationOperator, EXAStarMutationOperatorConfig
-from exastar.component import InputNode, OutputNode
 
 import numpy as np
 
@@ -84,7 +84,7 @@ class AddNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
             edge = self.edge_generator(child_genome, new_node, output_node, rng)
             child_genome.add_edge(edge)
 
-        self.weight_generator(child_genome, rng)
+        # self.weight_generator(child_genome, rng)
 
         return child_genome
 

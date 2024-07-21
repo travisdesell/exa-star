@@ -1,8 +1,8 @@
 from typing import Optional
 
 from config import configclass
-from exastar.component import Node
 from exastar.genome import EXAStarGenome
+from exastar.genome.component import Node
 from exastar.genome_operators.exastar_mutation_operator import EXAStarMutationOperator, EXAStarMutationOperatorConfig
 
 import numpy as np

@@ -2,7 +2,7 @@ import math
 from typing import Optional, Tuple
 
 from config import configclass
-from exastar.component import Node
+from exastar.genome.component import Node
 from exastar.genome import EXAStarGenome
 from exastar.genome_operators.exastar_mutation_operator import EXAStarMutationOperator, EXAStarMutationOperatorConfig
 

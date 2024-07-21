@@ -3,7 +3,7 @@ from dataclasses import field
 from typing import cast
 
 from config import configclass
-from exastar.component import Node
+from exastar.genome.component import Node
 from exastar.genome import EXAStarGenome
 
 import numpy as np
@@ -73,8 +73,6 @@ class KaimingWeightGenerator[G: EXAStarGenome](WeightGenerator[G]):
 
     def get_weight(self, node: Node, fan_in: int, fan_out: int, rng: np.random.Generator) -> float:
         return rng.normal() / np.sqrt(fan_in)
-
-from loguru import logger
 
 
 class LamarckianWeightGenerator(WeightGenerator):

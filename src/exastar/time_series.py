@@ -151,7 +151,7 @@ class TimeSeries(Dataset):
         return list(self.series_dictionary.keys())
 
 
-@configclass(name="base_time_series_dataset", group="dataset", target=TimeSeries.create_from_csv, kw_only=True)
+@configclass(name="base_time_series_dataset", group="dataset", target=TimeSeries.create_from_csv)
 class TimeSeriesConfig(DatasetConfig):
     filenames: Tuple[str, ...]
     input_series: List[str] = field(default_factory=lambda: [])
