@@ -14,13 +14,18 @@ _config_groups = {
     "log_data_providers",
     "population",
     "genome_factory",
+    "genome_factory/edge_generator",
+    "genome_factory/node_generator",
     "genome_factory/crossover_operators",
+    "genome_factory/operator_selector",
     "genome_factory/mutation_operators",
     "genome_factory/seed_genome_factory",
+    "genome_factory/weight_generator",
     "evolutionary_strategy",
     "evolutionary_strategy/init_task",
     "fitness",
-    "dataset"
+    "dataset",
+    "init_tasks"
 }
 
 
