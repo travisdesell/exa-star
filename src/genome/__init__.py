@@ -10,8 +10,8 @@ from typing import (
     Tuple,
 )
 import sys
-
 from dataset import Dataset
+from config import configclass
 from util.log import LogDataProvider
 from util.typing import ComparableMixin, constmethod
 
@@ -142,12 +142,41 @@ class GenomeProvider[G: Genome]:
     def get_genome(self) -> G: ...
 
 
+class OperatorSelector(ABC, LogDataProvider):
+
+    @abstractmethod
+    def choice[T: GenomeOperator](self, operators: Tuple[T, ...], rng: np.random.Generator) -> T:
+        ...
+
+
+@dataclass
+class OperatorSelectorConfig:
+    ...
+
+
+class WeightedOperatorSelector(ABC, LogDataProvider):
+    def choice[T: GenomeOperator](self, operators: Tuple[T, ...], rng: np.random.Generator) -> T:
+        weights = [o.weight for o in operators]
+        total_weight = sum(weights)
+        probabilities = [w / total_weight for w in weights]
+
+        ichoice = rng.choice(len(operators), p=probabilities)
+        return operators[ichoice]
+
+
+@configclass(name="weighted_operator_selector", group="genome_factory/operator_selector",
+             target=WeightedOperatorSelector)
+class WeightedOperatorSelectorConfig(OperatorSelectorConfig):
+    ...
+
+
 class GenomeFactory[G: Genome, D: Dataset](ABC, LogDataProvider):
 
     def __init__(
         self,
         mutation_operators: Dict[str, MutationOperator[G]],
         crossover_operators: Dict[str, CrossoverOperator[G]],
+        operator_selector: OperatorSelector,
     ) -> None:
         """
         We don't actually use the names here (yet), but they're present because of a limitation of hydra.
@@ -159,54 +188,48 @@ class GenomeFactory[G: Genome, D: Dataset](ABC, LogDataProvider):
                 list(crossover_operators.values())
             ),
         )
+
         self.mutation_operators: Tuple[MutationOperator[G], ...] = tuple(
             mutation_operators.values()
         )
+
         self.crossover_operators: Tuple[CrossoverOperator[G], ...] = tuple(
             crossover_operators.values()
         )
+
+        self.operator_selector: OperatorSelector = operator_selector
+
+        assert len(self.mutation_operators), "You must specify at least one mutation operation."
 
         self.rng: np.random.Generator = np.random.default_rng()
 
     @abstractmethod
     def get_seed_genome(self, dataset: D) -> G: ...
 
-    def _choice[T: GenomeOperator](self, operators: Tuple[T, ...]) -> T:
-        weights = [o.weight for o in operators]
-        total_weight = sum(weights)
-        probabilities = [w / total_weight for w in weights]
-
-        ichoice = self.rng.choice(len(operators), p=probabilities)
-        return operators[ichoice]
-
     def get_mutation(self) -> MutationOperator[G]:
-        return self._choice(self.mutation_operators)
+        return self.operator_selector.choice(self.mutation_operators, self.rng)
 
     def get_crossover(self) -> CrossoverOperator[G]:
-        return self._choice(self.crossover_operators)
+        return self.operator_selector.choice(self.crossover_operators, self.rng)
 
     def get_task(
         self, provider: GenomeProvider[G]
     ) -> Callable[[np.random.Generator], Optional[G]]:
-        crossover_weight = sum(o.weight for o in self.crossover_operators)
-        mutation_weight = sum(o.weight for o in self.mutation_operators)
-        denom = crossover_weight + mutation_weight
-        probabilities = [crossover_weight / denom, mutation_weight / denom]
+        operator: GenomeOperator[G] = self.operator_selector.choice(self.operators, self.rng)
 
-        ichoice = self.rng.choice(2, p=probabilities)
-        if ichoice:
+        if isinstance(operator, MutationOperator):
             # Mutation
-            mutation: MutationOperator[G] = self.get_mutation()
+            mutation: MutationOperator[G] = cast(MutationOperator[G], operator)
             genome: G = provider.get_genome()
             return lambda r: mutation(genome, r)
         else:
             # Crossover
-            return functools.partial(self.get_crossover(), provider.get_parents())
+            crossover: CrossoverOperator[G] = cast(CrossoverOperator[G], operator)
+            return functools.partial(crossover, provider.get_parents())
 
 
 @dataclass(kw_only=True)
 class GenomeFactoryConfig:
     mutation_operators: Dict[str, MutationOperatorConfig] = field(default_factory=dict)
-    crossover_operators: Dict[str, CrossoverOperatorConfig] = field(
-        default_factory=dict
-    )
+    crossover_operators: Dict[str, CrossoverOperatorConfig] = field(default_factory=dict)
+    operator_selector: OperatorSelectorConfig = field(default_factory=WeightedOperatorSelectorConfig)

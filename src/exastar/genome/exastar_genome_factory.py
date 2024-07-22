@@ -4,7 +4,7 @@ from config import configclass
 from exastar.genome.exastar_genome import EXAStarGenome
 from exastar.genome.seed import SeedGenomeFactory, SeedGenomeFactoryConfig
 from exastar.time_series import TimeSeries
-from genome import GenomeFactory, GenomeFactoryConfig, MutationOperator, CrossoverOperator
+from genome import GenomeFactory, GenomeFactoryConfig, MutationOperator, CrossoverOperator, OperatorSelector
 
 
 class EXAStarGenomeFactory[G: EXAStarGenome](GenomeFactory[G, TimeSeries]):
@@ -13,9 +13,10 @@ class EXAStarGenomeFactory[G: EXAStarGenome](GenomeFactory[G, TimeSeries]):
         self,
         mutation_operators: Dict[str, MutationOperator[G]],
         crossover_operators: Dict[str, CrossoverOperator[G]],
+        operator_selector: OperatorSelector,
         seed_genome_factory: SeedGenomeFactory[G]
     ) -> None:
-        GenomeFactory.__init__(self, mutation_operators, crossover_operators)
+        GenomeFactory.__init__(self, mutation_operators, crossover_operators, operator_selector)
 
         self.seed_genome_factory: SeedGenomeFactory = seed_genome_factory
 
