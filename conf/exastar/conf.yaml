@@ -1,0 +1,14 @@
+defaults:
+  - base_synchronous_mt_strategy
+  - population: base_simple_population
+  - genome_factory: base_exastar_genome_factory_config
+  - genome_factory/seed_genome_factory: base_trivial_recurrent_seed_genome_factory
+  - genome_factory/mutation_operators@genome_factory.mutation_operators.add_node: base_add_node_mutation
+  - init_tasks@init_tasks.dataset: base_dataset_init_task
+  - init_tasks@init_tasks.inon: base_inon_init_task
+  - fitness: base_exastar_mse
+  - dataset: base_aapl_time_series_dataset
+
+output_directory: "output/test"
+nsteps: 32000
+parallelism: 2
