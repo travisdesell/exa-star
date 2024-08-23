@@ -52,7 +52,7 @@ class AddRecurrentEdge(ReproductionMethod):
 
         potential_nodes = child_genome.nodes
         # recurrent connections can go from any node to any other node (including
-        # between the same node, so we can just shuffle with replacement
+        # between the same node, so we can just shuffle with replacement)
         random.shuffle(potential_nodes)
         input_node = potential_nodes[0]
 

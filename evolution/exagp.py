@@ -9,7 +9,9 @@ from genomes.genome import Genome
 from population.single_population import SinglePopulation
 
 from weight_generators.weight_generator import WeightGenerator
-from weight_generators.kaiming_weight_generator import KaimingWeightGenerator
+from weight_generators.kaiming_weight_generator import (  # noqa: F401
+    KaimingWeightGenerator,
+)
 from weight_generators.lamarckian_weight_generator import LamarckianWeightGenerator
 
 

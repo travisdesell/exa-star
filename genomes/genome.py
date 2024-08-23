@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
 import graphviz
 import torch
 
@@ -70,6 +71,24 @@ class Genome(ABC):
         Args:
             node: is the node to add to the computational graph
         """
+        assert node.innovation_number not in self.node_map.keys()
+
+        self.nodes.append(node)
+        self.node_map[node.innovation_number] = node
+
+    def add_node_during_crossover(self, node: Node):
+        """Adds a non-input, non-output node to the genome
+        during the crossover operation. This will later have
+        input and output edges added to it.
+        Args:
+            node: is the node to add to the computational graph
+        """
+        assert node.innovation_number not in self.node_map.keys()
+        assert not isinstance(node, InputNode)
+        assert not isinstance(node, OutputNode)
+        assert len(node.input_edges) == 0
+        assert len(node.output_edges) == 0
+
         self.nodes.append(node)
         self.node_map[node.innovation_number] = node
 
@@ -88,8 +107,60 @@ class Genome(ABC):
         Args:
             edge: is the edge to add
         """
+        assert edge.innovation_number not in self.edge_map.keys()
+
         self.edges.append(edge)
         self.edge_map[edge.innovation_number] = edge
+
+    def add_edge_during_crossover(self, edge: Edge):
+        """Adds edge to the genome during the crossover operation.
+        This will need to have its input and output nodes found and
+        set given their innovation numbers. This needs to be called
+        after all new nodes have been first added during crossover.
+
+        Args:
+            edge: is the edge to add
+        """
+        assert edge.innovation_number not in self.edge_map.keys()
+        assert edge.input_node is None
+        assert edge.output_node is None
+        assert edge.input_innovation_number is not None
+        assert edge.output_innovation_number is not None
+
+        if (
+            edge.input_innovation_number not in self.node_map.keys()
+            or edge.output_innovation_number not in self.node_map.keys()
+        ):
+            # do not add edges which don't have both an input node and output
+            # node in the genome
+            return
+
+        self.edges.append(edge)
+        self.edge_map[edge.innovation_number] = edge
+
+        edge.input_node = self.node_map[edge.input_innovation_number]
+        edge.input_node.add_output_edge(edge)
+
+        edge.output_node = self.node_map[edge.output_innovation_number]
+        edge.output_node.add_input_edge(edge)
+
+    def connect_edges_during_crossover(self):
+        """Goes through all the edges in the genome to see
+        if any have an input or output node as None. If so
+        a lookup will happen given the node map to connect
+        the edge appropriately.
+        """
+
+        for edge in self.edges:
+            if edge.input_node is None:
+                if edge.input_innovation_number in self.node_map.keys():
+                    edge.input_node = self.node_map[edge.input_innovation_number]
+                    edge.input_node.add_output_edge(edge)
+
+            if edge.output_node is None:
+                if edge.output_innovation_number in self.node_map.keys():
+                    edge.output_node = self.node_map[edge.output_innovation_number]
+                    edge.output_node.add_input_edge(edge)
 
     def reset(self):
         """Resets all the node and edge values for another
@@ -117,11 +188,18 @@ class Genome(ABC):
 
         return parameters
 
-    def plot(self):
-        """Display this graph using plotly"""
+    def plot(self, genome_name: str = None):
+        """Display this graph using graphviz.
+        Args:
+            genome_name: specifices what genome name (and filename) for the
+                graphviz file.
+        """
         figure, axes = plt.subplots()
 
-        dot = graphviz.Digraph()
+        if genome_name is None:
+            genome_name = f"genome_{self.generation_number}"
+
+        dot = graphviz.Digraph(genome_name, directory="./test_genomes")
         dot.attr(labelloc="t", label=f"Genome Fitness: {self.fitness}% MAE")
 
         with dot.subgraph() as source_graph:
@@ -155,36 +233,56 @@ class Genome(ABC):
             if weight < min_weight:
                 min_weight = weight
 
+        eps = 0.0001
+
         for edge in self.edges:
             weight = edge.weights[0].detach().item()
             # color_val = weight ** 2 / (1 + weight ** 2)
 
             color_map = None
             if weight > 0:
-                color_val = ((weight / max_weight) / 2.0) + 0.5
+                color_val = ((weight / (max_weight + eps)) / 2.0) + 0.5
                 color_map = plt.get_cmap("Blues")
             else:
-                color_val = -((weight / min_weight) / 2.0) + 0.5
+                color_val = -((weight / (min_weight + eps)) / 2.0) + 0.5
                 color_map = plt.get_cmap("Reds")
 
             color = matplotlib.colors.to_hex(color_map(color_val))
             if edge.time_skip > 0:
                 dot.edge(
-                    f"node {edge.input_node.innovation_number}",
-                    f"node {edge.output_node.innovation_number}",
+                    f"node {edge.input_innovation_number}",
+                    f"node {edge.output_innovation_number}",
                     color=color,
                     label=f"skip {edge.time_skip}",
                     style="dashed",
                 )
             else:
                 dot.edge(
-                    f"node {edge.input_node.innovation_number}",
-                    f"node {edge.output_node.innovation_number}",
+                    f"node {edge.input_innovation_number}",
+                    f"node {edge.output_innovation_number}",
                     color=color,
                     label=f"skip {edge.time_skip}",
                 )
 
         dot.view()
+
+    def is_valid(self) -> bool:
+        """Check that nothing strange happened in a mutation or crossover operation,
+        e.g., all nodes have input and output edges (unless they are input or output
+        nodes).
+
+        Returns:
+            True if the genome is valid, false otherwise.
+        """
+
+        for node in self.nodes:
+            if not isinstance(node, InputNode) and not isinstance(node, OutputNode):
+                if len(node.input_edges) == 0:
+                    return False
+
+                if len(node.output_edges) == 0:
+                    return False
+        return True
 
     def calculate_reachability(self):
         """Determines which nodes and edges are forward and backward
@@ -219,7 +317,8 @@ class Genome(ABC):
                         output_node = edge.output_node
 
                         if (
-                            output_node not in visited_nodes
+                            output_node is not None
+                            and output_node not in visited_nodes
                             and output_node not in nodes_to_visit
                         ):
                             nodes_to_visit.append(output_node)
@@ -242,7 +341,8 @@ class Genome(ABC):
                         input_node = edge.input_node
 
                         if (
-                            input_node not in visited_nodes
+                            input_node is not None
+                            and input_node not in visited_nodes
                             and input_node not in nodes_to_visit
                         ):
                             nodes_to_visit.append(input_node)
@@ -267,6 +367,93 @@ class Genome(ABC):
             if not node.forward_reachable:
                 self.viable = False
                 break
+
+    def get_weight_distribution(
+        self, min_weight_std_dev: float = 0.05
+    ) -> (float, float):
+        """Gets the mean and standard deviation of the weights in this genome.
+        Args:
+            min_weight_std_dev: is the minimum possible weight standard deviation,
+                so that we use distributions that return more than a single
+                weight.
+        Returns:
+            A tupple of the (avg, stddev) of the genome's weights.
+        """
+
+        all_weights = []
+        for node_or_edge in self.nodes + self.edges:
+            print(f"node or edge weights: {node_or_edge.weights}")
+            for weight in node_or_edge.weights:
+                if weight is not None:
+                    all_weights.append(weight.detach().item())
+        print(f"all weights: {all_weights}")
+
+        n_weights = len(all_weights)
+        all_weights = np.array(all_weights)
+        weights_avg = np.mean(all_weights)
+
+        weights_std = max(min_weight_std_dev, np.std(all_weights))
+
+        print(f"all weights len: {n_weights} -- {all_weights}")
+        print(f"weights avg: {weights_avg}, std: {weights_std}")
+
+        return (weights_avg, weights_std)
+
+    def get_edge_distributions(self, edge_type: str, recurrent: bool) -> (float, float):
+        """Gets the mean and standard deviation for the number of input and output
+        edges for all nodes in the given genome, for either recurrent or non-recurrent
+        edges.
+
+        Args:
+            genome: the genome to calulate statistics for
+            recurrent: true if calculating statistics for recurrent edges, false
+                otherwise
+
+        Returns:
+            A tuple of the mean (input edge count, standard deviation input edge count,
+            mean output edge count, standard deviation output edge count). These values
+            will be increased to 1 if less than that to preserve a decent distribution.
+
+        """
+        assert edge_type == "input_edges" or edge_type == "output_edges"
+
+        # get mean/stddev statistics for recurrent and non-recurrent input and output edges
+        edge_counts = []
+
+        for node in self.nodes:
+            if not node.disabled:
+                count = 0
+                if recurrent:
+                    # recurrent edges can come out or go into of input or ouput nodes
+                    count = sum(
+                        1 for edge in getattr(node, edge_type) if edge.time_skip >= 0
+                    )
+                else:
+                    count = sum(
+                        1 for edge in getattr(node, edge_type) if edge.time_skip == 0
+                    )
+
+                # input or output nodes (or orphaned nodes in crossover which will later be
+                # connected) will have a count of 0 and we can not use that in calculating
+                # the statistics
+                if count != 0:
+                    edge_counts.append(count)
+
+        edge_counts = np.array(edge_counts)
+
+        recurrent_text = ""
+        if recurrent:
+            recurrent_text = "recurrent"
+
+        print(
+            f"n input {recurrent_text} {edge_type} counts: {len(edge_counts)}, {edge_counts}"
+        )
+
+        # make sure these are at least 1.0 so we can grow the network
+        avg_count = max(1.0, np.mean(edge_counts))
+        std_count = max(1.0, np.std(edge_counts))
+
+        return (avg_count, std_count)
 
     @abstractmethod
     def forward(self):

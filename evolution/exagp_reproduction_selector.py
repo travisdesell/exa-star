@@ -16,6 +16,7 @@ from reproduction.split_node import SplitNode
 from reproduction.merge_node import MergeNode
 
 from reproduction.clone import Clone
+from reproduction.crossover import Crossover
 
 from reproduction.reproduction_method import ReproductionMethod
 from reproduction.reproduction_selector import ReproductionSelector
@@ -58,6 +59,9 @@ class EXAGPReproductionSelector(ReproductionSelector):
             MergeNode(node_generator, edge_generator, weight_generator),
             SplitNode(node_generator, edge_generator, weight_generator),
             Clone(node_generator, edge_generator, weight_generator),
+            Crossover(
+                node_generator, edge_generator, weight_generator, number_parents=3
+            ),
         ]
 
     def __call__(self) -> ReproductionMethod:

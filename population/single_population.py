@@ -39,36 +39,42 @@ class SinglePopulation(PopulationStrategy):
         """
 
         child_genome = None
-        if len(self.population) < self.population_size:
-            # the population is still initializing
 
-            while child_genome is None or not child_genome.viable:
-                reproduction_method = self.reproduction_selector()
-                print(f"REPRODUCITON METHOD: {type(reproduction_method)}")
-                # keep trying to generate children from the seed genome
-                child_genome = reproduction_method([self.seed_genome])
-                if child_genome is not None:
-                    child_genome.calculate_reachability()
-
-        else:
-            # the population is filled, we can use genomes in the
-            # population now
+        while child_genome is None or not child_genome.viable:
             reproduction_method = self.reproduction_selector()
+            reproduction_method_name = type(reproduction_method).__name__
+            print(f"REPRODUCITON METHOD: {reproduction_method_name}")
+            # keep trying to generate children from the seed genome
 
-            while child_genome is None or not child_genome.viable:
-                reproduction_method = self.reproduction_selector()
-                print(f"REPRODUCITON METHOD: {type(reproduction_method)}")
-                # keep trying to generate children from the seed genome
-
+            parent_genomes = None
+            if len(self.population) < self.population_size:
+                # the population is still initializing so just mutate
+                # the seed genome
+                parent_genomes = [self.seed_genome]
+            else:
+                # the population is filled, we can use genomes in the
+                # population now
                 potential_parents = self.population
                 random.shuffle(potential_parents)
                 parent_genomes = potential_parents[
                     0 : reproduction_method.number_parents()
                 ]
 
-                child_genome = reproduction_method(parent_genomes)
-                if child_genome is not None:
-                    child_genome.calculate_reachability()
+            child_genome = reproduction_method(parent_genomes)
+            if child_genome is not None:
+                if not child_genome.is_valid():
+                    print("child genome was not valid!")
+                    child_genome.plot("problem_child")
+                    print("parent genomes:")
+                    for i, parent_genome in enumerate(parent_genomes):
+                        parent_genome.plot(genome_name=f"parent_{i}")
+                    exit(1)
+
+                child_genome.parent_genome_generation_numbers = [
+                    parent_genome.generation_number for parent_genome in parent_genomes
+                ]
+                child_genome.generated_by = reproduction_method_name
+                child_genome.calculate_reachability()
 
         child_genome.generation_number = self.generated_genomes
         self.generated_genomes += 1

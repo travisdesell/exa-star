@@ -14,7 +14,7 @@ from weight_generators.weight_generator import WeightGenerator
 
 
 class EnableNode(ReproductionMethod):
-    """Creates an Add Node mutation as a reproduction method."""
+    """Creates an EnableNode mutation as a reproduction method."""
 
     def __init__(
         self,

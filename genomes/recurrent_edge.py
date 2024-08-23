@@ -39,8 +39,8 @@ class RecurrentEdge(Edge):
             An easily readable string representation of this object.
         """
         return (
-            f"RecurrentEdge {self.innovation_number} from Node {self.input_node.innovation_number} "
-            f"to Node {self.output_node.innovation_number}, time skip: {self.time_skip}, "
+            f"RecurrentEdge {self.innovation_number} from Node {self.input_innovation_number} "
+            f"to Node {self.output_innovation_number}, time skip: {self.time_skip}, "
             f"weights: {self.weights}"
         )
 

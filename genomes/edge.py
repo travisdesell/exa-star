@@ -30,6 +30,9 @@ class Edge(ABC):
         self.input_node = input_node
         self.output_node = output_node
 
+        self.input_innovation_number = input_node.innovation_number
+        self.output_innovation_number = output_node.innovation_number
+
         self.input_node.add_output_edge(self)
         self.output_node.add_input_edge(self)
 

@@ -14,7 +14,7 @@ from weight_generators.weight_generator import WeightGenerator
 
 
 class SplitNode(ReproductionMethod):
-    """Creates an Add Node mutation as a reproduction method."""
+    """Creates a SplitNode mutation as a reproduction method."""
 
     def __init__(
         self,
@@ -69,6 +69,7 @@ class SplitNode(ReproductionMethod):
         # select two random nodes
         random.shuffle(possible_nodes)
         parent_node = possible_nodes[0]
+        print(f"parent node: {parent_node}")
 
         node1 = self.node_generator(depth=parent_node.depth, target_genome=child_genome)
         child_genome.add_node(node1)
@@ -88,6 +89,10 @@ class SplitNode(ReproductionMethod):
 
         print(f"input edges: {input_edges}")
         print(f"output edges: {output_edges}")
+
+        if len(input_edges) == 0 or len(output_edges) == 0:
+            child_genome.plot()
+            input("press a key to continue...")
 
         if len(input_edges) > 1:
             split_point = int(random.uniform(1, len(input_edges) - 1))
