@@ -69,7 +69,7 @@ class RecurrentGenome(Genome):
         """
 
         loss = None
-        for iteration in range(iterations):
+        for iteration in range(iterations + 1):
             self.reset()
             outputs = self.forward(input_series)
 
@@ -84,11 +84,15 @@ class RecurrentGenome(Genome):
 
             loss = torch.sqrt(loss)
 
-            print(f"iteration {iteration} loss: {loss}, weights: {self.parameters()}")
+            if iteration < iterations:
+                # don't need to do backpropagate on the last iteration, but also this lets
+                # us calculate the loss without doing backprop at all if iterations == 0
 
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
+                print(f"iteration {iteration} loss: {loss}")
+
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
 
         self.fitness = loss.detach().item()
 

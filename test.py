@@ -69,7 +69,7 @@ if __name__ == "__main__":
 
     exagp = EXAGP(seed_genome=seed_genome)
 
-    for genome_number in range(500):
+    for genome_number in range(5000):
         new_genome = exagp.generate_genome()
         print(f"evaluating genome: {new_genome.generation_number}")
         optimizer = optim.Adam(new_genome.parameters(), lr=0.001)
@@ -78,7 +78,7 @@ if __name__ == "__main__":
             input_series=input_series,
             output_series=output_series,
             optimizer=optimizer,
-            iterations=10,
+            iterations=0,
         )
         exagp.insert_genome(new_genome)
 

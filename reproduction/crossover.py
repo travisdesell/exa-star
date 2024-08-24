@@ -65,13 +65,6 @@ class Crossover(ReproductionMethod):
         if len(parent_genomes) < self._number_parents:
             return None
 
-        print("performing crossover on parents:")
-        count = 0
-        for genome in sorted(parent_genomes):
-            print(genome)
-            # genome.plot(genome_name=f"parent_{count}")
-            count += 1
-
         sorted_parents = sorted(parent_genomes)
 
         # start with the best parent
@@ -134,7 +127,7 @@ class Crossover(ReproductionMethod):
 
         for node in child_genome.nodes:
             if isinstance(node, InputNode) or isinstance(node, OutputNode):
-                # keep the inputs and outputs enabled
+                # inputs and outputs don't need to be connected
                 continue
 
             # if the node is not disabled, add in all of its input and output edges
@@ -159,46 +152,84 @@ class Crossover(ReproductionMethod):
 
                                 child_genome.add_edge_during_crossover(edge_copy)
 
-                if len(node.input_edges) == 0:
-                    print(
-                        "crossover added a node to a child genome with no input edges!"
-                    )
-
-                    require_recurrent = AddNode.get_require_recurrent()
-                    for recurrent in [True, False]:
-                        AddNode.add_input_edges(
-                            target_node=node,
-                            genome=child_genome,
-                            recurrent=recurrent,
-                            require_recurrent=require_recurrent,
-                            edge_generator=self.edge_generator,
-                        )
-
-                    print(f"ADDING INPUT EDGES, len now: {len(node.output_edges)}!")
-
-                if len(node.output_edges) == 0:
-                    print(
-                        "crossover added a node to a child genome with no output edges!"
-                    )
-
-                    require_recurrent = AddNode.get_require_recurrent()
-                    for recurrent in [True, False]:
-                        AddNode.add_output_edges(
-                            target_node=node,
-                            genome=child_genome,
-                            recurrent=recurrent,
-                            require_recurrent=require_recurrent,
-                            edge_generator=self.edge_generator,
-                        )
-
-                    print(f"ADDING OUTPUT EDGES, len now: {len(node.output_edges)}!")
-
         child_genome.connect_edges_during_crossover()
+
+        for node in child_genome.nodes:
+            if isinstance(node, InputNode) or isinstance(node, OutputNode):
+                # inputs and outputs don't need to be connected
+                continue
+
+            if len(node.input_edges) == 0:
+                print(
+                    f"PRE crossover added a node to a child genome with no input edges -- node: {node}"
+                )
+
+            if len(node.output_edges) == 0:
+                print(
+                    f"PRE crossover added a node to a child genome with no output edges -- node: {node}"
+                )
+
+        # make sure that any node that got added to the child at least has one
+        # input and one output edge, which we can connect up the same way as
+        # done in the AddNode mutation.
+        for node in child_genome.nodes:
+            if isinstance(node, InputNode) or isinstance(node, OutputNode):
+                # inputs and outputs don't need to be connected
+                continue
+
+            if len(node.input_edges) == 0:
+                print(
+                    f"crossover added a node to a child genome with no input edges -- node: {node}"
+                )
+
+                require_recurrent = AddNode.get_require_recurrent()
+                for recurrent in [True, False]:
+                    AddNode.add_input_edges(
+                        target_node=node,
+                        genome=child_genome,
+                        recurrent=recurrent,
+                        require_recurrent=require_recurrent,
+                        edge_generator=self.edge_generator,
+                    )
+
+                print(f"ADDING INPUT EDGES, len now: {len(node.output_edges)}!")
+
+            if len(node.output_edges) == 0:
+                print(
+                    f"crossover added a node to a child genome with no output edges -- node: {node}"
+                )
+
+                require_recurrent = AddNode.get_require_recurrent()
+                for recurrent in [True, False]:
+                    AddNode.add_output_edges(
+                        target_node=node,
+                        genome=child_genome,
+                        recurrent=recurrent,
+                        require_recurrent=require_recurrent,
+                        edge_generator=self.edge_generator,
+                    )
+
+                print(f"ADDING OUTPUT EDGES, len now: {len(node.output_edges)}!")
+
+        for node in child_genome.nodes:
+            if isinstance(node, InputNode) or isinstance(node, OutputNode):
+                # inputs and outputs don't need to be connected
+                continue
+
+            if len(node.input_edges) == 0:
+                print(
+                    f"POST crossover added a node to a child genome with no input edges -- node: {node}"
+                )
+
+            if len(node.output_edges) == 0:
+                print(
+                    f"POST crossover added a node to a child genome with no output edges -- node: {node}"
+                )
 
         self.weight_generator(child_genome, parent_genomes=parent_genomes)
 
-        print("CROSSOVER CHILD GENOME:")
-        print(child_genome)
+        # print("CROSSOVER CHILD GENOME:")
+        # print(child_genome)
 
         # child_genome.plot(genome_name="child genome")
         # input("Press enter to continue...")

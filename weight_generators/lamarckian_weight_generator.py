@@ -68,14 +68,10 @@ class LamarckianWeightGenerator(WeightGenerator):
         else:
             # doing crossover lamarckian inheritance, use the asynchronous
             # simplex optimization method to assign child weights.
-            print("lamarckian weight inheritance from crossover")
-            print("parent genomes:")
             parent_genomes = kwargs["parent_genomes"]
-
-            for parent_genome in parent_genomes:
-                print(parent_genome)
-
-            print(f"{len(parent_genomes)} parent genomes")
+            print(
+                f"lamarckian weight inheritance from crossover with {len(parent_genomes)} parent genomes"
+            )
 
             parents = sorted(parent_genomes)
 
@@ -111,9 +107,6 @@ class LamarckianWeightGenerator(WeightGenerator):
                     # happen if the crossover operation needs to connect a node without any
                     # input or output edges.
 
-                    print(
-                        "got no recombination weights! these weights need to be initialized by distribution."
-                    )
                     if weights_avg is None:
                         # only need to get the distribution once
                         weights_avg, weights_std = genome.get_weight_distribution(
@@ -127,7 +120,7 @@ class LamarckianWeightGenerator(WeightGenerator):
                                 requires_grad=True,
                             )
                             print(
-                                f"weight normal random wtih avg {weights_avg} and std {weights_std} "
+                                f"\tweight normal random wtih avg {weights_avg} and std {weights_std} "
                                 f"set to: {weights[i]}"
                             )
                 else:
@@ -151,7 +144,7 @@ class LamarckianWeightGenerator(WeightGenerator):
                             diff = weight_avg - more_fit_weights[i]
                             line_search_value = (r * diff) + more_fit_weights[i]
                             print(
-                                f"line search value: {line_search_value}, c1: {self.c1}, c2: {self.c2}, "
+                                f"\tline search value: {line_search_value}, c1: {self.c1}, c2: {self.c2}, "
                                 f"r: {r}, diff: {diff}"
                             )
 

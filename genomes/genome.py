@@ -278,9 +278,15 @@ class Genome(ABC):
         for node in self.nodes:
             if not isinstance(node, InputNode) and not isinstance(node, OutputNode):
                 if len(node.input_edges) == 0:
+                    print("INVALID GENOME:")
+                    print(self)
+                    print(f"node: {node} was not valid!")
                     return False
 
                 if len(node.output_edges) == 0:
+                    print("INVALID GENOME:")
+                    print(self)
+                    print(f"node: {node} was not valid!")
                     return False
         return True
 
@@ -377,16 +383,14 @@ class Genome(ABC):
                 so that we use distributions that return more than a single
                 weight.
         Returns:
-            A tupple of the (avg, stddev) of the genome's weights.
+            A tuple of the (avg, stddev) of the genome's weights.
         """
 
         all_weights = []
         for node_or_edge in self.nodes + self.edges:
-            print(f"node or edge weights: {node_or_edge.weights}")
             for weight in node_or_edge.weights:
                 if weight is not None:
                     all_weights.append(weight.detach().item())
-        print(f"all weights: {all_weights}")
 
         n_weights = len(all_weights)
         all_weights = np.array(all_weights)
@@ -394,8 +398,10 @@ class Genome(ABC):
 
         weights_std = max(min_weight_std_dev, np.std(all_weights))
 
-        print(f"all weights len: {n_weights} -- {all_weights}")
-        print(f"weights avg: {weights_avg}, std: {weights_std}")
+        # print(f"all weights len: {n_weights} -- {all_weights}")
+        print(
+            f"all weights len: {n_weights} -- weights avg: {weights_avg}, std: {weights_std}"
+        )
 
         return (weights_avg, weights_std)
 

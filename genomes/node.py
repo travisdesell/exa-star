@@ -38,7 +38,10 @@ class Node(ABC):
 
     def __repr__(self) -> str:
         """Provides an easily readable string representation of this node."""
-        return f"[node {type(self)}, innovation: {self.innovation_number}, depth: {self.depth}]"
+        return (
+            f"[node {type(self)}, innovation: {self.innovation_number}, depth: {self.depth}, "
+            f"disabled: {self.disabled}]"
+        )
 
     def __lt__(self, other: Node) -> bool:
         """Returns True if this node is closer to the input nodes than

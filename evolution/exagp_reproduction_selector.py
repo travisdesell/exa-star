@@ -60,7 +60,7 @@ class EXAGPReproductionSelector(ReproductionSelector):
             SplitNode(node_generator, edge_generator, weight_generator),
             Clone(node_generator, edge_generator, weight_generator),
             Crossover(
-                node_generator, edge_generator, weight_generator, number_parents=3
+                node_generator, edge_generator, weight_generator, number_parents=10
             ),
         ]
 
