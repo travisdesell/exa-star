@@ -1,8 +1,12 @@
 from abc import abstractmethod
+import bisect
 from dataclasses import dataclass, field
+import functools
 from typing import Any, Callable, cast, Dict, List, Optional, Self
 
+from loguru import logger
 import numpy as np
+from pandas.io.formats.format import get_precision
 
 from config import configclass
 from dataset import Dataset
@@ -106,7 +110,7 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
             List[G], list(filter(is_not_none, genomes))
         )
         self.genomes.sort(
-            key=lambda g: (g.fitness is not None, g.fitness), reverse=True
+            key=lambda g: g.fitness, reverse=True
         )
 
     def get_parents(self) -> List[G]:
@@ -127,3 +131,94 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
 class SimplePopulationConfig(PopulationConfig):
     size: int = field(default=10)
     n_elites: int = field(default=3)
+
+
+class SteadyStatePopulation[G: Genome, D: Dataset](Population[G, D]):
+
+    def __init__(self, size: int, **kwargs) -> None:
+        super().__init__(**kwargs)
+
+        self.size: int = size
+
+        assert self.size > 0
+
+        # Genomes should be sorted by fitness
+        self.genomes: List[G] = []
+        self.most_recent_genome: G
+
+    def initialize(self, genome_factory: GenomeFactory[G, D], dataset: D) -> None:
+        self.genomes = [genome_factory.get_seed_genome(dataset)]
+        self.most_recent_genome = genome_factory.get_seed_genome(dataset)
+
+    def make_generation(
+        self, genome_factory: GenomeFactory[G, D]
+    ) -> List[Callable[[np.random.Generator], Optional[G]]]:
+        """
+        "Generation" of 1.
+        """
+        return [genome_factory.get_task(self)]
+
+    @staticmethod
+    def fitness_compare(x: G, y: G) -> int:
+        if x.fitness > y.fitness:
+            return -1
+        if x.fitness < y.fitness:
+            return 1
+        return 0
+
+    def integrate_generation(self, genomes: List[Optional[G]]) -> None:
+        """
+        Generation size for this population type is 1, so `genomes` will only gontain 1 genome.
+        """
+        assert len(genomes) == 1
+
+        g: G
+
+        if genomes[0] is None:
+            return
+        else:
+            g = genomes[0]
+
+        if len(self.genomes) >= self.size:
+            assert len(self.genomes) == self.size
+            if g.fitness > self.genomes[-1].fitness:
+                self.genomes.pop()
+            else:
+                return
+        self.most_recent_genome = g
+
+        # Have to use this weird key function thing to insert in reverse order
+        # i.e. from largest fitness to smallest.
+        bisect.insort(self.genomes, g, key=functools.cmp_to_key(SteadyStatePopulation.fitness_compare))
+        logger.info(self.genomes)
+
+    def get_parents(self) -> List[G]:
+        i, j = self.rng.integers(len(self.genomes), size=2)
+        return [self.genomes[i], self.genomes[j]]
+
+    def get_genome(self) -> G:
+        return self.genomes[self.rng.integers(len(self.genomes))]
+
+    def get_best_genome(self) -> G:
+        return self.genomes[0]
+
+    def get_worst_genome(self) -> G:
+        return self.genomes[-1]
+
+
+@configclass(name="base_steady_state_population", group="population", target=SteadyStatePopulation)
+class SteadyStatePopulationConfig(PopulationConfig):
+    size: int = field(default=10)
+
+
+class LogRecentGenome[G: Genome, D: Dataset](LogDataProvider[SteadyStatePopulation[G, D]]):
+
+    def get_log_data(self, aggregator: SteadyStatePopulation[G, D]) -> Dict[str, Any]:
+        return self.prefix(
+            "recent_genome_", aggregator.most_recent_genome.get_log_data(None) if aggregator.most_recent_genome else {}
+        )
+
+
+@configclass(name="base_log_recent_genome", group="log_data_providers", target=LogRecentGenome)
+class LogRecentGenomeConfig(LogDataProviderConfig):
+    ...

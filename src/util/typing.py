@@ -20,8 +20,8 @@ class ComparableMixin:
             and (not isinstance(self, self._comparison_parent_type)
                  or not isinstance(other, self._comparison_parent_type)):
             raise TypeError(
-                f"ComparableMixing comparisons must match the self._comparison_parent_type = "
-                f"{self._comparison_parent_type}"
+                f"ComparableMixing comparisons must match the self._comparison_parent_type:"
+                f"{self._comparison_parent_type}, got {type(self)} and {type(other)}"
             )
 
         a, b = self._cmpkey(), other._cmpkey()

@@ -1,7 +1,11 @@
+from typing import Dict
+
 from config import configclass
 from genome import Fitness, FitnessConfig, MSEValue
 from exastar.genome.exastar_genome import EXAStarGenome
 from exastar.time_series import TimeSeries
+
+import torch
 
 
 class EXAStarTimeSeriesRegressionFitness[G: EXAStarGenome](Fitness[G, TimeSeries]):
@@ -22,7 +26,7 @@ class EXAStarMSE(EXAStarTimeSeriesRegressionFitness[EXAStarGenome]):
         super().__init__()
 
     def compute(self, genome: EXAStarGenome, dataset: TimeSeries) -> MSEValue[EXAStarGenome]:
-        return MSEValue(4)
+        outputs: Dict[str, torch.Tensor] = genome.forward(dataset)
 
 
 @configclass(name="base_exastar_mse", group="fitness", target=EXAStarMSE)

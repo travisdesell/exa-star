@@ -1,10 +1,10 @@
 defaults:
-  - base_synchronous_mt_strategy
-  - population: simple_population
+  - base_async_mt_strategy
+  - population: base_steady_state_population
+  - log_data_providers@population.providers.x: base_log_recent_genome
   - genome_factory: toy
-  - fitness: toy_mae
+  - fitness: toy_fitness
   - dataset: base_toy_dataset
 
 output_directory: "output/test"
-nsteps: 32000
-  
+nsteps: 5000

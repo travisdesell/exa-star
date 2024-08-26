@@ -1,4 +1,6 @@
 from dataclasses import field
+import os
+from time import sleep, time_ns
 from typing import Any, Dict, List, Optional, Self, Tuple
 import sys
 
@@ -24,110 +26,91 @@ import numpy as np
 
 class ToyGenome(Genome):
 
-    def __init__(self, dna: List[np.ndarray], **kwargs) -> None:
+    def __init__(self, value: float, **kwargs) -> None:
         super().__init__(**kwargs)
 
-        self.dna: List[np.ndarray] = dna
+        self.value: float = value
+        self.start_time: int = 0
+        self.end_time: int = 0
+        self.evaluator: Any = None
 
     def clone(self) -> Self:
-        return type(self)(self.dna)
+        return type(self)(self.value)
 
-    def as_string(self) -> str:
-        s = []
+    def __repr__(self) -> str:
+        return f"ToyGenome({self.value})"
 
-        def tochr(c):
-            if c >= 0x20:
-                return chr(c)
-            else:
-                return "#"
-
-        for chromosome in self.dna:
-            s.append("".join(map(tochr, chromosome)))
-
-        return "\n".join(s)
+    def __str__(self) -> str:
+        return self.__repr__()
 
     def get_log_data(self, aggregator: None) -> Dict[str, Any]:
         return {
             "fitness": self.fitness,
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+            "evaluator": self.evaluator,
         }
 
 
-class ToyMAEValue(FitnessValue[ToyGenome]):
+class ToyFitnessValue(FitnessValue[ToyGenome]):
     @classmethod
     def max(cls) -> Self:
         return cls(sys.float_info.max)
 
-    def __init__(self, mae: float) -> None:
-        super().__init__(_comparison_parent_type=ToyMAEValue)
-        self.mae: float = mae
+    def __init__(self, fitness: float) -> None:
+        super().__init__(type=ToyFitnessValue)
+        self.fitness: float = fitness
 
     def _cmpkey(self) -> Tuple:
-        return (-self.mae,)
+        return (self.fitness,)
+
+    def __str__(self) -> str:
+        return str(self.fitness)
+
+    def __repr__(self) -> str:
+        return f"ToyFitnessValue({self.fitness})"
 
 
 class ToyDataset(Dataset):
 
-    def __init__(self, target_file: str) -> None:
-        with open(target_file, "r") as f:
-            self.data: str = f.read()
-            self.lines: List[str] = self.data.split("\n")
+    def __init__(self) -> None: ...
 
 
 @configclass(name="base_toy_dataset", group="dataset", target=ToyDataset)
 class ToyDatasetConfig(DatasetConfig):
-    target_file: str = field(default="README.md")
+    ...
 
 
-class ToyMAE(Fitness[ToyGenome, ToyDataset]):
-    def compute(self, genome: ToyGenome, dataset: ToyDataset) -> ToyMAEValue:
-        value = genome.as_string()
-
-        total = 0.0
-        for ct, c in zip(dataset.data, value):
-            ordt = ord(ct)
-            ordv = ord(c)
-
-            total += abs(ordt - ordv) ** 0.5
-
-        norm = len(value) * 256.0
-        return ToyMAEValue(total / norm)
+class ToyFitness(Fitness[ToyGenome, ToyDataset]):
+    def compute(self, genome: ToyGenome, dataset: ToyDataset) -> ToyFitnessValue:
+        genome.start_time = time_ns()
+        sleep(abs(genome.value / 1000))
+        genome.end_time = time_ns()
+        genome.evaluator = os.getpid()
+        return ToyFitnessValue(genome.value)
 
 
-@configclass(name="base_toy_mae", group="fitness", target=ToyMAE)
-class ToyMAEConfig(FitnessConfig):
+@configclass(name="base_toy_fitness", group="fitness", target=ToyFitness)
+class ToyFitnessConfig(FitnessConfig):
     ...
 
 
 class ToyGenomeMutation(MutationOperator[ToyGenome]):
 
-    def __init__(self, range: int, max_mutations: int, **kwargs) -> None:
+    def __init__(self, range: float, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.range: int = range
-        self.max_mutations: int = max_mutations
+        self.range: float = range
 
     def __call__(
         self, genome: ToyGenome, rng: np.random.Generator
     ) -> Optional[ToyGenome]:
-        n_mutations: int = 1 + rng.integers(self.max_mutations - 1)
-
-        total_len = sum(len(chromosome) for chromosome in genome.dna)
-        ps = [len(chromosome) / total_len for chromosome in genome.dna]
-
-        for _ in range(n_mutations):
-            target_chromosome = rng.choice(len(genome.dna), p=ps)
-            target_gene = rng.integers(len(genome.dna[target_chromosome]))
-
-            genome.dna[target_chromosome][target_gene] += rng.integers(
-                -self.range, self.range, dtype=np.int8
-            )
-
+        genome.value += rng.random() * self.range * 2 - self.range
         return genome
 
 
 @configclass(name="base_toy_genome_mutation", group="genome_factory/mutation_operators", target=ToyGenomeMutation)
 class ToyGenomeMutationConfig(MutationOperatorConfig):
-    range: int
-    max_mutations: int
+    range: float
 
 
 class ToyGenomeCrossover(CrossoverOperator[ToyGenome]):
@@ -140,21 +123,7 @@ class ToyGenomeCrossover(CrossoverOperator[ToyGenome]):
     ) -> Optional[ToyGenome]:
         g0, g1 = parents[:2]
 
-        dna = []
-
-        for ic, chrom in enumerate(g0.dna):
-            if len(g0.dna[ic]) <= 1:
-                choice = rng.integers(2)
-                dna.append(parents[choice].dna[ic])
-                continue
-
-            partition = rng.integers(1, len(chrom) - 1)
-            new_chrom = np.concatenate(
-                (g0.dna[ic][:partition], g1.dna[ic][partition:]), axis=None
-            )
-            dna.append(new_chrom)
-
-        return ToyGenome(list(dna))
+        return ToyGenome((g0.value + g1.value) / 2)
 
 
 @configclass(name="base_toy_genome_crossover", group="genome_factory/crossover_operators", target=ToyGenomeCrossover)
@@ -168,14 +137,9 @@ class ToyGenomeFactory(GenomeFactory[ToyGenome, ToyDataset]):
         super().__init__(**kwargs)
 
     def get_seed_genome(self, dataset: ToyDataset) -> ToyGenome:
-        lines = dataset.lines
-
-        dna = []
-        for line in lines:
-            line += " "
-            dna.append(self.rng.integers(256, size=len(line), dtype=np.uint8))
-
-        return ToyGenome(dna)
+        g = ToyGenome(0)
+        g.fitness = ToyFitnessValue(0)
+        return g
 
     def get_log_data(self, aggregator: Any) -> Dict[str, Any]:
         return {}
@@ -190,7 +154,7 @@ class PrintBestToyGenome(LogDataProvider[Population[ToyGenome, ToyDataset]]):
 
     def get_log_data(self, aggregator: Population[ToyGenome, ToyDataset]) -> Dict[str, Any]:
 
-        print(aggregator.get_best_genome().as_string())
+        print(str(aggregator.get_best_genome()))
 
         return {}
 

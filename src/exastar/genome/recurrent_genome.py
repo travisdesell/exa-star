@@ -137,3 +137,50 @@ class RecurrentGenome(EXAStarGenome[Edge]):
             outputs[output_node.parameter_name] = output_node.value
 
         return outputs
+
+    def train_genome(
+        self,
+        input_series: TimeSeries,
+        output_series: TimeSeries,
+        optimizer: torch.optim.Optimizer,
+        iterations: int,
+    ):
+        """
+        Trains the genome for a given number of iterations. Note that the simpler name `train`
+        refers to a method already defined in torch.nn.Module, which this class is a child of.
+
+        Args:
+            input_series: The input time series to train on.
+            output_series: The output (expected) time series to learn from.
+            opitmizer: The pytorch optimizer to use to adapt weights.
+            iterations: How many iterations to train for.
+        """
+        self.train()  # Set training mode for containing modules
+
+        loss = None
+        for iteration in range(iterations):
+            self.reset()
+            outputs = self.forward(input_series)
+
+            loss = torch.tensor(0.0)
+            for parameter_name, values in outputs.items():
+                expected = output_series.series_dictionary[parameter_name]
+
+                for i in range(len(expected)):
+                    diff = expected[i] - values[i]
+                    # print(f"expected[{i}]: {expected[i]} - values[{i}]: {values[i]} = {diff}")
+                    loss += diff * diff
+
+            loss = torch.sqrt(loss)
+
+            print(f"iteration {iteration} loss: {loss}, weights: {self.parameters()}")
+
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+
+        self.fitness = loss.detach().item()
+
+        # reset all the gradients so we can deepcopy the genome and its tensors
+        self.reset()
+        print(f"final fitness (loss): {self.fitness}, type: {type(self.fitness)}")
