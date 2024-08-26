@@ -21,8 +21,8 @@ from pandas.core.frame import functools
 
 class FitnessValue[G: Genome](ComparableMixin):
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
 
     @classmethod
     @abstractmethod
@@ -56,7 +56,7 @@ class Genome(ABC, LogDataProvider):
     def __init__(self, **kwargs) -> None:
         LogDataProvider.__init__(self, **kwargs)
 
-        self.fitness: Optional[FitnessValue[Self]] = None
+        self.fitness: FitnessValue[Self] = FitnessValue()
 
     @abstractmethod
     @constmethod
