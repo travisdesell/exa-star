@@ -1,15 +1,15 @@
 import sys
+from typing import Callable, List, Optional, Self
 
-from evolution.exagp import EXAGP
-
-from exastar.genome import MinimalRecurrentGenome
-from exastar.genome import TrivialRecurrentGenome
+from config import configclass
+from dataset import Dataset
+from evolution import EvolutionaryStrategy, EvolutionaryStrategyConfig
+from exastar.time_series import TimeSeries
+from exastar.genome import EXAStarGenome
 
 from loguru import logger
-
+import numpy as np
 from torch import optim
-
-from exastar.time_series import TimeSeries
 
 if __name__ == "__main__":
     logger.remove()
@@ -18,10 +18,6 @@ if __name__ == "__main__":
     csv_filename = (
         "/Users/travisdesell/Data/stocks/most_newest/DJI_company_2023/train/AAPL.csv"
     )
-
-    initial_series = TimeSeries.create_from_csv(filename=csv_filename)
-
-    print(initial_series.series_dictionary)
 
     input_series_names = [
         "RET",
@@ -34,7 +30,10 @@ if __name__ == "__main__":
         "PRC",
     ]
     output_series_names = ["RET"]
+    initial_series = TimeSeries.create_from_csv(
+        filenames=list(csv_filename), input_series=input_series_names, output_series=output_series_names)
 
+    print(initial_series.series_dictionary)
     input_series = initial_series.get_inputs(
         input_series_names=input_series_names, offset=1
     )
@@ -53,23 +52,7 @@ if __name__ == "__main__":
     max_sequence_length = input_series.series_length
     print(f"max sequence length: {max_sequence_length}")
 
-    seed_genome = MinimalRecurrentGenome(
-        generation_number=0,
-        input_series_names=input_series_names,
-        output_series_names=output_series_names,
-        max_sequence_length=max_sequence_length,
-    )
-
-    seed_genome = TrivialRecurrentGenome(
-        generation_number=0,
-        input_series_names=input_series_names,
-        output_series_names=output_series_names,
-        max_sequence_length=max_sequence_length,
-    )
-
-    exagp = EXAGP(seed_genome=seed_genome)
-
-    for genome_number in range(500):
+    for genome_number in range(5000):
         new_genome = exagp.generate_genome()
         print(f"evaluating genome: {new_genome.generation_number}")
         optimizer = optim.Adam(new_genome.parameters(), lr=0.001)
@@ -78,7 +61,7 @@ if __name__ == "__main__":
             input_series=input_series,
             output_series=output_series,
             optimizer=optimizer,
-            iterations=10,
+            iterations=0,
         )
         exagp.insert_genome(new_genome)
 
@@ -87,3 +70,40 @@ if __name__ == "__main__":
     print(f"{exagp.population_strategy.population[0]}")
 
     exagp.population_strategy.population[0].plot()
+
+
+class EXAStarTestStrategy[G: EXAStarGenome, D: TimeSeries](EvolutionaryStrategy[G, D]):
+    rng: np.random.Generator = np.random.default_rng()
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.i: int = 0
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *args) -> None:
+        ...
+
+    def step(self) -> None:
+        logger.info("Starting step...")
+        tasks: List[Callable[[np.random.Generator], Optional[G]]] = (
+            self.population.make_generation(self.genome_factory)
+        )
+
+        genomes: List[G] = []
+
+        for task in tasks:
+            g = task(EXAStarTestStrategy.rng)
+            if g:
+                g.evaluate(self.fitness, self.dataset)
+
+            return g
+
+        self.population.integrate_generation(genomes)
+        logger.info("step complete...")
+
+
+@configclass(name="base_exastar_test_strategy", target=EXAStarTestStrategy)
+class EXAStarTestStrategyConfig(EvolutionaryStrategyConfig):
+    ...

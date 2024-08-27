@@ -1,3 +1,5 @@
+from dataclasses import field
+
 from config import configclass
 from exastar.genome import EXAStarGenome
 from exastar.genome_operators.exastar_mutation_operator import EXAStarMutationOperator, EXAStarMutationOperatorConfig
@@ -8,10 +10,14 @@ import numpy as np
 
 
 class AddRecurrentEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
-    """Creates an Add Edge mutation as a reproduction method."""
+    """
+    Creates an Add Edge mutation as a reproduction method
+    """
 
     def __init__(self, recurrent_edge_generator: RecurrentEdgeGenerator, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        assert recurrent_edge_generator.p_recurrent >= 1.0, \
+            "AddRecurrentEdge recurrent_edge_generator should always generate recurrent edges"
         self.recurrent_edge_generator: RecurrentEdgeGenerator = recurrent_edge_generator
 
     def number_parents(self):
@@ -22,7 +28,7 @@ class AddRecurrentEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         return 1
 
     def __call__(self, genome: G, rng: np.random.Generator) -> G:
-        """Given the parent genome, create a child genome which is a copy
+        """Given the parent genome, create a child genome which is a clone
         of the parent with a random edge added.
         Args:
             parent_genomes: a list of parent genomes to create the child genome from.
@@ -30,13 +36,14 @@ class AddRecurrentEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         Returns:
             A new genome to evaluate.
         """
-        child_genome = genome.copy()
+        child_genome = genome.clone()
 
         input_node = rng.choice([
             node for node in child_genome.nodes if not isinstance(node, OutputNode)
         ])
 
         # potential output nodes need to be deeper than the input node
+        # between the same node, so we can just shuffle with replacement)
         output_node = rng.choice([
             node
             for node in child_genome.nodes
@@ -55,4 +62,6 @@ class AddRecurrentEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
 @configclass(name="base_add_recurrent_edge_mutation", group="genome_factory/mutation_operators",
              target=AddRecurrentEdge)
 class AddRecurrentEdgeConfig(EXAStarMutationOperatorConfig):
-    recurrent_edge_generator: RecurrentEdgeGeneratorConfig
+    # TODO: Fix the type checking error that seems to come from config classes
+    recurrent_edge_generator: RecurrentEdgeGeneratorConfig = field(
+        default_factory=lambda: RecurrentEdgeGeneratorConfig(p_recurrent=1.0))  # pyright: ignore

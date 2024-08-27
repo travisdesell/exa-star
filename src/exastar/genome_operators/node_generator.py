@@ -8,6 +8,9 @@ import numpy as np
 
 
 class NodeGenerator[G: EXAStarGenome](ABC):
+    """
+    Interface for an EXAStar node generator.
+    """
 
     @abstractmethod
     def __call__(self, depth: float, target_genome: G, rng: np.random.Generator) -> Node:
@@ -35,6 +38,8 @@ class EXAStarNodeGenerator(NodeGenerator[EXAStarGenome]):
     This is a node generator for the EXA-GP algorithm. It will
     create nodes from a selection of genetic programming operation
     nodes.
+
+    This is the "default" node generator.
     """
 
     def __init__(self):

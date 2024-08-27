@@ -16,7 +16,7 @@ class SplitNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
 
     def __call__(self, genome: G, rng: np.random.Generator) -> Optional[G]:
         """
-        Given the parent genome, create a child genome which is a copy
+        Given the parent genome, create a child genome which is a clone
         of the parent with a random node added.
         Args:
             parent_genomes: a list of parent genomes to create the child genome from.

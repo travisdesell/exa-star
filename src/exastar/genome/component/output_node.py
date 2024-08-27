@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Self
 
 from exastar.genome.component.node import Node, node_inon_t
 from util.typing import overrides
@@ -11,7 +11,8 @@ class OutputNode(Node):
         depth: float,
         max_sequence_length: int,
         inon: Optional[node_inon_t] = None,
-    ):
+        enabled: bool = True,
+    ) -> None:
         """
         Creates an output node of a computational graph.
 
@@ -25,16 +26,22 @@ class OutputNode(Node):
             max_sequence_length: is the maximum length of any time series
                 to be processed by the neural network this node is part of
         """
-        super().__init__(depth, max_sequence_length, inon)
+        super().__init__(depth, max_sequence_length, inon, enabled)
 
         self.parameter_name = parameter_name
+
+    @overrides(Node)
+    def new(self) -> Self:
+        return OutputNode(self.parameter_name, self.depth, self.max_sequence_length, self.inon, self.enabled)
 
     @overrides(Node)
     def __repr__(self) -> str:
         """Provides an easily readable string representation of this node."""
         return (
-            f"[node {type(self)}, "
-            f"parameter: '{self.parameter_name}', "
-            f"inon: {self.inon}, "
-            f"depth: {self.depth}]"
+            "OutputNode("
+            f"parameter='{self.parameter_name}', "
+            f"depth={self.depth}, "
+            f"max_sequence_length={self.max_sequence_length}, "
+            f"inon={self.inon}, "
+            f"enabled={self.enabled})"
         )

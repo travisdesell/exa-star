@@ -3,7 +3,10 @@ from dataclasses import dataclass, field
 from genome import MutationOperator, MutationOperatorConfig
 from exastar.genome import EXAStarGenome
 from exastar.genome_operators.node_generator import NodeGenerator, NodeGeneratorConfig, EXAStarNodeGeneratorConfig
-from exastar.genome_operators.edge_generator import EdgeGenerator, EdgeGeneratorConfig, EXAStarEdgeGeneratorConfig
+from exastar.genome_operators.edge_generator import (
+    EdgeGenerator, EdgeGeneratorConfig, EXAStarEdgeGeneratorConfig, RecurrentEdgeGenerator, RecurrentEdgeGeneratorConfig
+)
+
 from exastar.weights import WeightGenerator, WeightGeneratorConfig
 
 
@@ -34,5 +37,5 @@ class EXAStarMutationOperator[G: EXAStarGenome](MutationOperator[G]):
 class EXAStarMutationOperatorConfig(MutationOperatorConfig):
     node_generator: NodeGeneratorConfig = field(default_factory=lambda: EXAStarNodeGeneratorConfig())
     edge_generator: EdgeGeneratorConfig = field(
-        default_factory=lambda: EXAStarEdgeGeneratorConfig())
+        default_factory=lambda: RecurrentEdgeGeneratorConfig())
     weight_generator: WeightGeneratorConfig = field(default_factory=lambda: WeightGeneratorConfig())

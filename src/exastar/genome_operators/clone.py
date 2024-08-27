@@ -11,7 +11,7 @@ class Clone[G: EXAStarGenome](EXAStarMutationOperator[G]):
         super().__init__(*args, **kwargs)
 
     def __call__(self, genome: G, rng: np.random.Generator) -> G:
-        return genome.copy()
+        return genome.clone()
 
 
 @configclass(name="base_clone_mutation", group="genome_factory/mutation_operators", target=Clone)

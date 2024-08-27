@@ -2,7 +2,8 @@ from __future__ import annotations
 from itertools import chain, product
 from typing import cast, Dict, List
 
-from exastar.genome.component import Edge, Node, InputNode, OutputNode
+from exastar.genome.component import Edge, Node, InputNode, OutputNode, RecurrentEdge
+from exastar.genome.fitness import EXAStarMSE
 from exastar.genome.exastar_genome import EXAStarGenome
 from exastar.time_series import TimeSeries
 
@@ -29,8 +30,8 @@ class RecurrentGenome(EXAStarGenome[Edge]):
         }
 
         edges: List[Edge] = [
-            Edge(input_nodes[parameter_name],
-                 output_nodes[parameter_name], max_sequence_length, True)
+            RecurrentEdge(input_nodes[parameter_name],
+                          output_nodes[parameter_name], max_sequence_length, True, 0)
             for parameter_name in filter(lambda x: x in output_nodes, input_nodes.keys())
         ]
 
@@ -64,7 +65,7 @@ class RecurrentGenome(EXAStarGenome[Edge]):
 
         edges: List[Edge] = []
         for input_node, output_node in product(input_nodes, output_nodes):
-            edge = Edge(input_node, output_node, max_sequence_length, True)
+            edge = RecurrentEdge(input_node, output_node, max_sequence_length, True, 0)
 
             if input_node.parameter_name == output_node.parameter_name:
                 # set the weight to 1 as a default (use the previous value as the forecast)
@@ -138,16 +139,14 @@ class RecurrentGenome(EXAStarGenome[Edge]):
 
         return outputs
 
-    def train_genome(
+    def train(
         self,
         input_series: TimeSeries,
         output_series: TimeSeries,
         optimizer: torch.optim.Optimizer,
         iterations: int,
     ):
-        """
-        Trains the genome for a given number of iterations. Note that the simpler name `train`
-        refers to a method already defined in torch.nn.Module, which this class is a child of.
+        """Trains the genome for a given number of iterations.
 
         Args:
             input_series: The input time series to train on.
@@ -155,7 +154,6 @@ class RecurrentGenome(EXAStarGenome[Edge]):
             opitmizer: The pytorch optimizer to use to adapt weights.
             iterations: How many iterations to train for.
         """
-        self.train()  # Set training mode for containing modules
 
         loss = None
         for iteration in range(iterations):
@@ -173,14 +171,17 @@ class RecurrentGenome(EXAStarGenome[Edge]):
 
             loss = torch.sqrt(loss)
 
-            print(f"iteration {iteration} loss: {loss}, weights: {self.parameters()}")
+            if iteration < iterations:
+                # don't need to do backpropagate on the last iteration, but also this lets
+                # us calculate the loss without doing backprop at all if iterations == 0
 
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
+                print(f"iteration {iteration} loss: {loss}")
 
-        self.fitness = loss.detach().item()
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
 
-        # reset all the gradients so we can deepcopy the genome and its tensors
+        return EXAStarMSE(loss.detach().item())
+
         self.reset()
         print(f"final fitness (loss): {self.fitness}, type: {type(self.fitness)}")

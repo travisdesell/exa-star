@@ -1,8 +1,8 @@
 from abc import abstractmethod
+from typing import Dict, Optional, Self
 
-from typing import Optional, Self
 from exastar.inon import inon_t
-from exastar.genome.component.node import Node
+from exastar.genome.component.node import Node, node_inon_t
 from util.typing import ComparableMixin, overrides
 
 import torch
@@ -44,8 +44,9 @@ class Edge(ComparableMixin, torch.nn.Module):
         self.input_node.add_output_edge(self)
         self.output_node.add_input_edge(self)
 
-    def clone(self, input_node: Node, output_node: Node) -> Self:
-        return Edge(input_node, output_node, self.max_sequence_length, self.enabled)
+    @abstractmethod
+    def clone(self, inon_to_node: Dict[node_inon_t, Node]) -> Self:
+        ...
 
     @overrides(torch.nn.Module)
     def __repr__(self) -> str:

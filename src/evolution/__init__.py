@@ -23,6 +23,10 @@ class EvolutionaryStrategy[G: Genome, D: Dataset](ABC, LogDataAggregator):
     def get_dataset() -> Dataset:
         return EvolutionaryStrategy.__process_local_dataset
 
+    @staticmethod
+    def set_dataset(dataset: Dataset) -> None:
+        EvolutionaryStrategy.__process_local_dataset = dataset
+
     def __init__(
         self,
         output_directory: str,
@@ -109,7 +113,8 @@ class DatasetInitTask(InitTask):
         super().__init__()
 
     def run(self, values: Dict[str, Any]) -> None:
-        EvolutionaryStrategy.__process_local_dataset = values["dataset"]
+        EvolutionaryStrategy.set_dataset(values["dataset"])
+        print(EvolutionaryStrategy.get_dataset())
 
     def values[G: Genome, D: Dataset](self, strategy: EvolutionaryStrategy[G, D]) -> Dict[str, Any]:
         return {"dataset": strategy.dataset}
@@ -145,7 +150,7 @@ class ParallelMTStrategy[G: Genome, D: Dataset](EvolutionaryStrategy[G, D]):
 @dataclass
 class ParallelMTStrategyConfig[G: Genome, D: Dataset](EvolutionaryStrategyConfig):
     parallelism: Optional[int] = field(default=None)
-    init_tasks: Dict[str, InitTaskConfig] = field(default_factory=dict)
+    init_tasks: Dict[str, InitTaskConfig] = field(default_factory=lambda: {"dataset_init": DatasetInitTaskConfig()})
 
 
 class SynchronousMTStrategy[G: Genome, D: Dataset](ParallelMTStrategy[G, D]):

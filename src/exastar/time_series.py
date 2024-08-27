@@ -95,7 +95,7 @@ class TimeSeries(Dataset):
             input_series = list(series_dictionary.keys())
 
         if not output_series:
-            output_series = list(series_dictionary.values())
+            output_series = list(series_dictionary.keys())
 
         return TimeSeries(series_dictionary, input_series, output_series)
 
@@ -112,7 +112,7 @@ class TimeSeries(Dataset):
         for series_name in input_series_names:
             input_series[series_name] = self.series_dictionary[series_name][offset:]
 
-        return TimeSeries(series_dictionary=input_series)
+        return TimeSeries(input_series, self.input_series_names, self.output_series_names)
 
     def get_outputs(self, output_series_names: list[str], offset: int) -> TimeSeries:
         """
@@ -127,7 +127,7 @@ class TimeSeries(Dataset):
         for series_name in output_series_names:
             output_series[series_name] = self.series_dictionary[series_name][:-offset]
 
-        return TimeSeries(series_dictionary=output_series)
+        return TimeSeries(output_series, self.input_series_names, self.output_series_names)
 
     def slice(self, start_row: int, end_row: int) -> TimeSeries:
         """

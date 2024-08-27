@@ -1,7 +1,7 @@
-from typing import Optional
+from typing import Dict, Optional, Self
 
 from exastar.genome.component.edge import Edge, edge_inon_t
-from exastar.genome.component.node import Node
+from exastar.genome.component.node import Node, node_inon_t
 
 from util.typing import overrides
 
@@ -35,8 +35,34 @@ class RecurrentEdge(Edge):
         self.weight = torch.nn.Parameter(torch.ones(1))
 
     @overrides(Edge)
-    def clone(self, input_node: Node, output_node: Node) -> Edge:
-        return RecurrentEdge(input_node, output_node, self.max_sequence_length, self.enabled, self.time_skip)
+    def clone(self, inon_to_node: Dict[node_inon_t, Node]) -> Self:
+        clone = RecurrentEdge(
+            inon_to_node[self.input_node.inon],
+            inon_to_node[self.output_node.inon],
+            self.max_sequence_length,
+            self.enabled,
+            self.time_skip,
+            self.inon,
+        )
+        with torch.no_grad():
+            clone.weight[:] = self.weight[:]
+        return clone
+
+    def __repr__(self) -> str:
+        """
+        Returns:
+            An easily readable string representation of this object.
+        """
+        return (
+            "RecurrentEdge("
+            f"inon={self.inon}, "
+            f"input_node={self.input_node.inon}, "
+            f"output_node={self.output_node.inon}, "
+            f"enabled={self.enabled}, "
+            f"time_skip={self.time_skip}, "
+            f"weight={self.weight}"
+            ")"
+        )
 
     def reset(self):
         """
@@ -60,7 +86,7 @@ class RecurrentEdge(Edge):
             time_step: the time step the value is being fed from.
             value: the output value of the input node.
         """
-        output_value = value * self.weight
+        output_value = value * self.weight[0]
 
         self.output_node.input_fired(
             time_step=time_step + self.time_skip, value=output_value

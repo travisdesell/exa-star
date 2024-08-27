@@ -20,7 +20,7 @@ class AddEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         return 1
 
     def __call__(self, genome: G, rng: np.random.Generator) -> G:
-        """Given the parent genome, create a child genome which is a copy
+        """Given the parent genome, create a child genome which is a clone
         of the parent with a random edge added.
         Args:
             parent_genomes: a list of parent genomes to create the child genome from.
@@ -28,7 +28,7 @@ class AddEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         Returns:
             A new genome to evaluate.
         """
-        child_genome = genome.copy()
+        child_genome = genome.clone()
 
         input_node = rng.choice([
             node for node in child_genome.nodes if not isinstance(node, OutputNode)

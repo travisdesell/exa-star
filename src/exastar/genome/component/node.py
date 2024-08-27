@@ -1,7 +1,7 @@
 from __future__ import annotations
 import bisect
 from itertools import chain
-from typing import List, Optional, TYPE_CHECKING, Tuple
+from typing import List, Optional, Self, TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
     from exastar.genome.component.edge import Edge
@@ -20,7 +20,13 @@ class node_inon_t(inon_t):
 
 class Node(ComparableMixin, torch.nn.Module):
 
-    def __init__(self, depth: float, max_sequence_length: int, inon: Optional[node_inon_t] = None):
+    def __init__(
+        self,
+        depth: float,
+        max_sequence_length: int,
+        inon: Optional[node_inon_t] = None,
+        enabled: bool = True
+    ) -> None:
         """
         Initializes an abstract Node object with base functionality for building
         computational graphs.
@@ -36,6 +42,7 @@ class Node(ComparableMixin, torch.nn.Module):
 
         self.inon: node_inon_t = inon if inon else node_inon_t()
         self.depth: float = depth
+        self.enabled: bool = enabled
         self.max_sequence_length: int = max_sequence_length
 
         self.input_edges: List[Edge] = []
@@ -44,6 +51,17 @@ class Node(ComparableMixin, torch.nn.Module):
         self.inputs_fired: np.ndarray = np.ndarray(shape=(max_sequence_length,), dtype=np.int32)
 
         self.value = torch.zeros(self.max_sequence_length)
+
+    def new(self) -> Self:
+        """
+        Used for creating a deep copy. This just creates a new object with empty edge lists,
+        which will be populated later.
+
+        Note: any torch parameters should be copied over here (our default node has none).
+        """
+        n = Node(self.depth, self.max_sequence_length, self.inon, self.enabled)
+        print(n.inputs_fired)
+        return n
 
     @overrides(torch.nn.Module)
     def __repr__(self) -> str:
@@ -56,9 +74,11 @@ class Node(ComparableMixin, torch.nn.Module):
         ```
         """
         return (
-            f"[node {type(self)}, "
-            f"inon: {self.inon}, "
-            f"depth: {self.depth}]"
+            "Node("
+            f"depth={self.depth}, "
+            f"max_sequence_length={self.max_sequence_length}, "
+            f"inon={self.inon}, "
+            f"enabled={self.enabled})"
         )
 
     @overrides(ComparableMixin)
@@ -103,30 +123,18 @@ class Node(ComparableMixin, torch.nn.Module):
 
         if time_step < self.max_sequence_length:
             self.inputs_fired[time_step] += 1
-            """
-            logger.debug(
-                f"node {type(self)} '{self.parameter_name}', inon: {self.inon} "
-                f"at depth: {self.depth} input fired, now: {self.inputs_fired[time_step]}"
-            )
-            """
 
             # accumulate the values so we can later use them when forward
             # is called on the Node.
             self.accumulate(time_step=time_step, value=value)
 
-            if self.inputs_fired[time_step] > len(self.input_edges):
-                logger.error(
-                    f"node inputs fired {self.inputs_fired[time_step]} > len(self.input_edges): {len(self.input_edges)}"
-                )
-                logger.error(
-                    f"node {type(self)} '{self.parameter_name}', inon: {self.inon} at "
-                    f"depth: {self.depth}"
-                )
-                logger.error(
-                    "this should never happen, for any forward pass a node should get at most N input fireds"
-                    ", which should not exceed the number of input edges."
-                )
-                exit(1)
+            assert self.inputs_fired[time_step] <= len(self.input_edges), (
+                f"node inputs fired {self.inputs_fired[time_step]} > len(self.input_edges): {len(self.input_edges)}\n"
+                f"node {type(self)}, inon: {self.inon} at "
+                f"depth: {self.depth}\n"
+                "this should never happen, for any forward pass a node should get at most N input fireds"
+                ", which should not exceed the number of input edges."
+            )
 
         return None
 
@@ -148,7 +156,6 @@ class Node(ComparableMixin, torch.nn.Module):
             time_step: is the time step the input is being fired from.
             value: is the tensor being passed forward from the input edge.
         """
-
         self.value[time_step] += value
 
     def set_enabled(self, enabled: bool) -> None:
@@ -171,18 +178,15 @@ class Node(ComparableMixin, torch.nn.Module):
         Args:
             time_step: is the time step the input is being fired from.
         """
-
-        if self.inputs_fired[time_step] != len(self.input_edges):
-            # check to make sure in the case of input nodes which
-            # have recurrent connections feeding into them that
-            # all recurrent edges have fired
-            logger.error(
-                f"Calling forward on input node '{self.parameter_name}' at time "
-                f"step {time_step}, where all incoming recurrent edges have not "
-                f"yet been fired. len(self.input_edges): {len(self.input_edges)} "
-                f", self.inputs_fired: {self.inputs_fired}"
-            )
-            exit(1)
+        # check to make sure in the case of input nodes which
+        # have recurrent connections feeding into them that
+        # all recurrent edges have fired
+        assert self.inputs_fired[time_step] == len(self.input_edges), (
+            f"Calling forward on node '{self}' at time "
+            f"step {time_step}, where all incoming recurrent edges have not "
+            f"yet been fired. len(self.input_edges): {len(self.input_edges)} "
+            f", self.inputs_fired[{time_step}]: {self.inputs_fired[time_step]}"
+        )
 
         for output_edge in self.output_edges:
             output_edge.forward(time_step=time_step, value=self.value[time_step])

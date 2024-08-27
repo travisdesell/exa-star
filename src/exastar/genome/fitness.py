@@ -26,9 +26,10 @@ class EXAStarMSE(EXAStarTimeSeriesRegressionFitness[EXAStarGenome]):
         super().__init__()
 
     def compute(self, genome: EXAStarGenome, dataset: TimeSeries) -> MSEValue[EXAStarGenome]:
-        outputs: Dict[str, torch.Tensor] = genome.forward(dataset)
+        return genome.train(dataset.get_inputs(dataset.input_series_names, 1),
+                            dataset.get_outputs(dataset.output_series_names, 1), torch.optim.Adam(genome.parameters()), 10)
 
 
-@configclass(name="base_exastar_mse", group="fitness", target=EXAStarMSE)
+@ configclass(name="base_exastar_mse", group="fitness", target=EXAStarMSE)
 class EXAStarMSEConfig(EXAStarFitnessConfig):
     ...

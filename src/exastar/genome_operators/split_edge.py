@@ -15,7 +15,7 @@ class SplitEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
 
     def __call__(self, genome: G, rng: np.random.Generator) -> Optional[G]:
         """
-        Given the parent genome, create a child genome which is a copy
+        Given the parent genome, create a child genome which is a clone
         of the parent with an edge split.
         Args:
             parent_genomes: a list of parent genomes to create the child genome from.
@@ -23,7 +23,7 @@ class SplitEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         Returns:
             A new genome to evaluate.
         """
-        child_genome = genome.clone()  # copy.deepcopy(parent_genomes[0])
+        child_genome = genome.clone()
 
         target_edge = rng.choice(child_genome.edges)
         target_edge.disable()
