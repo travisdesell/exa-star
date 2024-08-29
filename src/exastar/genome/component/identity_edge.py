@@ -29,10 +29,6 @@ class IdentityEdge(Edge):
         """
         super().__init__(input_node, output_node, max_sequence_length, enabled, inon)
 
-    @overrides(Edge)
-    def clone(self, input_node: Node, output_node: Node) -> Edge:
-        return IdentityEdge(input_node, output_node, self.max_sequence_length, self.enabled)
-
     def forward(self, time_step: int, value: torch.Tensor) -> None:
         """
         Propagates the input nodes value forward to the output node.

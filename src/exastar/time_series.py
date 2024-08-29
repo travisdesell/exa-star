@@ -57,6 +57,16 @@ class TimeSeries(Dataset):
                     exit(1)
 
     @staticmethod
+    def create_truncated_from_csv(
+        filenames: List[str],
+        input_series: List[str],
+        output_series: List[str],
+        length: int
+    ) -> TimeSeries:
+        series = TimeSeries.create_from_csv(filenames, input_series, output_series)
+        return series.slice(0, length)
+
+    @staticmethod
     def create_from_csv(filenames: List[str], input_series: List[str], output_series: List[str]) -> TimeSeries:
         """
         Initializes a TimeSeries object from a CSV file.
@@ -145,7 +155,7 @@ class TimeSeries(Dataset):
         for series_name, values in self.series_dictionary.items():
             slice_series_dictionary[series_name] = values[start_row:end_row].clone()
 
-        return TimeSeries(slice_series_dictionary)
+        return TimeSeries(slice_series_dictionary, self.input_series_names, self.output_series_names)
 
     def get_series_names(self) -> List[str]:
         return list(self.series_dictionary.keys())
@@ -163,3 +173,11 @@ class AAPLTimeSeriesConfig(TimeSeriesConfig):
     filenames: Tuple[str, ...] = (
         "~/Downloads/aapl.csv",
     )
+
+
+@configclass(name="base_aapl_time_series_dataset", group="dataset", target=TimeSeries.create_truncated_from_csv)
+class TestDataset(TimeSeriesConfig):
+    filenames: Tuple[str, ...] = (
+        "~/Downloads/aapl.csv",
+    )
+    length: int = 128

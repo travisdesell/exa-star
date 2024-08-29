@@ -38,7 +38,7 @@ class AddNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
         # calculate the depth of the new node (exclusive of 0.0 and 1.0 so it
         # is not at the same depth as the input or output nodes.
 
-        child_genome = genome
+        child_genome = genome.clone()
         child_depth = rng.uniform(math.nextafter(0.0, 1.0), 1.0)
 
         logger.info(f"adding node at child_depth: {child_depth}")
@@ -99,7 +99,6 @@ class AddNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
                 recurrent edges
             edge_generator: the edge generator to create the new edge(s)
         """
-
         avg_count, std_count = genome.get_edge_distributions(
             edge_type="input_edges", recurrent=recurrent
         )
@@ -128,8 +127,9 @@ class AddNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
             ]
 
         logger.trace(f"potential inputs: {potential_inputs}")
-
-        input_nodes = rng.choice(potential_inputs, n_inputs, replace=False)
+        if not recurrent:
+            assert target_node not in potential_inputs
+        input_nodes = rng.choice(potential_inputs, min(n_inputs, len(potential_inputs)), replace=False)
 
         for input_node in input_nodes:
             logger.trace(f"adding input node to child node: {input_node}")
@@ -189,7 +189,7 @@ class AddNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
 
         logger.trace(f"potential outputs: {potential_outputs}")
 
-        output_nodes = rng.choice(potential_outputs, n_outputs, replace=False)
+        output_nodes = rng.choice(potential_outputs, min(n_outputs, len(potential_outputs)), replace=False)
 
         for output_node in output_nodes:
             logger.trace(f"adding output node to child node: {output_node}")

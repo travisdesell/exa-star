@@ -15,6 +15,7 @@ from loguru import logger
 import numpy as np
 from pandas import DataFrame
 from pandas._typing import Axes
+import torch
 
 
 class EvolutionaryStrategy[G: Genome, D: Dataset](ABC, LogDataAggregator):
@@ -181,6 +182,7 @@ class SynchronousMTStrategy[G: Genome, D: Dataset](ParallelMTStrategy[G, D]):
             genome = task(SynchronousMTStrategy.rng)
 
             if genome:
+                print(torch.get_default_device())
                 genome.evaluate(fitness, EvolutionaryStrategy.get_dataset())
 
             return genome

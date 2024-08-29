@@ -74,7 +74,7 @@ class RecurrentEdgeGenerator[G: EXAStarGenome](EdgeGenerator[G]):
         input_node: Node,
         output_node: Node,
         rng: np.random.Generator,
-        recurrent: Optional[bool] = None,
+        recurrent: Optional[bool | int] = None,
     ) -> Edge:
         """
         Creates a new feed forward or recurrent edge for the computational graph.
@@ -91,11 +91,15 @@ class RecurrentEdgeGenerator[G: EXAStarGenome](EdgeGenerator[G]):
             A new edge for an EXA-GP computational graph.
         """
 
-        time_skip = 0
-
-        if recurrent or (recurrent is None and rng.random() < self.p_recurrent):
+        if recurrent is not None or (recurrent is None and rng.random() < self.p_recurrent):
             # this will be a recurrent edge
-            time_skip = rng.integers(1, self.max_time_skip)
+            if type(recurrent) is int:
+                time_skip = recurrent
+            else:
+                time_skip = rng.integers(1, self.max_time_skip)
+        else:
+            time_skip = 0
+            assert input_node != output_node
 
         return RecurrentEdge(input_node, output_node, target_genome.input_nodes[0].max_sequence_length, True, time_skip)
 

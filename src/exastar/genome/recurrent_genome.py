@@ -129,8 +129,10 @@ class RecurrentGenome(EXAStarGenome[Edge]):
             A dict of a list of tensors, one entry for each parameter, where the
                 key of the dict is the predicted parameter name.
         """
-        for edge in self.edges:
+        for edge in filter(Edge.is_active, self.edges):
             edge.fire_recurrent_preinput()
+
+        assert sorted(self.nodes) == self.nodes
 
         for time_step in range(input_series.series_length):
             for input_node in self.input_nodes:
@@ -161,6 +163,10 @@ class RecurrentGenome(EXAStarGenome[Edge]):
             opitmizer: The pytorch optimizer to use to adapt weights.
             iterations: How many iterations to train for.
         """
+        self.calculate_reachability()
+
+        assert self.viable
+
         for iteration in range(iterations + 1):
             self.reset()
 
@@ -190,5 +196,3 @@ class RecurrentGenome(EXAStarGenome[Edge]):
                 loss = loss.detach()[0]
                 logger.info(f"final fitness (loss): {loss}, type: {type(loss)}")
                 return loss
-
-        self.reset()

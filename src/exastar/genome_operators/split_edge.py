@@ -17,15 +17,15 @@ class SplitEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         """
         Given the parent genome, create a child genome which is a clone
         of the parent with an edge split.
+
+
         Args:
             parent_genomes: a list of parent genomes to create the child genome from.
                 SplitEdge only uses the first
         Returns:
             A new genome to evaluate.
         """
-        child_genome = genome.clone()
-
-        target_edge = rng.choice(child_genome.edges)
+        target_edge = rng.choice(genome.edges)
         target_edge.disable()
 
         input_node = target_edge.input_node
@@ -35,23 +35,31 @@ class SplitEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         # same as either
         child_depth = input_node.depth
 
+        # in the event that out target_edge is recurrent, the nodes may not be sorted by depth
+        if input_node.depth < output_node.depth:
+            min_depth, max_depth = input_node.depth, output_node.depth
+        else:
+            min_depth, max_depth = output_node.depth, input_node.depth
+
         if input_node.depth != output_node.depth:
-            child_depth = rng.uniform(low=math.nextafter(input_node.depth, output_node.depth), high=output_node.depth)
-        new_node = self.node_generator(child_depth, child_genome, rng)
+            child_depth = rng.uniform(low=math.nextafter(min_depth, max_depth), high=max_depth)
 
-        child_genome.add_node(new_node)
+        new_node = self.node_generator(child_depth, genome, rng)
 
-        input_edge = target_edge.clone(input_node, new_node)
+        genome.add_node(new_node)
 
-        child_genome.add_edge(input_edge)
+        # TODO: Should we randomly generate new edges rather than copying the parameters of the split edge?
+        input_edge = self.edge_generator(genome, input_node, new_node, rng, target_edge.time_skip)
 
-        output_edge = target_edge.clone(new_node, output_node)
+        genome.add_edge(input_edge)
 
-        child_genome.add_edge(output_edge)
+        output_edge = self.edge_generator(genome, new_node, output_node, rng, target_edge.time_skip)
+
+        genome.add_edge(output_edge)
 
         # TODO: Manually initialize weights of newly generated components
 
-        return child_genome
+        return genome
 
 
 @ configclass(name="base_split_edge_mutation", group="genome_factory/mutation_operators", target=SplitEdge)

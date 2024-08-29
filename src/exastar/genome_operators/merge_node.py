@@ -15,11 +15,9 @@ class MergeNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
         super().__init__(*args, **kwargs)
 
     def __call__(self, genome: G, rng: np.random.Generator) -> Optional[G]:
-        child_genome = genome.clone()
-
         possible_nodes: list = [
             node
-            for node in child_genome.nodes
+            for node in genome.nodes
             if type(node) is Node
         ]
 
@@ -42,18 +40,18 @@ class MergeNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
                 lo, hi = depths
                 child_depth = rng.uniform(low=math.nextafter(lo, hi), high=hi)
 
-        new_node = self.node_generator(child_depth, child_genome, rng)
-        child_genome.add_node(new_node)
+        new_node = self.node_generator(child_depth, genome, rng)
+        genome.add_node(new_node)
 
         print(f"creating new node at depth: {child_depth}")
 
         for parent_node in [node1, node2]:
             for edge in parent_node.input_edges:
-                child_genome.add_edge(edge.clone(edge.input_node, new_node))
+                genome.add_edge(self.edge_generator(genome, edge.input_node, new_node, rng, edge.time_skip))
                 edge.disable()
 
             for edge in parent_node.output_edges:
-                child_genome.add_edge(edge.clone(new_node, edge.output_node))
+                genome.add_edge(self.edge_generator(genome, new_node, edge.output_node, rng, edge.time_skip))
                 edge.disable()
 
             # disable the parent nodes that are merged (the above loops disable
@@ -61,9 +59,9 @@ class MergeNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
             parent_node.disable()
 
         # TODO: Manually initialize weights, using the weight generator
-        # self.weight_generator(child_genome)
+        # self.weight_generator(genome)
 
-        return child_genome
+        return genome
 
 
 @ configclass(name="base_merge_node_mutation", group="genome_factory/mutation_operators", target=MergeNode)

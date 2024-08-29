@@ -35,20 +35,6 @@ class RecurrentEdge(Edge):
         self.time_skip = time_skip
         self.weight = torch.nn.Parameter(torch.ones(1))
 
-    @overrides(Edge)
-    def clone(self, inon_to_node: Dict[node_inon_t, Node]) -> Self:
-        clone = RecurrentEdge(
-            inon_to_node[self.input_node.inon],
-            inon_to_node[self.output_node.inon],
-            self.max_sequence_length,
-            self.enabled,
-            self.time_skip,
-            self.inon,
-        )
-        with torch.no_grad():
-            clone.weight[:] = self.weight[:]
-        return clone
-
     def __repr__(self) -> str:
         """
         Returns:
@@ -60,6 +46,7 @@ class RecurrentEdge(Edge):
             f"input_node={self.input_node.inon}, "
             f"output_node={self.output_node.inon}, "
             f"enabled={self.enabled}, "
+            f"active={self.active}, "
             f"time_skip={self.time_skip}, "
             f"weight={self.weight}"
             ")"

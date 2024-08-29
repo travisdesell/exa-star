@@ -1,10 +1,13 @@
 from abc import abstractmethod
-from typing import Dict, Optional, Self
+import copy
+from typing import cast, Dict, Optional, Self, Tuple
 
 from exastar.inon import inon_t
+from exastar.genome.component.component import Component
 from exastar.genome.component.node import Node, node_inon_t
 from util.typing import ComparableMixin, overrides
 
+from loguru import logger
 import torch
 
 
@@ -12,7 +15,7 @@ class edge_inon_t(inon_t):
     ...
 
 
-class Edge(ComparableMixin, torch.nn.Module):
+class Edge(ComparableMixin, Component, torch.nn.Module):
     def __init__(
         self,
         input_node: Node,
@@ -34,6 +37,7 @@ class Edge(ComparableMixin, torch.nn.Module):
         super().__init__(type=Edge)
 
         self.enabled: bool = enabled
+        self.active: bool = True
 
         self.inon: edge_inon_t = inon if inon is not None else edge_inon_t()
         self.max_sequence_length = max_sequence_length
@@ -41,22 +45,37 @@ class Edge(ComparableMixin, torch.nn.Module):
         self.input_node = input_node
         self.output_node = output_node
 
+        self._connect()
+
+    def _connect(self):
         self.input_node.add_output_edge(self)
         self.output_node.add_input_edge(self)
 
-    @abstractmethod
-    def clone(self, inon_to_node: Dict[node_inon_t, Node]) -> Self:
+    def __setstate__(self, state):
         """
-        Creates a clone of this edge, using the supplied copied nodes in `inon_to_node`.
-        The genome will ensure the edges are added to the nodes, you need not do so.
-
-        Args:
-            inon_to_node: maps node inon to a copy of that node that is to be used in the clone.
-
-        Returns:
-            A clone of this edge.
+        To avoid ultra-deep recurrent pickling (which causes stack overflow issues), we require edges to
+        add themselves to nodes when they're being un-pickled or otherwise loaded.
         """
-        ...
+        super().__setstate__(state)
+        self._connect()
+
+    def __deepcopy__(self, memo):
+        """
+        Same story as __setstate__: deepcopy of recurrent objects causes stack overflow issues, so edges
+        will add themselves to nodes when copied (nodes will in turn copy no edges, relying on this).
+        """
+        cls = self.__class__
+        clone = cls.__new__(cls)
+
+        memo[id(self)] = clone
+
+        state = cast(Dict, self.__getstate__())
+        for k, v in state.items():
+            setattr(clone, k, copy.deepcopy(v, memo))
+
+        clone._connect()
+
+        return clone
 
     @overrides(torch.nn.Module)
     def __repr__(self) -> str:
@@ -66,6 +85,7 @@ class Edge(ComparableMixin, torch.nn.Module):
         return (
             f"[edge {type(self)}, "
             f"enabled: {self.enabled}, "
+            f"active: {self.is_active()}, "
             f"inon: {self.inon}, "
             f"input_node: {repr(self.input_node)}, "
             f"output_node: {repr(self.output_node)}]"
@@ -101,12 +121,3 @@ class Edge(ComparableMixin, torch.nn.Module):
             value: the output value of the input node.
         """
         ...
-
-    def set_enabled(self, enabled: bool) -> None:
-        self.enabled = enabled
-
-    def enable(self) -> None:
-        self.set_enabled(True)
-
-    def disable(self) -> None:
-        self.set_enabled(False)

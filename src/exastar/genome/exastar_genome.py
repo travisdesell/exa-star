@@ -1,9 +1,13 @@
 from __future__ import annotations
 from abc import abstractmethod
 import bisect
-from typing import Any, cast, Dict, List, Optional, Self, Set, Tuple
+from collections import deque
+import copy
+import itertools
+from typing import Any, Callable, cast, Dict, List, Optional, Self, Set, Tuple
 
 from exastar.genome.component import Edge, edge_inon_t, Node, node_inon_t, InputNode, OutputNode
+from exastar.genome.component.component import Component
 from genome import Genome, FitnessValue
 from exastar.time_series import TimeSeries
 from util.typing import ComparableMixin
@@ -94,6 +98,9 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
             "Use a helper function, or create one. "
         )
 
+    # def __getstate__(self) -> Dict[str, Any]:
+    #     return {}
+
     # def __getattr__(self, attr: str) -> Any:
     #     """
     #     Overridden to prevent direct access to fields that have strict ordering requirements.
@@ -111,25 +118,25 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
     #         case _:
     #             return super().__setattr__(attr, value)
 
-    @classmethod
-    def _clone(cls, genome: EXAStarGenome) -> Self:
-        # `new` creates a copy of the object but does not copy the edge lists.
-        nodes: List[Node] = [node.new() for node in genome.nodes]
-        input_nodes: List[InputNode] = cast(List[InputNode], list(
-            filter(lambda x: isinstance(x, InputNode), nodes))
-        )
-        output_nodes: List[OutputNode] = cast(List[OutputNode], list(
-            filter(lambda x: isinstance(x, OutputNode), nodes))
-        )
+    # @classmethod
+    # def _clone(cls, genome: EXAStarGenome) -> Self:
+    #     # `new` creates a copy of the object but does not copy the edge lists.
+    #     nodes: List[Node] = [node.new() for node in genome.nodes]
+    #     input_nodes: List[InputNode] = cast(List[InputNode], list(
+    #         filter(lambda x: isinstance(x, InputNode), nodes))
+    #     )
+    #     output_nodes: List[OutputNode] = cast(List[OutputNode], list(
+    #         filter(lambda x: isinstance(x, OutputNode), nodes))
+    #     )
 
-        inon_to_node: Dict[node_inon_t, Node] = {node.inon: node for node in nodes}
-        edges: List[E] = [edge.clone(inon_to_node) for edge in genome.edges]
+    #     inon_to_node: Dict[node_inon_t, Node] = {node.inon: node for node in nodes}
+    #     edges: List[E] = [edge.clone(inon_to_node) for edge in genome.edges]
 
-        return cls(genome.generation_number, input_nodes, output_nodes, nodes, edges, genome.fitness)
+    #     return cls(genome.generation_number, input_nodes, output_nodes, nodes, edges, genome.fitness)
 
     @overrides(Genome)
     def clone(self) -> Self:
-        return cast(Self, type(self)._clone(self))
+        return copy.deepcopy(self)
 
     @constmethod
     @overrides(LogDataProvider[None])
@@ -345,6 +352,35 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
                     return False
         return True
 
+    def _reachable_components(
+        self,
+        nodes_to_visit: deque[Node],
+        visit_node: Callable[[Node], List[Edge]],
+        visit_edge: Callable[[Edge], Node]
+    ) -> Set[Component]:
+
+        reachable: Set[Component] = set()
+
+        visited_nodes: Set[Node] = set()
+
+        while nodes_to_visit:
+            node = nodes_to_visit.popleft()
+            visited_nodes.add(node)
+
+            if not node.enabled:
+                continue
+
+            reachable.add(node)
+
+            for edge in filter(Edge.is_enabled, visit_node(node)):
+                reachable.add(edge)
+                output_node: Node = visit_edge(edge)
+
+                if output_node and output_node not in visited_nodes:
+                    nodes_to_visit.append(output_node)
+
+        return reachable
+
     def calculate_reachability(self):
         """Determines which nodes and edges are forward and backward
         reachable so we know which to use in the forward and backward
@@ -352,80 +388,37 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
         outputs of the neural network are reachable.
         """
 
-        # first reset all reachability
-        for node in sorted(self.nodes):
-            node.forward_reachable = False
-            node.backward_reachable = False
+        for component in itertools.chain(self.nodes, self.edges):
+            component.active = False
 
-        for edge in self.edges:
-            edge.forward_reachable = False
-            edge.backward_reachable = False
+        forward_reachable_components: Set[Component] = self._reachable_components(
+            deque(self.input_nodes),
+            lambda node: node.output_edges,
+            lambda edge: edge.output_node,
+        )
+        backward_reachable_components: Set[Component] = self._reachable_components(
+            deque(self.output_nodes),
+            lambda node: node.input_edges,
+            lambda edge: edge.input_node,
+        )
 
-        # do a breadth first search forward through the network to
-        # determine forward reachability
-        nodes_to_visit = self.input_nodes.copy()
-        visited_nodes = []
-
-        while len(nodes_to_visit) > 0:
-            node = nodes_to_visit.pop(0)
-
-            if node.enabled:
-                node.forward_reachable = True
-
-                for edge in node.output_edges:
-                    if edge.enabled:
-                        edge.forward_reachable = True
-                        output_node = edge.output_node
-
-                        if (
-                            output_node is not None
-                            and output_node not in visited_nodes
-                            and output_node not in nodes_to_visit
-                        ):
-                            nodes_to_visit.append(output_node)
-
-            visited_nodes.append(node)
-
-        # now do the reverse for backward reachability
-        nodes_to_visit = self.output_nodes.copy()
-        visited_nodes = []
-
-        while len(nodes_to_visit) > 0:
-            node = nodes_to_visit.pop(0)
-
-            if node.enabled:
-                node.backward_reachable = True
-
-                for edge in node.input_edges:
-                    if edge.enabled:
-                        edge.backward_reachable = True
-                        input_node = edge.input_node
-
-                        if (
-                            input_node is not None
-                            and input_node not in visited_nodes
-                            and input_node not in nodes_to_visit
-                        ):
-                            nodes_to_visit.append(input_node)
-
-            visited_nodes.append(node)
+        active_components: Set[Node | Edge] = forward_reachable_components.intersection(backward_reachable_components)
+        for component in active_components:
+            component.activate()
 
         # set the nodes and edges to active if they will actually be involved
         # in computing the outputs
         for node in self.nodes:
-            node.active = node.forward_reachable and node.backward_reachable
             # set the required inputs for each node
             node.required_inputs = 0
 
-        for edge in self.edges:
-            edge.active = edge.forward_reachable and edge.backward_reachable
-            if edge.active:
-                edge.output_node.required_inputs += 1
+        for edge in filter(Edge.is_active, self.edges):
+            edge.output_node.required_inputs += 1
 
         # determine if the network is viable
         self.viable = True
         for node in self.output_nodes:
-            if not node.forward_reachable:
+            if node not in forward_reachable_components:
                 self.viable = False
                 break
 

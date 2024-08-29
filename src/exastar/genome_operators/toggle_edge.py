@@ -26,9 +26,8 @@ class SetEdgeEnabled[G: EXAStarGenome](EXAStarMutationOperator[G]):
         Given the parent genome, create a child genome which is a clone
         of the parent with an edge split.
         """
-        child_genome = genome.clone()
 
-        potential_edges = [edge for edge in child_genome.edges if edge.enabled != self.enabled]
+        potential_edges = [edge for edge in genome.edges if edge.enabled != self.enabled]
 
         if len(potential_edges) == 0:
             return None
@@ -36,7 +35,7 @@ class SetEdgeEnabled[G: EXAStarGenome](EXAStarMutationOperator[G]):
         target_edge = rng.choice(potential_edges)
         target_edge.set_enabled(self.enabled)
 
-        return child_genome
+        return genome
 
 
 @configclass(name="base_disable_edge_mutation", group="genome_factory/mutation_operators",

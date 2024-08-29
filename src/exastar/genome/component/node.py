@@ -1,12 +1,14 @@
 from __future__ import annotations
 import bisect
+import copy
 from itertools import chain
-from typing import List, Optional, Self, TYPE_CHECKING, Tuple
+from typing import Dict, List, Optional, Self, TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
     from exastar.genome.component.edge import Edge
 
 from exastar.inon import inon_t
+from exastar.genome.component.component import Component
 from util.typing import ComparableMixin, overrides
 
 from loguru import logger
@@ -18,7 +20,7 @@ class node_inon_t(inon_t):
     ...
 
 
-class Node(ComparableMixin, torch.nn.Module):
+class Node(ComparableMixin, Component, torch.nn.Module):
 
     def __init__(
         self,
@@ -42,8 +44,8 @@ class Node(ComparableMixin, torch.nn.Module):
 
         self.inon: node_inon_t = inon if inon is not None else node_inon_t()
         self.depth: float = depth
-        self.enabled: bool = enabled
         self.max_sequence_length: int = max_sequence_length
+        self.required_inputs: int = 0
 
         self.input_edges: List[Edge] = []
         self.output_edges: List[Edge] = []
@@ -51,6 +53,40 @@ class Node(ComparableMixin, torch.nn.Module):
         self.inputs_fired: np.ndarray = np.ndarray(shape=(max_sequence_length,), dtype=np.int32)
 
         self.value = [torch.zeros(1)] * self.max_sequence_length
+
+    def __getstate__(self):
+        """
+        Overrides the default implementation of object.__getstate__ because we are unable to pickle
+        large networks if we include input and outptut edges. Instead, we will rely on the construction of
+        new edges to add the appropriate input and output edges. See exastar.genome.component.Edge.__setstate__
+        to see how this is done.
+
+        Returns:
+            state dictionary sans the input and output edges
+        """
+        state: dict = dict(self.__dict__)
+
+        state["input_edges"] = []
+        state["output_edges"] = []
+
+        return state
+
+    def __deepcopy__(self, memo):
+        """
+        Same story as __getstate__: we want to avoid stack overflow when copying, so we exclude edges.
+        """
+
+        cls = self.__class__
+        clone = cls.__new__(cls)
+
+        memo[id(self)] = clone
+
+        # __getstate__ defines input_edges and output_edges to be empty lists
+        state = self.__getstate__()
+        for k, v in state.items():
+            setattr(clone, k, copy.deepcopy(v, memo))
+
+        return clone
 
     def new(self) -> Self:
         """
@@ -127,10 +163,11 @@ class Node(ComparableMixin, torch.nn.Module):
             # is called on the Node.
             self.accumulate(time_step=time_step, value=value)
 
-            assert self.inputs_fired[time_step] <= len(self.input_edges), (
-                f"node inputs fired {self.inputs_fired[time_step]} > len(self.input_edges): {len(self.input_edges)}\n"
+            assert self.inputs_fired[time_step] <= self.required_inputs, (
+                f"node inputs fired {self.inputs_fired[time_step]} > len(self.input_edges): {self.required_inputs}\n"
                 f"node {type(self)}, inon: {self.inon} at "
                 f"depth: {self.depth}\n"
+                f"edges:\n {self.input_edges}\n"
                 "this should never happen, for any forward pass a node should get at most N input fireds"
                 ", which should not exceed the number of input edges."
             )
@@ -159,18 +196,6 @@ class Node(ComparableMixin, torch.nn.Module):
         """
         self.value[time_step] = self.value[time_step] + value
 
-    def set_enabled(self, enabled: bool) -> None:
-        self.enabled = enabled
-
-        for edge in chain(self.input_edges, self.output_edges):
-            edge.set_enabled(enabled)
-
-    def enable(self) -> None:
-        self.set_enabled(True)
-
-    def disable(self) -> None:
-        self.set_enabled(False)
-
     def forward(self, time_step: int):
         """
         Propagates an input node's value forward for a given time step. Will
@@ -182,7 +207,7 @@ class Node(ComparableMixin, torch.nn.Module):
         # check to make sure in the case of input nodes which
         # have recurrent connections feeding into them that
         # all recurrent edges have fired
-        assert self.inputs_fired[time_step] == len(self.input_edges), (
+        assert self.inputs_fired[time_step] == self.required_inputs, (
             f"Calling forward on node '{self}' at time "
             f"step {time_step}, where all incoming recurrent edges have not "
             f"yet been fired. len(self.input_edges): {len(self.input_edges)} "
@@ -190,5 +215,5 @@ class Node(ComparableMixin, torch.nn.Module):
             f", self.inputs_fired[{time_step}]: {self.inputs_fired[time_step]}"
         )
 
-        for output_edge in self.output_edges:
+        for output_edge in filter(Component.is_active, self.output_edges):
             output_edge.forward(time_step=time_step, value=self.value[time_step])

@@ -6,6 +6,10 @@ defaults:
   - genome_factory/mutation_operators@genome_factory.mutation_operators.add_node: base_add_node_mutation
   - genome_factory/mutation_operators@genome_factory.mutation_operators.add_edge: base_add_edge_mutation
   - genome_factory/mutation_operators@genome_factory.mutation_operators.add_rec_edge: base_add_recurrent_edge_mutation
+  - genome_factory/mutation_operators@genome_factory.mutation_operators.clone: base_clone_mutation
+  - genome_factory/mutation_operators@genome_factory.mutation_operators.merge_node: base_merge_node_mutation
+  - genome_factory/mutation_operators@genome_factory.mutation_operators.split_edge: base_split_edge_mutation
+  - genome_factory/mutation_operators@genome_factory.mutation_operators.split_node: base_split_node_mutation
   - init_tasks@init_tasks.dataset: base_dataset_init_task
   - init_tasks@init_tasks.inon: base_inon_init_task
   - fitness: base_exastar_mse
