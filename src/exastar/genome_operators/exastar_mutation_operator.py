@@ -4,7 +4,7 @@ from genome import MutationOperator, MutationOperatorConfig
 from exastar.genome import EXAStarGenome
 from exastar.genome_operators.node_generator import NodeGenerator, NodeGeneratorConfig, EXAStarNodeGeneratorConfig
 from exastar.genome_operators.edge_generator import (
-    EdgeGenerator, EdgeGeneratorConfig, EXAStarEdgeGeneratorConfig, RecurrentEdgeGenerator, RecurrentEdgeGeneratorConfig
+    EdgeGenerator, EdgeGeneratorConfig, RecurrentEdgeGeneratorConfig
 )
 
 from exastar.weights import WeightGenerator, WeightGeneratorConfig

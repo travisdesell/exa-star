@@ -7,7 +7,8 @@ from config import configclass
 
 class LogDataProvider[T]:
 
-    def __init__(self) -> None: ...
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 
     def prefix(self, prefix: str, data: Dict[str, Any]) -> Dict[str, Any]:
         return self._modify_keys(prefix, "", data)

@@ -1,12 +1,15 @@
 from __future__ import annotations
 from itertools import chain, product
+import math
 from typing import cast, Dict, List
 
+from genome import MSEValue
 from exastar.genome.component import Edge, Node, InputNode, OutputNode, RecurrentEdge
-from exastar.genome.fitness import EXAStarMSE
 from exastar.genome.exastar_genome import EXAStarGenome
 from exastar.time_series import TimeSeries
 
+from genome import FitnessValue
+from loguru import logger
 import torch
 
 
@@ -43,6 +46,7 @@ class RecurrentGenome(EXAStarGenome[Edge]):
             list(output_nodes.values()),
             nodes,
             edges,
+            MSEValue(math.inf),
             max_sequence_length
         )
 
@@ -79,7 +83,8 @@ class RecurrentGenome(EXAStarGenome[Edge]):
             output_nodes,
             cast(List[Node], input_nodes + output_nodes),
             edges,
-            max_sequence_length
+            MSEValue(math.inf),
+            max_sequence_length,
         )
 
     def __init__(
@@ -89,6 +94,7 @@ class RecurrentGenome(EXAStarGenome[Edge]):
         output_nodes: List[OutputNode],
         nodes: List[Node],
         edges: List[Edge],
+        fitness: FitnessValue,
         max_sequence_length: int = -1,
     ) -> None:
         """
@@ -108,6 +114,7 @@ class RecurrentGenome(EXAStarGenome[Edge]):
             output_nodes,
             nodes,
             edges,
+            fitness,
         )
 
         self.max_sequence_length = max_sequence_length
@@ -130,7 +137,7 @@ class RecurrentGenome(EXAStarGenome[Edge]):
                 x = input_series.series_dictionary[input_node.parameter_name][time_step]
                 input_node.accumulate(time_step=time_step, value=x)
 
-            for node in sorted(self.nodes):
+            for node in self.nodes:
                 node.forward(time_step=time_step)
 
         outputs = {}
@@ -154,20 +161,19 @@ class RecurrentGenome(EXAStarGenome[Edge]):
             opitmizer: The pytorch optimizer to use to adapt weights.
             iterations: How many iterations to train for.
         """
-
-        loss = None
-        for iteration in range(iterations):
+        for iteration in range(iterations + 1):
             self.reset()
+
             outputs = self.forward(input_series)
 
-            loss = torch.tensor(0.0)
+            loss = torch.zeros(1)
             for parameter_name, values in outputs.items():
                 expected = output_series.series_dictionary[parameter_name]
 
                 for i in range(len(expected)):
                     diff = expected[i] - values[i]
-                    # print(f"expected[{i}]: {expected[i]} - values[{i}]: {values[i]} = {diff}")
-                    loss += diff * diff
+                    # logger.info(f"expected[{i}]: {expected[i]} - values[{i}]: {values[i]} = {diff}")
+                    loss = loss + diff * diff
 
             loss = torch.sqrt(loss)
 
@@ -175,13 +181,14 @@ class RecurrentGenome(EXAStarGenome[Edge]):
                 # don't need to do backpropagate on the last iteration, but also this lets
                 # us calculate the loss without doing backprop at all if iterations == 0
 
-                print(f"iteration {iteration} loss: {loss}")
+                logger.info(f"iteration {iteration} loss: {loss}")
 
                 loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
-
-        return EXAStarMSE(loss.detach().item())
+            else:
+                loss = loss.detach()[0]
+                logger.info(f"final fitness (loss): {loss}, type: {type(loss)}")
+                return loss
 
         self.reset()
-        print(f"final fitness (loss): {self.fitness}, type: {type(self.fitness)}")

@@ -4,6 +4,8 @@ defaults:
   - genome_factory: base_exastar_genome_factory_config
   - genome_factory/seed_genome_factory: base_trivial_recurrent_seed_genome_factory
   - genome_factory/mutation_operators@genome_factory.mutation_operators.add_node: base_add_node_mutation
+  - genome_factory/mutation_operators@genome_factory.mutation_operators.add_edge: base_add_edge_mutation
+  - genome_factory/mutation_operators@genome_factory.mutation_operators.add_rec_edge: base_add_recurrent_edge_mutation
   - init_tasks@init_tasks.dataset: base_dataset_init_task
   - init_tasks@init_tasks.inon: base_inon_init_task
   - fitness: base_exastar_mse
@@ -11,4 +13,6 @@ defaults:
 
 output_directory: "output/test"
 nsteps: 32000
-parallelism: 2
+parallelism: 8
+population:
+  size: 8

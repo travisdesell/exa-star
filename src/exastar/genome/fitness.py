@@ -1,7 +1,7 @@
-from typing import Dict
+from typing import Dict, Tuple
 
 from config import configclass
-from genome import Fitness, FitnessConfig, MSEValue
+from genome import Fitness, FitnessConfig, FitnessValue, MSEValue
 from exastar.genome.exastar_genome import EXAStarGenome
 from exastar.time_series import TimeSeries
 
@@ -26,8 +26,11 @@ class EXAStarMSE(EXAStarTimeSeriesRegressionFitness[EXAStarGenome]):
         super().__init__()
 
     def compute(self, genome: EXAStarGenome, dataset: TimeSeries) -> MSEValue[EXAStarGenome]:
-        return genome.train(dataset.get_inputs(dataset.input_series_names, 1),
-                            dataset.get_outputs(dataset.output_series_names, 1), torch.optim.Adam(genome.parameters()), 10)
+        value = MSEValue(
+            genome.train(dataset.get_inputs(dataset.input_series_names, 1),
+                         dataset.get_outputs(dataset.output_series_names, 1), torch.optim.Adam(genome.parameters()), 1)
+        )
+        return value
 
 
 @ configclass(name="base_exastar_mse", group="fitness", target=EXAStarMSE)

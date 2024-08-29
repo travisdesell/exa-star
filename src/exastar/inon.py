@@ -1,9 +1,11 @@
 import multiprocess as mp
 import threading
-from typing import Any, Dict, Self
+from typing import Any, Dict, Self, Optional
 
 from config import configclass
-from evolution import InitTask, InitTaskConfig, SynchronousMTStrategy
+from evolution import InitTask, InitTaskConfig, ParallelMTStrategy, SynchronousMTStrategy
+
+from loguru import logger
 
 
 class inon_t(int):
@@ -16,8 +18,9 @@ class inon_t(int):
         inon_t.counter = mod_class
         inon_t.divisor = divisor
 
-    def __new__(cls, *args, **kwargs) -> Self:
-        return int.__new__(cls, inon_t._next())
+    def __new__(cls, value: Optional[int] = None, *args, **kwargs) -> Self:
+        value = value if value is not None else inon_t._next()
+        return int.__new__(cls, value)
 
     @staticmethod
     def _next() -> int:
@@ -30,7 +33,7 @@ class inon_t(int):
         return number
 
 
-class InonInitTask(InitTask):
+class InonInitTask[E: ParallelMTStrategy](InitTask):
 
     def __init__(self) -> None:
         super().__init__()
@@ -38,9 +41,9 @@ class InonInitTask(InitTask):
     def run(self, values: Dict[str, Any]) -> None:
         mod_class, divisor = values["id_queue"].get()
         inon_t.set_mod_class(mod_class, divisor)
-        print(f"mod_class {mod_class}, divisor {divisor}")
+        logger.info(f"setting mod class to `{mod_class} mod {divisor}`")
 
-    def values(self, strategy: SynchronousMTStrategy) -> Dict[str, Any]:
+    def values(self, strategy: E) -> Dict[str, Any]:
         q = mp.Queue()
 
         for i in range(strategy.parallelism):

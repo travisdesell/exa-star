@@ -5,6 +5,7 @@ from exastar.genome.component.node import Node, node_inon_t
 
 from util.typing import overrides
 
+from loguru import logger
 import torch
 
 
@@ -86,7 +87,7 @@ class RecurrentEdge(Edge):
             time_step: the time step the value is being fed from.
             value: the output value of the input node.
         """
-        output_value = value * self.weight[0]
+        output_value = value * self.weight
 
         self.output_node.input_fired(
             time_step=time_step + self.time_skip, value=output_value

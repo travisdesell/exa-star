@@ -15,6 +15,7 @@ from config import configclass
 from util.log import LogDataProvider
 from util.typing import ComparableMixin, constmethod
 
+from loguru import logger
 import numpy as np
 from pandas.core.frame import functools
 
@@ -53,10 +54,10 @@ class FitnessConfig:
 
 class Genome(ABC, LogDataProvider):
 
-    def __init__(self, **kwargs) -> None:
-        LogDataProvider.__init__(self, **kwargs)
+    def __init__(self, fitness: FitnessValue, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 
-        self.fitness: FitnessValue[Self] = FitnessValue()
+        self.fitness: FitnessValue[Self] = fitness
 
     @abstractmethod
     @constmethod
@@ -80,6 +81,8 @@ class MSEValue[G: Genome](FitnessValue):
     def _cmpkey(self) -> Tuple:
         return (-self.mse, )
 
+    def __repr__(self) -> str: return f"MSEValue({self.mse})"
+
 
 class GenomeOperator[G: Genome](ABC):
 
@@ -101,7 +104,8 @@ class MutationOperator[G: Genome](GenomeOperator[G]):
     @abstractmethod
     def __call__(self, genome: G, rng: np.random.Generator) -> Optional[G]:
         """
-        Attempts to perform a mutation on `genome`, modifying it in place.
+        Attempts to perform a mutation on `genome`, modifying it in place: any cloning is the responsibility
+        of the caller.
         If the mutation cannot be performed, returns `None`.
         """
         ...

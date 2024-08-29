@@ -40,7 +40,7 @@ class Node(ComparableMixin, torch.nn.Module):
         """
         super().__init__(type=Node)
 
-        self.inon: node_inon_t = inon if inon else node_inon_t()
+        self.inon: node_inon_t = inon if inon is not None else node_inon_t()
         self.depth: float = depth
         self.enabled: bool = enabled
         self.max_sequence_length: int = max_sequence_length
@@ -50,7 +50,7 @@ class Node(ComparableMixin, torch.nn.Module):
 
         self.inputs_fired: np.ndarray = np.ndarray(shape=(max_sequence_length,), dtype=np.int32)
 
-        self.value = torch.zeros(self.max_sequence_length)
+        self.value = [torch.zeros(1)] * self.max_sequence_length
 
     def new(self) -> Self:
         """
@@ -60,7 +60,6 @@ class Node(ComparableMixin, torch.nn.Module):
         Note: any torch parameters should be copied over here (our default node has none).
         """
         n = Node(self.depth, self.max_sequence_length, self.inon, self.enabled)
-        print(n.inputs_fired)
         return n
 
     @overrides(torch.nn.Module)
@@ -144,7 +143,9 @@ class Node(ComparableMixin, torch.nn.Module):
         forward and backward pass.
         """
         self.inputs_fired[:] = 0
-        self.value[:] = 0.0
+        with torch.no_grad():
+            for ts in self.value:
+                ts[:] = 0.0
 
     def accumulate(self, time_step: int, value: torch.Tensor):
         """
@@ -156,7 +157,7 @@ class Node(ComparableMixin, torch.nn.Module):
             time_step: is the time step the input is being fired from.
             value: is the tensor being passed forward from the input edge.
         """
-        self.value[time_step] += value
+        self.value[time_step] = self.value[time_step] + value
 
     def set_enabled(self, enabled: bool) -> None:
         self.enabled = enabled
@@ -185,6 +186,7 @@ class Node(ComparableMixin, torch.nn.Module):
             f"Calling forward on node '{self}' at time "
             f"step {time_step}, where all incoming recurrent edges have not "
             f"yet been fired. len(self.input_edges): {len(self.input_edges)} "
+            f"edges: {self.input_edges}"
             f", self.inputs_fired[{time_step}]: {self.inputs_fired[time_step]}"
         )
 

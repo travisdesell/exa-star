@@ -23,29 +23,6 @@ class EdgeGenerator[G: EXAStarGenome](ABC):
 
     @abstractmethod
     def __call__(
-        self, target_genome: G, input_node: Node, output_node: Node, rng: np.random.Generator
-    ) -> Edge:
-        """
-        Creates a new edge in the target genome between the input and output node.
-        Args:
-            target_genome: is the genome the edge will be created for.
-            input_node: is the edge's input node.
-            output_node: is the edge's output node.
-        Returns:
-            A new edge for for a computational graph
-        """
-        ...
-
-
-@dataclass
-class EdgeGeneratorConfig:
-    ...
-
-
-class EXAStarEdgeGenerator[G: EXAStarGenome](ABC):
-
-    @abstractmethod
-    def __call__(
         self,
         target_genome: G,
         input_node: Node,
@@ -66,7 +43,7 @@ class EXAStarEdgeGenerator[G: EXAStarGenome](ABC):
 
 
 @dataclass
-class EXAStarEdgeGeneratorConfig(EdgeGeneratorConfig):
+class EdgeGeneratorConfig:
     ...
 
 
@@ -115,6 +92,7 @@ class RecurrentEdgeGenerator[G: EXAStarGenome](EdgeGenerator[G]):
         """
 
         time_skip = 0
+
         if recurrent or (recurrent is None and rng.random() < self.p_recurrent):
             # this will be a recurrent edge
             time_skip = rng.integers(1, self.max_time_skip)

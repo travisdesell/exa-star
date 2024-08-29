@@ -4,7 +4,7 @@ import bisect
 from typing import Any, cast, Dict, List, Optional, Self, Set, Tuple
 
 from exastar.genome.component import Edge, edge_inon_t, Node, node_inon_t, InputNode, OutputNode
-from genome import Genome
+from genome import Genome, FitnessValue
 from exastar.time_series import TimeSeries
 from util.typing import ComparableMixin
 from util.typing import constmethod, overrides
@@ -17,7 +17,7 @@ import numpy as np
 import torch
 
 
-class EXAStarGenome[E: Edge](ComparableMixin, torch.nn.Module, Genome):
+class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
 
     def __init__(
         self,
@@ -25,7 +25,8 @@ class EXAStarGenome[E: Edge](ComparableMixin, torch.nn.Module, Genome):
         input_nodes: List[InputNode],
         output_nodes: List[OutputNode],
         nodes: List[Node],
-        edges: List[E]
+        edges: List[E],
+        fitness: FitnessValue,
     ) -> None:
         """
         Initialize base class genome fields and methods.
@@ -35,7 +36,7 @@ class EXAStarGenome[E: Edge](ComparableMixin, torch.nn.Module, Genome):
                 genome numbers are from genomes generated later
                 in the search.
         """
-        super().__init__(EXAStarGenome)
+        super().__init__(type=None, fitness=fitness)
 
         # setattr(self, "constructing", True)
         self.generation_number: int = generation_number
@@ -80,9 +81,10 @@ class EXAStarGenome[E: Edge](ComparableMixin, torch.nn.Module, Genome):
     def __repr__(self) -> str:
         return "".join([
             "EXAStarGenome(",
+            f"fitness={self.fitness}, ",
             f"generation_number={self.generation_number}, ",
             "nodes=[", ", ".join(repr(node) for node in self.nodes) + "], ",
-            "edges=[" ", ".join(repr(edge) for edge in self.edges) + "]",
+            "edges=[", ", ".join(repr(edge) for edge in self.edges) + "]",
             ")",
         ])
 
@@ -122,13 +124,8 @@ class EXAStarGenome[E: Edge](ComparableMixin, torch.nn.Module, Genome):
 
         inon_to_node: Dict[node_inon_t, Node] = {node.inon: node for node in nodes}
         edges: List[E] = [edge.clone(inon_to_node) for edge in genome.edges]
-        inon_to_edge: Dict[edge_inon_t, Edge] = {edge.inon: edge for edge in edges}
 
-        for old_node, new_node in zip(genome.nodes, nodes):
-            new_node.input_edges = [inon_to_edge[edge.inon] for edge in old_node.input_edges]
-            new_node.output_edges = [inon_to_edge[edge.inon] for edge in old_node.output_edges]
-
-        return cls(genome.generation_number, input_nodes, output_nodes, nodes, edges)
+        return cls(genome.generation_number, input_nodes, output_nodes, nodes, edges, genome.fitness)
 
     @overrides(Genome)
     def clone(self) -> Self:
@@ -191,7 +188,6 @@ class EXAStarGenome[E: Edge](ComparableMixin, torch.nn.Module, Genome):
         """
         for node in self.nodes:
             node.reset()
-            logger.info(f"Reset node fired: {node.inputs_fired}")
 
         for edge in self.edges:
             edge.reset()
@@ -505,14 +501,6 @@ class EXAStarGenome[E: Edge](ComparableMixin, torch.nn.Module, Genome):
                     edge_counts.append(count)
 
         edge_counts = np.array(edge_counts)
-
-        recurrent_text = ""
-        if recurrent:
-            recurrent_text = "recurrent"
-
-        print(
-            f"n input {recurrent_text} {edge_type} counts: {len(edge_counts)}, {edge_counts}"
-        )
 
         # make sure these are at least 1.0 so we can grow the network
         avg_count = max(1.0, np.mean(edge_counts))

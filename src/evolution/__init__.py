@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import Any, cast, Callable, Dict, List, Optional, Self
 import multiprocess as mp
 import os
+import sys
 
 from config import configclass
 from dataset import Dataset, DatasetConfig
@@ -90,7 +91,7 @@ class EvolutionaryStrategyConfig(LogDataAggregatorConfig):
     nsteps: int = field(default=10000)
 
 
-class InitTask:
+class InitTask[E: EvolutionaryStrategy]:
 
     def __init__(self) -> None:
         ...
@@ -99,7 +100,7 @@ class InitTask:
     def run(self, values: Dict[str, Any]) -> None: ...
 
     @abstractmethod
-    def values(self, strategy: EvolutionaryStrategy) -> Dict[str, Any]: ...
+    def values(self, strategy: E) -> Dict[str, Any]: ...
 
 
 @dataclass
@@ -150,7 +151,7 @@ class ParallelMTStrategy[G: Genome, D: Dataset](EvolutionaryStrategy[G, D]):
 @dataclass
 class ParallelMTStrategyConfig[G: Genome, D: Dataset](EvolutionaryStrategyConfig):
     parallelism: Optional[int] = field(default=None)
-    init_tasks: Dict[str, InitTaskConfig] = field(default_factory=lambda: {"dataset_init": DatasetInitTaskConfig()})
+    init_tasks: Dict[str, InitTaskConfig] = field(default_factory=lambda: {})
 
 
 class SynchronousMTStrategy[G: Genome, D: Dataset](ParallelMTStrategy[G, D]):
@@ -223,15 +224,20 @@ class AsyncMTStrategy[G: Genome, D: Dataset](ParallelMTStrategy[G, D]):
 
     @staticmethod
     def f(fitness, tasks) -> None:
-        genomes = []
-        for task in tasks:
-            genome = task(AsyncMTStrategy.rng)
-            if genome:
-                genome.evaluate(fitness, EvolutionaryStrategy.get_dataset())
+        try:
+            genomes = []
+            for task in tasks:
+                genome = task(AsyncMTStrategy.rng)
+                if genome:
+                    fitness_value = genome.evaluate(fitness, EvolutionaryStrategy.get_dataset())
+                    genome.fitness = fitness_value
 
-            genomes.append(genome)
+                genomes.append(genome)
 
-        AsyncMTStrategy.queue.put(genomes)
+            AsyncMTStrategy.queue.put(genomes)
+        except Exception as e:
+            sys.stdout.flush()
+            raise e
 
     def step(self) -> None:
         logger.info(f"str step {self.i}")

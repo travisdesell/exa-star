@@ -35,7 +35,7 @@ class Edge(ComparableMixin, torch.nn.Module):
 
         self.enabled: bool = enabled
 
-        self.inon: edge_inon_t = inon if inon else edge_inon_t()
+        self.inon: edge_inon_t = inon if inon is not None else edge_inon_t()
         self.max_sequence_length = max_sequence_length
 
         self.input_node = input_node
@@ -46,6 +46,16 @@ class Edge(ComparableMixin, torch.nn.Module):
 
     @abstractmethod
     def clone(self, inon_to_node: Dict[node_inon_t, Node]) -> Self:
+        """
+        Creates a clone of this edge, using the supplied copied nodes in `inon_to_node`.
+        The genome will ensure the edges are added to the nodes, you need not do so.
+
+        Args:
+            inon_to_node: maps node inon to a copy of that node that is to be used in the clone.
+
+        Returns:
+            A clone of this edge.
+        """
         ...
 
     @overrides(torch.nn.Module)

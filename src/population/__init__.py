@@ -98,7 +98,8 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
         self.genomes: List[G] = []
 
     def initialize(self, genome_factory: GenomeFactory[G, D], dataset: D) -> None:
-        self.genomes = [genome_factory.get_seed_genome(dataset) for _ in range(self.size)]
+        seed = genome_factory.get_seed_genome(dataset)
+        self.genomes = [seed.clone() for _ in range(self.size)]
 
     def make_generation(
         self, genome_factory: GenomeFactory[G, D]
@@ -129,8 +130,8 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
 
 @configclass(name="base_simple_population", group="population", target=SimplePopulation)
 class SimplePopulationConfig(PopulationConfig):
-    size: int = field(default=10)
-    n_elites: int = field(default=3)
+    size: int = field(default=3)
+    n_elites: int = field(default=2)
 
 
 class SteadyStatePopulation[G: Genome, D: Dataset](Population[G, D]):
