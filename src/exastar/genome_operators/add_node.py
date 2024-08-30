@@ -58,7 +58,7 @@ class AddNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
         # since new node is already in there, this index already contains new node. We can use this
         # to get all nodes deeper / shallower than new node efficiently.
         splitl = bisect.bisect_left(genome.nodes, new_node)
-        splitr = bisect.bisect_left(genome.nodes, new_node)
+        splitr = bisect.bisect_right(genome.nodes, new_node)
         incoming_candidates = genome.nodes[:splitl]
         outgoing_candidates = genome.nodes[splitr:]
 
