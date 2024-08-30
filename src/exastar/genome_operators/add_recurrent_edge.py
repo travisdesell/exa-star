@@ -1,5 +1,5 @@
 from dataclasses import field
-from typing import List, Optional
+from typing import List, Optional, cast
 
 from config import configclass
 from exastar.genome import EXAStarGenome
@@ -41,11 +41,11 @@ class AddRecurrentEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         """
 
         candidate_input_nodes: List[Node] = list(filter(is_not_instance(OutputNode), genome.nodes))
-        input_node = rng.choice(candidate_input_nodes)
+        input_node = rng.choice(cast(List, candidate_input_nodes))
 
         candidate_output_nodes: List[Node] = list(filter(is_not_instance(InputNode), genome.nodes))
 
-        output_node = rng.choice(candidate_output_nodes)
+        output_node = rng.choice(cast(List, candidate_output_nodes))
 
         edge = self.edge_generator(genome, input_node, output_node, rng, recurrent=True)
 

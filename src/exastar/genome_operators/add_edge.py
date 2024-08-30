@@ -1,8 +1,9 @@
-from typing import Optional
+import bisect
+from typing import cast, List, Optional
 
 from config import configclass
 from exastar.genome import EXAStarGenome
-from exastar.genome.component import InputNode, OutputNode
+from exastar.genome.component import OutputNode
 from exastar.genome_operators.exastar_mutation_operator import EXAStarMutationOperator, EXAStarMutationOperatorConfig
 
 import numpy as np
@@ -34,12 +35,12 @@ class AddEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         Returns:
             A new genome to evaluate.
         """
-        input_node = rng.choice(list(filter(is_not_instance(OutputNode), genome.nodes)))
+        input_node = rng.choice(cast(List, list(filter(is_not_instance(OutputNode), genome.nodes))))
 
         # potential output nodes need to be deeper than the input node
-        output_node = rng.choice(list(filter(lambda node: node.depth > input_node.depth, genome.nodes)))
 
-        assert input_node != output_node
+        split = bisect.bisect_right(genome.nodes, input_node)
+        output_node = rng.choice(cast(List, genome.nodes[split:]))
 
         edge = self.edge_generator(
             target_genome=genome,
