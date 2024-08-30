@@ -1,4 +1,6 @@
+import bisect
 import math
+from typing import cast, List
 
 from config import configclass
 from exastar.genome import EXAStarGenome
@@ -38,38 +40,43 @@ class AddNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
         # calculate the depth of the new node (exclusive of 0.0 and 1.0 so it
         # is not at the same depth as the input or output nodes.
 
-        child_genome = genome
         child_depth = rng.uniform(math.nextafter(0.0, 1.0), 1.0)
 
         logger.info(f"adding node at child_depth: {child_depth}")
 
-        new_node = self.node_generator(child_depth, child_genome, rng)
-        child_genome.add_node(new_node)
+        new_node = self.node_generator(child_depth, genome, rng)
+        genome.add_node(new_node)
 
         # used to make sure we have at least one recurrent or feed forward
         # edge as an input and as an output
         require_recurrent = self.get_require_recurrent(rng)
 
         # add recurrent and non-recurrent edges for the node
-        for recurrent in [True, False]:
-            self.add_input_edges(
-                target_node=new_node,
-                genome=child_genome,
-                recurrent=recurrent,
-                require_recurrent=require_recurrent,
-                rng=rng,
-            )
-            self.add_output_edges(
-                target_node=new_node,
-                genome=child_genome,
-                recurrent=recurrent,
-                require_recurrent=require_recurrent,
-                rng=rng,
-            )
+        recurrent_candidates = genome.nodes
 
-        self.weight_generator(child_genome, rng)
+        # This method will find the index at which we would insert the new node, sorted by depth.
+        # since new node is already in there, this index already contains new node. We can use this
+        # to get all nodes deeper / shallower than new node efficiently.
+        splitl = bisect.bisect_left(genome.nodes, new_node)
+        splitr = bisect.bisect_left(genome.nodes, new_node)
+        incoming_candidates = genome.nodes[:splitl]
+        outgoing_candidates = genome.nodes[splitr:]
 
-        return child_genome
+        n_incoming = int(max(not require_recurrent, rng.normal(*genome.get_edge_distributions("input_edges", False))))
+        self.create_edges(genome, new_node, incoming_candidates, True, max(0, n_incoming), False, rng)
+
+        n_outgoing = int(max(not require_recurrent, rng.normal(*genome.get_edge_distributions("output_edges", False))))
+        self.create_edges(genome, new_node, outgoing_candidates, False, max(0, n_outgoing), False, rng)
+
+        n_incoming_rec = int(max(require_recurrent, rng.normal(*genome.get_edge_distributions("input_edges", True))))
+        self.create_edges(genome, new_node, recurrent_candidates, True, max(0, n_incoming_rec), True, rng)
+
+        n_outgoing_rec = int(max(require_recurrent, rng.normal(*genome.get_edge_distributions("output_edges", True))))
+        self.create_edges(genome, new_node, recurrent_candidates, False, max(0, n_outgoing_rec), True, rng)
+
+        self.weight_generator(genome, rng)
+
+        return genome
 
     def get_require_recurrent(self, rng: np.random.Generator):
         """
@@ -80,128 +87,26 @@ class AddNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
         """
         return rng.uniform(0, 1) < 0.5
 
-    def add_input_edges(
+    def create_edges(
         self,
+        genome: G,
         target_node: Node,
-        genome: EXAStarGenome,
+        candidate_nodes: List[Node],
+        incoming: bool,
+        n_connections: int,
         recurrent: bool,
-        require_recurrent: bool,
         rng: np.random.Generator,
     ):
-        """
-        Adds a random number of input edges to the given target node.
+        nodes = rng.choice(cast(List, candidate_nodes), min(len(candidate_nodes), n_connections), replace=False)
+        for other_node in nodes:
+            input_output_pair = other_node, target_node
 
-        Args:
-            target_node: the node to add input edges to
-            genome: the genome the target node is int
-            recurrent: add recurrent edges
-            require_recurrent: require at least 1 recurrent edge if adding
-                recurrent edges
-            edge_generator: the edge generator to create the new edge(s)
-        """
-        avg_count, std_count = genome.get_edge_distributions(
-            edge_type="input_edges", recurrent=recurrent
-        )
+            if incoming:
+                input_node, output_node = input_output_pair
+            else:
+                output_node, input_node = input_output_pair
 
-        logger.trace(
-            f"adding input edges to node, n_input_avg: {avg_count}, stddev: {std_count}"
-        )
-
-        n_inputs = int(np.random.normal(avg_count, std_count))
-
-        # add at least 1 edge between non-recurrent or recurrent edges
-        if (recurrent and require_recurrent) or not recurrent:
-            n_inputs = max(1, n_inputs)
-        elif n_inputs < 1:
-            # Nothing to do.
-            return
-
-        logger.trace(f"adding {n_inputs} input edges to the new node.")
-
-        potential_inputs = None
-        if recurrent:
-            potential_inputs = genome.nodes
-        else:
-            potential_inputs = [
-                node for node in genome.nodes if node.depth < target_node.depth
-            ]
-
-        logger.trace(f"potential inputs: {potential_inputs}")
-        if not recurrent:
-            assert target_node not in potential_inputs
-        input_nodes = rng.choice(potential_inputs, min(n_inputs, len(potential_inputs)), replace=False)
-
-        # Don't have to worry about duplicate edges since `target_node` was just created
-        for input_node in input_nodes:
-            logger.trace(f"adding input node to child node: {input_node}")
-            edge = self.edge_generator(
-                target_genome=genome,
-                input_node=input_node,
-                output_node=target_node,
-                recurrent=recurrent,
-                rng=rng
-            )
-            genome.add_edge(edge)
-
-    def add_output_edges(
-        self,
-        target_node: Node,
-        genome: EXAStarGenome,
-        recurrent: bool,
-        require_recurrent: bool,
-        rng: np.random.Generator,
-    ):
-        """Adds a random number of output edges to the given target node.
-        Args:
-            target_node: the node to add output edges to
-            genome: the genome the target node is int
-            recurrent: add recurrent edges
-            require_recurrent: require at least 1 recurrent edge if adding
-                recurrent edges
-            edge_generator: the edge generator to create the new edge(s)
-        """
-
-        avg_count, std_count = genome.get_edge_distributions(
-            edge_type="output_edges", recurrent=recurrent
-        )
-
-        logger.trace(
-            f"addding output edges to node, n_output_avg: {avg_count}, stddev: {std_count}"
-        )
-
-        n_outputs = int(np.random.normal(avg_count, std_count))
-
-        # add at least 1 edge between non-recurrent or recurrent edges
-        if (recurrent and require_recurrent) or not recurrent:
-            n_outputs = max(1, n_outputs)
-        elif n_outputs < 1:
-            # Nothing to do.
-            return
-
-        logger.trace(f"adding {n_outputs} output edges to the new node.")
-
-        potential_outputs = None
-        if recurrent:
-            potential_outputs = genome.nodes
-        else:
-            potential_outputs = [
-                node for node in genome.nodes if node.depth > target_node.depth
-            ]
-
-        logger.trace(f"potential outputs: {potential_outputs}")
-
-        output_nodes = rng.choice(potential_outputs, min(n_outputs, len(potential_outputs)), replace=False)
-
-        # Don't have to worry about duplicate edges since `target_node` was just created
-        for output_node in output_nodes:
-            logger.trace(f"adding output node to child node: {output_node}")
-            edge = self.edge_generator(
-                target_genome=genome,
-                input_node=target_node,
-                output_node=output_node,
-                recurrent=recurrent,
-                rng=rng,
-            )
+            edge = self.edge_generator(genome, input_node, output_node, rng, recurrent)
             genome.add_edge(edge)
 
 
