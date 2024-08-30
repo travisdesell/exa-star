@@ -22,7 +22,10 @@ class SetNodeEnabled[G: EXAStarGenome](EXAStarMutationOperator[G]):
         self.enabled: bool = enabled
 
     def __call__(self, genome: G, rng: np.random.Generator) -> Optional[G]:
-        child: G = genome.clone()
+        """
+        Randomly toggles the state of a node from a node that currently has state of `not self.enabled`
+        """
+        child: G = genome
 
         # get all enabled nodes
         possible_nodes: list = [

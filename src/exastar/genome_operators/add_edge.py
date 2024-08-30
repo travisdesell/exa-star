@@ -1,9 +1,13 @@
+from typing import Optional
+
 from config import configclass
 from exastar.genome import EXAStarGenome
 from exastar.genome.component import InputNode, OutputNode
 from exastar.genome_operators.exastar_mutation_operator import EXAStarMutationOperator, EXAStarMutationOperatorConfig
 
 import numpy as np
+
+from util.functional import is_not_instance
 
 
 class AddEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
@@ -19,7 +23,7 @@ class AddEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         """
         return 1
 
-    def __call__(self, genome: G, rng: np.random.Generator) -> G:
+    def __call__(self, genome: G, rng: np.random.Generator) -> Optional[G]:
         """
         Given the parent genome, create a child genome which is a clone
         of the parent with a random edge added.
@@ -30,16 +34,10 @@ class AddEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         Returns:
             A new genome to evaluate.
         """
-        input_node = rng.choice([
-            node for node in genome.nodes if not isinstance(node, OutputNode)
-        ])
+        input_node = rng.choice(list(filter(is_not_instance(OutputNode), genome.nodes)))
 
         # potential output nodes need to be deeper than the input node
-        output_node = rng.choice([
-            node
-            for node in genome.nodes
-            if not isinstance(node, InputNode) and node.depth > input_node.depth
-        ])
+        output_node = rng.choice(list(filter(lambda node: node.depth > input_node.depth, genome.nodes)))
 
         assert input_node != output_node
 
@@ -49,6 +47,10 @@ class AddEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
             output_node=output_node,
             rng=rng
         )
+
+        if any(map(edge.identical_to, input_node.output_edges)):
+            # Nodes are already connected, mutation fails
+            return None
 
         genome.add_edge(edge)
 

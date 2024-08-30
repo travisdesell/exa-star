@@ -1,7 +1,7 @@
 from __future__ import annotations
 from itertools import chain, product
 import math
-from typing import cast, Dict, List
+from typing import cast, Dict, List, Set
 
 from genome import MSEValue
 from exastar.genome.component import Edge, Node, InputNode, OutputNode, RecurrentEdge
@@ -119,6 +119,14 @@ class RecurrentGenome(EXAStarGenome[Edge]):
 
         self.max_sequence_length = max_sequence_length
 
+    def sanity_check(self):
+        edges_from_nodes: Set[Edge] = set()
+        for node in self.nodes:
+            edges_from_nodes.update(node.input_edges)
+            edges_from_nodes.update(node.output_edges)
+
+        assert set(self.edges) == edges_from_nodes
+
     def forward(self, input_series: TimeSeries) -> Dict[str, torch.Tensor]:
         """
         Performs a forward pass through the recurrent computational graph.
@@ -135,6 +143,7 @@ class RecurrentGenome(EXAStarGenome[Edge]):
         assert sorted(self.nodes) == self.nodes
 
         for time_step in range(input_series.series_length):
+            # logger.info(f"Timestep {time_step}")
             for input_node in self.input_nodes:
                 x = input_series.series_dictionary[input_node.parameter_name][time_step]
                 input_node.accumulate(time_step=time_step, value=x)
@@ -166,6 +175,7 @@ class RecurrentGenome(EXAStarGenome[Edge]):
         self.calculate_reachability()
 
         assert self.viable
+        self.sanity_check()
 
         for iteration in range(iterations + 1):
             self.reset()

@@ -38,7 +38,7 @@ class AddNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
         # calculate the depth of the new node (exclusive of 0.0 and 1.0 so it
         # is not at the same depth as the input or output nodes.
 
-        child_genome = genome.clone()
+        child_genome = genome
         child_depth = rng.uniform(math.nextafter(0.0, 1.0), 1.0)
 
         logger.info(f"adding node at child_depth: {child_depth}")
@@ -131,6 +131,7 @@ class AddNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
             assert target_node not in potential_inputs
         input_nodes = rng.choice(potential_inputs, min(n_inputs, len(potential_inputs)), replace=False)
 
+        # Don't have to worry about duplicate edges since `target_node` was just created
         for input_node in input_nodes:
             logger.trace(f"adding input node to child node: {input_node}")
             edge = self.edge_generator(
@@ -191,6 +192,7 @@ class AddNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
 
         output_nodes = rng.choice(potential_outputs, min(n_outputs, len(potential_outputs)), replace=False)
 
+        # Don't have to worry about duplicate edges since `target_node` was just created
         for output_node in output_nodes:
             logger.trace(f"adding output node to child node: {output_node}")
             edge = self.edge_generator(

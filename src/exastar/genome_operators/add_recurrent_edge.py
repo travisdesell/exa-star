@@ -1,10 +1,12 @@
 from dataclasses import field
+from typing import List, Optional
 
 from config import configclass
 from exastar.genome import EXAStarGenome
 from exastar.genome_operators.exastar_mutation_operator import EXAStarMutationOperator, EXAStarMutationOperatorConfig
 from exastar.genome_operators.edge_generator import RecurrentEdgeGenerator, RecurrentEdgeGeneratorConfig
-from exastar.genome.component import InputNode, OutputNode
+from exastar.genome.component import InputNode, Node, OutputNode
+from util.functional import is_not_instance
 
 import numpy as np
 
@@ -27,10 +29,9 @@ class AddRecurrentEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         """
         return 1
 
-    def __call__(self, genome: G, rng: np.random.Generator) -> G:
+    def __call__(self, genome: G, rng: np.random.Generator) -> Optional[G]:
         """
-        Given the parent genome, create a child genome which is a clone
-        of the parent with a random edge added.
+        Randomly connects two nodes with a recurrent edeg
 
         Args:
             parent_genomes: a list of parent genomes to create the child genome from.
@@ -39,19 +40,18 @@ class AddRecurrentEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
             A new genome to evaluate.
         """
 
-        input_node = rng.choice([
-            node for node in genome.nodes if not isinstance(node, OutputNode)
-        ])
+        candidate_input_nodes: List[Node] = list(filter(is_not_instance(OutputNode), genome.nodes))
+        input_node = rng.choice(candidate_input_nodes)
 
-        # potential output nodes need to be deeper than the input node
-        # between the same node, so we can just shuffle with replacement)
-        output_node = rng.choice([
-            node
-            for node in genome.nodes
-            if not isinstance(node, InputNode)
-        ])
+        candidate_output_nodes: List[Node] = list(filter(is_not_instance(InputNode), genome.nodes))
+
+        output_node = rng.choice(candidate_output_nodes)
 
         edge = self.edge_generator(genome, input_node, output_node, rng, recurrent=True)
+
+        if any(map(edge.identical_to, input_node.output_edges)):
+            # We already have an identical edge, the mutation fails
+            return None
 
         genome.add_edge(edge)
 

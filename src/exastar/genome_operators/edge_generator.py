@@ -97,9 +97,11 @@ class RecurrentEdgeGenerator[G: EXAStarGenome](EdgeGenerator[G]):
                 time_skip = recurrent
             else:
                 time_skip = rng.integers(1, self.max_time_skip)
+
         else:
             time_skip = 0
             assert input_node != output_node
+            assert input_node.depth < output_node.depth
 
         return RecurrentEdge(input_node, output_node, target_genome.input_nodes[0].max_sequence_length, True, time_skip)
 

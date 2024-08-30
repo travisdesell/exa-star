@@ -14,7 +14,10 @@ from util.typing import ComparableMixin
 from util.typing import constmethod, overrides
 from util.log import LogDataProvider
 
+import graphviz
 from loguru import logger
+import math
+import matplotlib
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
@@ -261,7 +264,7 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
         if genome_name is None:
             genome_name = f"genome_{self.generation_number}"
 
-        dot = graphviz.Digraph(genome_name, directory="./test_genomes")
+        dot = graphviz.Digraph(genome_name, directory="./output")
         dot.attr(labelloc="t", label=f"Genome Fitness: {self.fitness}% MAE")
 
         with dot.subgraph() as source_graph:
@@ -289,7 +292,7 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
         min_weight = math.inf
         max_weight = -math.inf
         for edge in self.edges:
-            weight = edge.weights[0].detach().item()
+            weight = edge.weight[0].detach().item()
             if weight > max_weight:
                 max_weight = weight
             if weight < min_weight:
@@ -298,7 +301,7 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
         eps = 0.0001
 
         for edge in self.edges:
-            weight = edge.weights[0].detach().item()
+            weight = edge.weight[0].detach().item()
             # color_val = weight ** 2 / (1 + weight ** 2)
 
             color_map = None
@@ -312,16 +315,16 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
             color = matplotlib.colors.to_hex(color_map(color_val))
             if edge.time_skip > 0:
                 dot.edge(
-                    f"node {edge.input_inon}",
-                    f"node {edge.output_inon}",
+                    f"node {edge.input_node.inon}",
+                    f"node {edge.output_node.inon}",
                     color=color,
                     label=f"skip {edge.time_skip}",
                     style="dashed",
                 )
             else:
                 dot.edge(
-                    f"node {edge.input_inon}",
-                    f"node {edge.output_non}",
+                    f"node {edge.input_node.inon}",
+                    f"node {edge.output_node.inon}",
                     color=color,
                     label=f"skip {edge.time_skip}",
                 )
@@ -365,6 +368,8 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
 
         while nodes_to_visit:
             node = nodes_to_visit.popleft()
+            # if node in visited_nodes:
+            #     continue
             visited_nodes.add(node)
 
             if not node.enabled:
@@ -436,7 +441,7 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
 
         all_weights = []
         for node_or_edge in self.nodes + self.edges:
-            for weight in node_or_edge.weights:
+            for weight in node_or_edge.weight:
                 if weight is not None:
                     all_weights.append(weight.detach().item())
 

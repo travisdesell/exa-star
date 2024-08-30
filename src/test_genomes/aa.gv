@@ -1,0 +1,186 @@
+digraph aa {
+	label="Genome Fitness: MSEValue(62254100.0)% MAE" labelloc=t
+	{
+		rank=source
+		node [color=green shape=doublecircle]
+		nodesep=0.05 pad=0.01 ranksep=0.9
+		"node 0" [label=Open]
+		"node 3" [label=High]
+		"node 6" [label=Low]
+		"node 9" [label=Close]
+		"node 12" [label=Volume]
+		"node 15" [label="Adj Close"]
+	}
+	{
+		rank=sink
+		node [color=blue shape=doublecircle]
+		nodesep=0.05 pad=0.01 ranksep=0.9
+		"node 18" [label=Open]
+		"node 21" [label=High]
+		"node 24" [label=Low]
+		"node 27" [label=Close]
+		"node 30" [label=Volume]
+		"node 33" [label="Adj Close"]
+	}
+	"node 55"
+	"node 457"
+	"node 460"
+	"node 523"
+	"node 229"
+	"node 187"
+	"node 280"
+	"node 22"
+	"node 160"
+	"node 163"
+	"node 262"
+	"node 265"
+	"node 403"
+	"node 406"
+	"node 301"
+	"node 475"
+	"node 619"
+	"node 622"
+	"node 79"
+	"node 4"
+	"node 88"
+	"node 97"
+	"node 100"
+	"node 136"
+	"node 685"
+	"node 322"
+	"node 424"
+	"node 427"
+	"node 697"
+	"node 592"
+	"node 0" -> "node 18" [label="skip 0" color="#083370"]
+	"node 3" -> "node 21" [label="skip 0" color="#083370"]
+	"node 6" -> "node 24" [label="skip 0" color="#08326e"]
+	"node 9" -> "node 27" [label="skip 0" color="#08306b"]
+	"node 12" -> "node 30" [label="skip 0" color="#08306b"]
+	"node 15" -> "node 33" [label="skip 0" color="#083370"]
+	"node 12" -> "node 4" [label="skip 0" color="#083370"]
+	"node 6" -> "node 22" [label="skip 2" color="#08316d" style=dashed]
+	"node 15" -> "node 22" [label="skip 8" color="#08306b" style=dashed]
+	"node 9" -> "node 22" [label="skip 5" color="#08316d" style=dashed]
+	"node 9" -> "node 55" [label="skip 0" color="#08326e"]
+	"node 15" -> "node 160" [label="skip 8" color="#08306b" style=dashed]
+	"node 9" -> "node 163" [label="skip 7" color="#08306b" style=dashed]
+	"node 6" -> "node 163" [label="skip 4" color="#08316d" style=dashed]
+	"node 15" -> "node 187" [label="skip 5" color="#08306b" style=dashed]
+	"node 3" -> "node 229" [label="skip 2" color="#08326e" style=dashed]
+	"node 9" -> "node 229" [label="skip 1" color="#08306b" style=dashed]
+	"node 6" -> "node 229" [label="skip 1" color="#08306b" style=dashed]
+	"node 0" -> "node 229" [label="skip 5" color="#08326e" style=dashed]
+	"node 6" -> "node 262" [label="skip 3" color="#08326e" style=dashed]
+	"node 9" -> "node 265" [label="skip 5" color="#08326e" style=dashed]
+	"node 15" -> "node 280" [label="skip 7" color="#08326e" style=dashed]
+	"node 6" -> "node 301" [label="skip 2" color="#08316d" style=dashed]
+	"node 6" -> "node 322" [label="skip 3" color="#08306b" style=dashed]
+	"node 9" -> "node 403" [label="skip 8" color="#08306b" style=dashed]
+	"node 6" -> "node 406" [label="skip 3" color="#08316d" style=dashed]
+	"node 6" -> "node 424" [label="skip 3" color="#08316d" style=dashed]
+	"node 6" -> "node 427" [label="skip 2" color="#08316d" style=dashed]
+	"node 9" -> "node 457" [label="skip 0" color="#08316d"]
+	"node 9" -> "node 460" [label="skip 0" color="#08316d"]
+	"node 15" -> "node 475" [label="skip 8" color="#08306b" style=dashed]
+	"node 9" -> "node 523" [label="skip 0" color="#08316d"]
+	"node 15" -> "node 523" [label="skip 3" color="#08316d" style=dashed]
+	"node 6" -> "node 592" [label="skip 0" color="#08316d"]
+	"node 15" -> "node 622" [label="skip 7" color="#08306b" style=dashed]
+	"node 6" -> "node 697" [label="skip 4" color="#08306b" style=dashed]
+	"node 9" -> "node 697" [label="skip 0" color="#08306b"]
+	"node 55" -> "node 27" [label="skip 0" color="#08306b"]
+	"node 55" -> "node 79" [label="skip 0" color="#08326e"]
+	"node 457" -> "node 79" [label="skip 0" color="#08316d"]
+	"node 460" -> "node 27" [label="skip 0" color="#08316d"]
+	"node 523" -> "node 27" [label="skip 0" color="#08316d"]
+	"node 523" -> "node 79" [label="skip 0" color="#08316d"]
+	"node 523" -> "node 160" [label="skip 8" color="#08306b" style=dashed]
+	"node 523" -> "node 475" [label="skip 3" color="#08306b" style=dashed]
+	"node 523" -> "node 622" [label="skip 6" color="#08306b" style=dashed]
+	"node 229" -> "node 24" [label="skip 3" color="#08326e" style=dashed]
+	"node 229" -> "node 21" [label="skip 9" color="#08326e" style=dashed]
+	"node 229" -> "node 4" [label="skip 1" color="#08326e" style=dashed]
+	"node 229" -> "node 33" [label="skip 1" color="#08326e" style=dashed]
+	"node 229" -> "node 685" [label="skip 4" color="#08306b" style=dashed]
+	"node 187" -> "node 160" [label="skip 7" color="#08306b" style=dashed]
+	"node 187" -> "node 475" [label="skip 5" color="#08306b" style=dashed]
+	"node 187" -> "node 622" [label="skip 8" color="#08306b" style=dashed]
+	"node 280" -> "node 18" [label="skip 3" color="#08326e" style=dashed]
+	"node 22" -> "node 15" [label="skip 4" color="#08316d" style=dashed]
+	"node 22" -> "node 24" [label="skip 3" color="#08316d" style=dashed]
+	"node 160" -> "node 15" [label="skip 3" color="#08316d" style=dashed]
+	"node 163" -> "node 24" [label="skip 6" color="#08316d" style=dashed]
+	"node 262" -> "node 24" [label="skip 8" color="#08306b" style=dashed]
+	"node 265" -> "node 24" [label="skip 1" color="#08326e" style=dashed]
+	"node 262" -> "node 280" [label="skip 3" color="#08326e" style=dashed]
+	"node 403" -> "node 24" [label="skip 6" color="#08306b" style=dashed]
+	"node 406" -> "node 24" [label="skip 3" color="#08316d" style=dashed]
+	"node 301" -> "node 100" [label="skip 1" color="#08316d" style=dashed]
+	"node 301" -> "node 3" [label="skip 1" color="#08316d" style=dashed]
+	"node 301" -> "node 30" [label="skip 8" color="#08316d" style=dashed]
+	"node 475" -> "node 15" [label="skip 7" color="#08316d" style=dashed]
+	"node 475" -> "node 136" [label="skip 9" color="#08306b" style=dashed]
+	"node 475" -> "node 136" [label="skip 7" color="#08306b" style=dashed]
+	"node 475" -> "node 3" [label="skip 4" color="#08316d" style=dashed]
+	"node 475" -> "node 24" [label="skip 8" color="#08316d" style=dashed]
+	"node 475" -> "node 475" [label="skip 5" color="#08316d" style=dashed]
+	"node 475" -> "node 475" [label="skip 5" color="#08316d" style=dashed]
+	"node 619" -> "node 475" [label="skip 6" color="#08306b" style=dashed]
+	"node 619" -> "node 15" [label="skip 9" color="#08306b" style=dashed]
+	"node 619" -> "node 3" [label="skip 1" color="#08306b" style=dashed]
+	"node 475" -> "node 622" [label="skip 6" color="#08306b" style=dashed]
+	"node 475" -> "node 622" [label="skip 1" color="#08306b" style=dashed]
+	"node 622" -> "node 136" [label="skip 9" color="#08306b" style=dashed]
+	"node 622" -> "node 24" [label="skip 3" color="#08306b" style=dashed]
+	"node 622" -> "node 475" [label="skip 4" color="#08306b" style=dashed]
+	"node 622" -> "node 136" [label="skip 2" color="#08306b" style=dashed]
+	"node 79" -> "node 27" [label="skip 0" color="#08306b"]
+	"node 79" -> "node 88" [label="skip 0" color="#08306b"]
+	"node 79" -> "node 97" [label="skip 0" color="#08326e"]
+	"node 79" -> "node 100" [label="skip 0" color="#08326e"]
+	"node 4" -> "node 30" [label="skip 0" color="#083370"]
+	"node 4" -> "node 280" [label="skip 9" color="#08306b" style=dashed]
+	"node 88" -> "node 27" [label="skip 0" color="#08306b"]
+	"node 97" -> "node 27" [label="skip 0" color="#08326e"]
+	"node 100" -> "node 27" [label="skip 0" color="#08326e"]
+	"node 97" -> "node 136" [label="skip 4" color="#08326e" style=dashed]
+	"node 88" -> "node 280" [label="skip 7" color="#08306b" style=dashed]
+	"node 97" -> "node 475" [label="skip 1" color="#08316d" style=dashed]
+	"node 97" -> "node 622" [label="skip 1" color="#08306b" style=dashed]
+	"node 136" -> "node 136" [label="skip 7" color="#08306b" style=dashed]
+	"node 136" -> "node 136" [label="skip 1" color="#08326e" style=dashed]
+	"node 136" -> "node 3" [label="skip 8" color="#08326e" style=dashed]
+	"node 136" -> "node 24" [label="skip 2" color="#08326e" style=dashed]
+	"node 136" -> "node 475" [label="skip 8" color="#08306b" style=dashed]
+	"node 136" -> "node 475" [label="skip 7" color="#08306b" style=dashed]
+	"node 136" -> "node 622" [label="skip 9" color="#08306b" style=dashed]
+	"node 136" -> "node 622" [label="skip 6" color="#08306b" style=dashed]
+	"node 685" -> "node 33" [label="skip 6" color="#08306b" style=dashed]
+	"node 322" -> "node 97" [label="skip 3" color="#08306b" style=dashed]
+	"node 322" -> "node 262" [label="skip 1" color="#08306b" style=dashed]
+	"node 322" -> "node 18" [label="skip 5" color="#08306b" style=dashed]
+	"node 322" -> "node 100" [label="skip 3" color="#08306b" style=dashed]
+	"node 322" -> "node 27" [label="skip 3" color="#08306b" style=dashed]
+	"node 322" -> "node 24" [label="skip 9" color="#08306b" style=dashed]
+	"node 424" -> "node 262" [label="skip 4" color="#08306b" style=dashed]
+	"node 424" -> "node 100" [label="skip 9" color="#08306b" style=dashed]
+	"node 424" -> "node 97" [label="skip 6" color="#08316d" style=dashed]
+	"node 424" -> "node 24" [label="skip 4" color="#08316d" style=dashed]
+	"node 427" -> "node 18" [label="skip 3" color="#08316d" style=dashed]
+	"node 427" -> "node 27" [label="skip 3" color="#08316d" style=dashed]
+	"node 697" -> "node 18" [label="skip 5" color="#08306b" style=dashed]
+	"node 697" -> "node 27" [label="skip 5" color="#08306b" style=dashed]
+	"node 697" -> "node 27" [label="skip 0" color="#08306b"]
+	"node 697" -> "node 79" [label="skip 0" color="#08306b"]
+	"node 592" -> "node 24" [label="skip 0" color="#08316d"]
+	"node 24" -> "node 22" [label="skip 7" color="#08316d" style=dashed]
+	"node 27" -> "node 136" [label="skip 2" color="#08326e" style=dashed]
+	"node 24" -> "node 160" [label="skip 2" color="#08316d" style=dashed]
+	"node 27" -> "node 229" [label="skip 9" color="#08326e" style=dashed]
+	"node 21" -> "node 280" [label="skip 4" color="#08326e" style=dashed]
+	"node 24" -> "node 475" [label="skip 6" color="#08316d" style=dashed]
+	"node 27" -> "node 475" [label="skip 4" color="#08316d" style=dashed]
+	"node 24" -> "node 619" [label="skip 8" color="#08306b" style=dashed]
+	"node 27" -> "node 622" [label="skip 6" color="#08306b" style=dashed]
+}

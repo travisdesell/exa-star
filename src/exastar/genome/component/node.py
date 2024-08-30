@@ -135,6 +135,7 @@ class Node(ComparableMixin, Component, torch.nn.Module):
         Args:
             edge: a new input edge for this node.
         """
+        assert not any(edge.inon == e.inon for e in self.input_edges)
         bisect.insort(self.input_edges, edge)
 
     def add_output_edge(self, edge: Edge):
@@ -144,6 +145,7 @@ class Node(ComparableMixin, Component, torch.nn.Module):
         Args:
             edge: a new output edge for this node.
         """
+        assert not any(edge.inon == e.inon for e in self.output_edges)
         bisect.insort(self.output_edges, edge)
 
     def input_fired(self, time_step: int, value: torch.Tensor):
@@ -204,6 +206,8 @@ class Node(ComparableMixin, Component, torch.nn.Module):
         Args:
             time_step: is the time step the input is being fired from.
         """
+        # logger.info(f"forward node: {self.inon}")
+
         # check to make sure in the case of input nodes which
         # have recurrent connections feeding into them that
         # all recurrent edges have fired
@@ -212,8 +216,12 @@ class Node(ComparableMixin, Component, torch.nn.Module):
             f"step {time_step}, where all incoming recurrent edges have not "
             f"yet been fired. len(self.input_edges): {len(self.input_edges)} "
             f"edges: {self.input_edges}"
-            f", self.inputs_fired[{time_step}]: {self.inputs_fired[time_step]}"
+            f", self.inputs_fired[{time_step}]: {self.inputs_fired[time_step]} != {self.required_inputs}"
         )
 
-        for output_edge in filter(Component.is_active, self.output_edges):
-            output_edge.forward(time_step=time_step, value=self.value[time_step])
+        for output_edge in self.output_edges:  # filter(Component.is_active, self.output_edges):
+            if output_edge.is_active():
+                # logger.info(f"    FIRING: {output_edge}")
+                output_edge.forward(time_step=time_step, value=self.value[time_step])
+            else:
+                pass  # logger.info(f"NOT FIRING: {output_edge)

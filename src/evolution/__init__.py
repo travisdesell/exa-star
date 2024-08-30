@@ -11,6 +11,7 @@ from genome import Fitness, FitnessConfig, Genome, GenomeFactory, GenomeFactoryC
 from population import Population, PopulationConfig
 from util.log import LogDataAggregator, LogDataAggregatorConfig, LogDataProvider
 
+import dill
 from loguru import logger
 import numpy as np
 from pandas import DataFrame
@@ -162,6 +163,7 @@ class SynchronousMTStrategy[G: Genome, D: Dataset](ParallelMTStrategy[G, D]):
         super().__init__(**kwargs)
         self.pool: mp.Pool = mp.Pool(self.parallelism, initializer=ParallelMTStrategy.init,
                                      initargs=(self.init_tasks, self.init_task_values, ))
+        self.counter: int = 0
 
     def __enter__(self) -> Self:
         return self
@@ -177,17 +179,22 @@ class SynchronousMTStrategy[G: Genome, D: Dataset](ParallelMTStrategy[G, D]):
         )
 
         fitness = self.fitness
+        output = self.output_directory
 
-        def f(task):
+        def f(args):
+            task, i = args
             genome = task(SynchronousMTStrategy.rng)
-
+            with open(f"{output}/{i}.genome", "wb") as file:
+                dill.dump(genome, file)
             if genome:
                 print(torch.get_default_device())
                 genome.evaluate(fitness, EvolutionaryStrategy.get_dataset())
 
             return genome
 
-        self.population.integrate_generation(self.pool.map(f, tasks))
+        genomes: List[Optional[G]] = self.pool.map(f, list(zip(tasks, range(self.counter, self.counter + len(tasks)))))
+        self.population.integrate_generation(genomes)
+        self.counter += len(genomes)
         logger.info("step complete...")
 
 

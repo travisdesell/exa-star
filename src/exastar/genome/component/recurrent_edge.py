@@ -35,6 +35,9 @@ class RecurrentEdge(Edge):
         self.time_skip = time_skip
         self.weight = torch.nn.Parameter(torch.ones(1))
 
+        if time_skip == 0:
+            assert input_node.depth < output_node.depth
+
     def __repr__(self) -> str:
         """
         Returns:
@@ -74,8 +77,10 @@ class RecurrentEdge(Edge):
             time_step: the time step the value is being fed from.
             value: the output value of the input node.
         """
-        output_value = value * self.weight
+        assert self.is_active()
 
+        output_value = value * self.weight
+        # logger.info(f"Firing edge {self.input_node.inon} -> {self.output_node.inon}")
         self.output_node.input_fired(
             time_step=time_step + self.time_skip, value=output_value
         )

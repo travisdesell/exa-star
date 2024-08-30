@@ -23,8 +23,7 @@ class SetEdgeEnabled[G: EXAStarGenome](EXAStarMutationOperator[G]):
 
     def __call__(self, genome: G, rng: np.random.Generator) -> Optional[G]:
         """
-        Given the parent genome, create a child genome which is a clone
-        of the parent with an edge split.
+        Randomly toggls the state of an edge that has state `not self.enabled` to `self.enabled`
         """
 
         potential_edges = [edge for edge in genome.edges if edge.enabled != self.enabled]

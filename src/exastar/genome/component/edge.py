@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import abstractmethod
 import copy
 from typing import cast, Dict, Optional, Self, Tuple
@@ -102,6 +103,12 @@ class Edge(ComparableMixin, Component, torch.nn.Module):
     def __lt__(self, other: object) -> bool:
         assert isinstance(other, Edge)
         return (self.input_node.depth, self.output_node.depth) < (other.input_node.depth, self.output_node.depth)
+
+    def identical_to(self, other: Edge) -> bool:
+        return (
+            (self.input_node.inon, self.output_node.inon, self.time_skip) ==
+            (other.input_node.inon, other.output_node.inon, other.time_skip)
+        )
 
     @abstractmethod
     def reset(self):

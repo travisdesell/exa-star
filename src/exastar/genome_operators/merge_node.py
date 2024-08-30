@@ -47,11 +47,13 @@ class MergeNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
 
         for parent_node in [node1, node2]:
             for edge in parent_node.input_edges:
-                genome.add_edge(self.edge_generator(genome, edge.input_node, new_node, rng, edge.time_skip))
+                if edge.input_node.depth < new_node.depth:
+                    genome.add_edge(self.edge_generator(genome, edge.input_node, new_node, rng, edge.time_skip))
                 edge.disable()
 
             for edge in parent_node.output_edges:
-                genome.add_edge(self.edge_generator(genome, new_node, edge.output_node, rng, edge.time_skip))
+                if edge.output_node.depth > new_node.depth:
+                    genome.add_edge(self.edge_generator(genome, new_node, edge.output_node, rng, edge.time_skip))
                 edge.disable()
 
             # disable the parent nodes that are merged (the above loops disable
