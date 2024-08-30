@@ -100,9 +100,8 @@ class Edge(ComparableMixin, Component, torch.nn.Module):
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Edge) and self.inon == other.inon
 
-    def __lt__(self, other: object) -> bool:
-        assert isinstance(other, Edge)
-        return (self.input_node.depth, self.output_node.depth) < (other.input_node.depth, self.output_node.depth)
+    def _cmpkey(self) -> Tuple:
+        return (self.input_node.depth, self.output_node.depth)
 
     def identical_to(self, other: Edge) -> bool:
         return (

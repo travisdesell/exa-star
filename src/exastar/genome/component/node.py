@@ -118,7 +118,7 @@ class Node(ComparableMixin, Component, torch.nn.Module):
 
     @overrides(ComparableMixin)
     def _cmpkey(self) -> Tuple:
-        return (self.depth, self.inon)
+        return (self.depth, )
 
     @overrides(object)
     def __hash__(self) -> int:

@@ -5,10 +5,10 @@ from config import configclass
 from exastar.genome import EXAStarGenome
 from exastar.genome.component import OutputNode
 from exastar.genome_operators.exastar_mutation_operator import EXAStarMutationOperator, EXAStarMutationOperatorConfig
-
-import numpy as np
-
 from util.functional import is_not_instance
+
+from loguru import logger
+import numpy as np
 
 
 class AddEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
@@ -41,6 +41,10 @@ class AddEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
 
         split = bisect.bisect_right(genome.nodes, input_node)
         output_node = rng.choice(cast(List, genome.nodes[split:]))
+
+        logger.info(f"split = {split}\n{genome.nodes[split:]}")
+        logger.info(f"input: {input_node}")
+        logger.info(f"output: {output_node}")
 
         edge = self.edge_generator(
             target_genome=genome,
