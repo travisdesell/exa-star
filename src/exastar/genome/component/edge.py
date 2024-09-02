@@ -16,7 +16,7 @@ class edge_inon_t(inon_t):
     ...
 
 
-class Edge(ComparableMixin, Component, torch.nn.Module):
+class Edge(ComparableMixin, Component):
     def __init__(
         self,
         input_node: Node,

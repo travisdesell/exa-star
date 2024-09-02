@@ -8,6 +8,8 @@ from exastar.genome.component import Node, Edge, RecurrentEdge
 
 import numpy as np
 
+from exastar.weights import WeightGenerator
+
 
 class EdgeGenerator[G: EXAStarGenome](ABC):
     # TODO: It maay make sense to change the interface, and to then allow some of the
@@ -28,7 +30,8 @@ class EdgeGenerator[G: EXAStarGenome](ABC):
         input_node: Node,
         output_node: Node,
         rng: np.random.Generator,
-        recurrent: Optional[bool] = None,
+        recurrent: Optional[bool | int] = None,
+        weight_generator: Optional[WeightGenerator] = None,
     ) -> Edge:
         """
         Creates a new edge in the target genome between the input and output node.
@@ -36,6 +39,12 @@ class EdgeGenerator[G: EXAStarGenome](ABC):
             target_genome: is the genome the edge will be created for.
             input_node: is the edge's input node.
             output_node: is the edge's output node.
+            rng: random number generator
+            weight_generator: an optional weight generator that, if supplied, will be used to create the weights for
+              the new edge.
+            recurrent: an optional field specifying either (1) the exact recurrent depth, or a boolean specifying
+              whether or not recurrent connections should be considered. If the field is None, the edge generator will
+              determine whether or not to use a recurrent connection.
         Returns:
             A new edge for for a computational graph
         """
@@ -75,20 +84,11 @@ class RecurrentEdgeGenerator[G: EXAStarGenome](EdgeGenerator[G]):
         output_node: Node,
         rng: np.random.Generator,
         recurrent: Optional[bool | int] = None,
+        weight_generator: Optional[WeightGenerator] = None,
     ) -> Edge:
         """
-        Creates a new feed forward or recurrent edge for the computational graph.
-        For the basic version this will select either a feed forward (time skip = 0)
-        or recurrent edge (time skip >= 1) at a 50% chance each. If it is a recurrent
-        edge it will then select the time skip randomly between 1 and the max time
-        skip.
-
-        Args:
-            target_genome: is the genome the edge will be created for.
-            input_node: is the edge's input node.
-            output_node: is the edge's output node.
-        Returns:
-            A new edge for an EXA-GP computational graph.
+        Creates an edge connecting the two specified nodes. The edge will ber recurrent if `recurrent` is True,
+        is an integer > 0, or if it is None and it is randomly sampled to be recurrent.
         """
 
         if recurrent is not None or (recurrent is None and rng.random() < self.p_recurrent):
@@ -103,7 +103,15 @@ class RecurrentEdgeGenerator[G: EXAStarGenome](EdgeGenerator[G]):
             assert input_node != output_node
             assert input_node.depth < output_node.depth
 
-        return RecurrentEdge(input_node, output_node, target_genome.input_nodes[0].max_sequence_length, True, time_skip)
+        edge = RecurrentEdge(input_node, output_node, target_genome.input_nodes[0].max_sequence_length, True, time_skip)
+
+        # Normally we would have to iterate through edge.parameters() and initialize all of them, but RecurrentEdge
+        # is a concrete class and we know it only has one weight.
+        if weight_generator:
+            weight_generator(target_genome, rng, targets=[edge])
+            edge.set_weights_initialized(True)
+
+        return edge
 
 
 @configclass(name="base_recurrent_edge_generator", group="genome_factory/edge_generator", target=RecurrentEdgeGenerator)

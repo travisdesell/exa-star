@@ -5,6 +5,7 @@ from config import configclass
 from exastar.genome import EXAStarGenome
 from exastar.genome_operators.exastar_mutation_operator import EXAStarMutationOperator, EXAStarMutationOperatorConfig
 
+from loguru import logger
 import numpy as np
 
 
@@ -24,6 +25,7 @@ class SplitEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         Returns:
             A new genome to evaluate.
         """
+        logger.trace("Performing a SplitEdge mutation")
         target_edge = rng.choice(genome.edges)
         target_edge.disable()
 
@@ -56,7 +58,7 @@ class SplitEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
 
         genome.add_edge(output_edge)
 
-        # TODO: Manually initialize weights of newly generated components
+        self.weight_generator(genome, rng, targets=[new_node, input_edge, output_edge])
 
         return genome
 

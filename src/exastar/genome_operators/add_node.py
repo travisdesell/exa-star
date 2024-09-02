@@ -5,6 +5,8 @@ from typing import cast, List
 from config import configclass
 from exastar.genome import EXAStarGenome
 from exastar.genome.component import Node
+from exastar.genome.component.component import Component
+from exastar.genome.component.edge import Edge
 from exastar.genome_operators.exastar_mutation_operator import EXAStarMutationOperator, EXAStarMutationOperatorConfig
 
 from loguru import logger
@@ -28,7 +30,8 @@ class AddNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
         return 1
 
     def __call__(self, genome: G, rng: np.random.Generator) -> G:
-        """Given the parent genome, create a child genome which is a clone
+        """
+        Given the parent genome, create a child genome which is a clone
         of the parent with a random node added.
         Args:
             parent_genomes: a list of parent genomes to create the child genome from.
@@ -37,9 +40,10 @@ class AddNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
         Returns:
             A new genome to evaluate.
         """
+        logger.trace("Performing an AddNode mutation")
+
         # calculate the depth of the new node (exclusive of 0.0 and 1.0 so it
         # is not at the same depth as the input or output nodes.
-
         child_depth = rng.uniform(math.nextafter(0.0, 1.0), 1.0)
 
         logger.info(f"adding node at child_depth: {child_depth}")
@@ -62,19 +66,24 @@ class AddNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
         incoming_candidates = genome.nodes[:splitl]
         outgoing_candidates = genome.nodes[splitr:]
 
+        new_components: List[Component] = [new_node]
         n_incoming = int(max(not require_recurrent, rng.normal(*genome.get_edge_distributions("input_edges", False))))
-        self.create_edges(genome, new_node, incoming_candidates, True, max(0, n_incoming), False, rng)
+        new_components.extend(self.create_edges(genome, new_node, incoming_candidates,
+                              True, max(0, n_incoming), False, rng))
 
         n_outgoing = int(max(not require_recurrent, rng.normal(*genome.get_edge_distributions("output_edges", False))))
-        self.create_edges(genome, new_node, outgoing_candidates, False, max(0, n_outgoing), False, rng)
+        new_components.extend(self.create_edges(genome, new_node, outgoing_candidates,
+                              False, max(0, n_outgoing), False, rng))
 
         n_incoming_rec = int(max(require_recurrent, rng.normal(*genome.get_edge_distributions("input_edges", True))))
-        self.create_edges(genome, new_node, recurrent_candidates, True, max(0, n_incoming_rec), True, rng)
+        new_components.extend(self.create_edges(genome, new_node, recurrent_candidates,
+                              True, max(0, n_incoming_rec), True, rng))
 
         n_outgoing_rec = int(max(require_recurrent, rng.normal(*genome.get_edge_distributions("output_edges", True))))
-        self.create_edges(genome, new_node, recurrent_candidates, False, max(0, n_outgoing_rec), True, rng)
+        new_components.extend(self.create_edges(genome, new_node, recurrent_candidates,
+                              False, max(0, n_outgoing_rec), True, rng))
 
-        self.weight_generator(genome, rng)
+        self.weight_generator(genome, rng, targets=new_components)
 
         return genome
 
@@ -96,7 +105,9 @@ class AddNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
         n_connections: int,
         recurrent: bool,
         rng: np.random.Generator,
-    ):
+    ) -> List[Edge]:
+        new_edges = []
+
         nodes = rng.choice(cast(List, candidate_nodes), min(len(candidate_nodes), n_connections), replace=False)
         for other_node in nodes:
             input_output_pair = other_node, target_node
@@ -106,8 +117,12 @@ class AddNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
             else:
                 output_node, input_node = input_output_pair
 
-            edge = self.edge_generator(genome, input_node, output_node, rng, recurrent)
+            edge = self.edge_generator(genome, input_node, output_node, rng, recurrent=recurrent)
+
             genome.add_edge(edge)
+            new_edges.append(edge)
+
+        return new_edges
 
 
 @configclass(name="base_add_node_mutation", group="genome_factory/mutation_operators", target=AddNode)

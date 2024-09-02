@@ -31,10 +31,6 @@ class InputNode(Node):
         self.parameter_name = parameter_name
 
     @overrides(Node)
-    def new(self) -> Self:
-        return InputNode(self.parameter_name, self.depth, self.max_sequence_length, self.inon, self.enabled)
-
-    @overrides(Node)
     def __repr__(self) -> str:
         """Provides an easily readable string representation of this node."""
         return (

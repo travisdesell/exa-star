@@ -427,38 +427,48 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
                 self.viable = False
                 break
 
-    def get_weight_distribution(
-        self, min_weight_std_dev: float = 0.05
-    ) -> Tuple[float, float]:
-        """Gets the mean and standard deviation of the weights in this genome.
+    def get_weight_distribution(self) -> Tuple[float, float]:
+        """
+        Gets the mean and standard deviation of the weights in this genome.
+
         Args:
             min_weight_std_dev: is the minimum possible weight standard deviation,
                 so that we use distributions that return more than a single
                 weight.
+
         Returns:
             A tuple of the (avg, stddev) of the genome's weights.
         """
+        nweights: int = 0
+        sum: float = 0.0
 
-        all_weights = []
-        for node_or_edge in self.nodes + self.edges:
-            for weight in node_or_edge.weight:
-                if weight is not None:
-                    all_weights.append(weight.detach().item())
+        parameters = []
 
-        n_weights = len(all_weights)
-        all_weights = np.array(all_weights)
-        weights_avg = np.mean(all_weights)
+        for component in itertools.chain(self.nodes, self.edges):
+            if not component.weights_initialized() or component.is_disabled():
+                continue
 
-        weights_std = max(min_weight_std_dev, np.std(all_weights))
+            for parameter in component.parameters():
+                sum += float(parameter.sum())
+                nweights += parameter.numel()
+                parameters.append(parameter)
 
-        # print(f"all weights len: {n_weights} -- {all_weights}")
-        print(
-            f"all weights len: {n_weights} -- weights avg: {weights_avg}, std: {weights_std}"
-        )
+        # An empty genome / genome with only uninitialized weights
+        if nweights == 0:
+            return 0, 1
 
-        return (weights_avg, weights_std)
+        mean: float = sum / nweights
 
-    def get_edge_distributions(self, edge_type: str, recurrent: bool) -> (float, float):
+        stdsum: float = 0.0
+
+        for parameter in parameters:
+            stdsum += float(torch.square(mean - parameter).sum())
+
+        std: float = math.sqrt(stdsum / nweights)
+
+        return mean, std
+
+    def get_edge_distributions(self, edge_type: str, recurrent: bool) -> Tuple[float, float]:
         """Gets the mean and standard deviation for the number of input and output
         edges for all nodes in the given genome, for either recurrent or non-recurrent
         edges.

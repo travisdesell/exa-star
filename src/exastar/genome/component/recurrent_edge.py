@@ -33,7 +33,7 @@ class RecurrentEdge(Edge):
         super().__init__(input_node, output_node, max_sequence_length, enabled, inon)
 
         self.time_skip = time_skip
-        self.weight = torch.nn.Parameter(torch.ones(1))
+        self.weight: torch.nn.Parameter = torch.nn.Parameter(torch.ones(1))
 
         if time_skip == 0:
             assert input_node.depth < output_node.depth

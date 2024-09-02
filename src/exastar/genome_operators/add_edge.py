@@ -35,6 +35,8 @@ class AddEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         Returns:
             A new genome to evaluate.
         """
+        logger.trace("Performing an AddEdge mutation")
+
         input_node = rng.choice(cast(List, list(filter(is_not_instance(OutputNode), genome.nodes))))
 
         # potential output nodes need to be deeper than the input node
@@ -42,14 +44,11 @@ class AddEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         split = bisect.bisect_right(genome.nodes, input_node)
         output_node = rng.choice(cast(List, genome.nodes[split:]))
 
-        logger.info(f"split = {split}\n{genome.nodes[split:]}")
-        logger.info(f"input: {input_node}")
-        logger.info(f"output: {output_node}")
-
         edge = self.edge_generator(
             target_genome=genome,
             input_node=input_node,
             output_node=output_node,
+            weight_generator=self.weight_generator,
             rng=rng
         )
 
@@ -58,8 +57,6 @@ class AddEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
             return None
 
         genome.add_edge(edge)
-
-        self.weight_generator(genome, rng)
 
         return genome
 

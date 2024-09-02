@@ -1,11 +1,13 @@
 from itertools import chain
-from typing import Optional
+from typing import List, Optional
 
 from config import configclass
 from exastar.genome import EXAStarGenome
 from exastar.genome.component import InputNode, OutputNode
+from exastar.genome.component.component import Component
 from exastar.genome_operators.exastar_mutation_operator import EXAStarMutationOperator, EXAStarMutationOperatorConfig
 
+from loguru import logger
 import numpy as np
 
 
@@ -26,8 +28,7 @@ class SplitNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
             A new genome to evaluate, None if it was not possible to merge nodes (e.g.,
             there were not any hidden nodes to split).
         """
-        # calculate the depth of the new node (exclusive of 0.0 and 1.0 so it
-        # is not at the same depth as the input or output nodes.
+        logger.trace("Performing a SplitNode mutation")
 
         possible_nodes: list = [
             node
@@ -47,6 +48,8 @@ class SplitNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
         node2 = self.node_generator(parent_node.depth, genome, rng)
         genome.add_node(node2)
 
+        new_components: List[Component] = [node1, node2]
+
         input_edges = list(parent_node.input_edges)
         output_edges = list(parent_node.output_edges)
 
@@ -55,6 +58,9 @@ class SplitNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
         node1_output_edges = output_edges
         node2_input_edges = input_edges
         node2_output_edges = output_edges
+
+        assert len(output_edges) > 0
+        assert len(input_edges) > 0
 
         if len(input_edges) > 1:
             rng.shuffle(input_edges)
@@ -93,22 +99,22 @@ class SplitNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
 
             # set the input and output edges for each split node
             for input_edge in input_edges:
-                genome.add_edge(
-                    self.edge_generator(genome, input_edge.input_node, new_node, rng, input_edge.time_skip)
-                )
+                edge = self.edge_generator(genome, input_edge.input_node, new_node, rng, recurrent=input_edge.time_skip)
+                genome.add_edge(edge)
+                new_components.append(edge)
 
             for output_edge in output_edges:
-                genome.add_edge(
-                    self.edge_generator(genome, new_node, output_edge.output_node, rng, output_edge.time_skip)
-                )
-
-        # TODO: Generate new weights for new components
-        # self.weight_generator(genome)
+                edge = self.edge_generator(genome, new_node, output_edge.output_node,
+                                           rng, recurrent=output_edge.time_skip)
+                genome.add_edge(edge)
+                new_components.append(edge)
 
         # disable the parent node and its edges
         parent_node.disable()
         for edge in chain(parent_node.input_edges, parent_node.output_edges):
             edge.disable()
+
+        self.weight_generator(genome, rng, targets=new_components)
 
         return genome
 

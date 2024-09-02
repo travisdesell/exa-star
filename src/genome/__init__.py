@@ -208,7 +208,7 @@ class GenomeFactory[G: Genome, D: Dataset](ABC, LogDataProvider):
         self.rng: np.random.Generator = np.random.default_rng()
 
     @abstractmethod
-    def get_seed_genome(self, dataset: D) -> G: ...
+    def get_seed_genome(self, dataset: D, rng: np.random.Generator) -> G: ...
 
     def get_mutation(self) -> MutationOperator[G]:
         return self.operator_selector.choice(self.mutation_operators, self.rng)

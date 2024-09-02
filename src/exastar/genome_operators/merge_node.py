@@ -1,11 +1,13 @@
 import math
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 from config import configclass
 from exastar.genome.component import Node
 from exastar.genome import EXAStarGenome
+from exastar.genome.component.component import Component
 from exastar.genome_operators.exastar_mutation_operator import EXAStarMutationOperator, EXAStarMutationOperatorConfig
 
+from loguru import logger
 import numpy as np
 
 
@@ -15,6 +17,8 @@ class MergeNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
         super().__init__(*args, **kwargs)
 
     def __call__(self, genome: G, rng: np.random.Generator) -> Optional[G]:
+        logger.trace("Performing a MergeNode mutation")
+
         possible_nodes: list = [
             node
             for node in genome.nodes
@@ -44,24 +48,35 @@ class MergeNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
         genome.add_node(new_node)
 
         print(f"creating new node at depth: {child_depth}")
-
+        new_components: List[Component] = [new_node]
         for parent_node in [node1, node2]:
             for edge in parent_node.input_edges:
-                if edge.input_node.depth < new_node.depth:
-                    genome.add_edge(self.edge_generator(genome, edge.input_node, new_node, rng, edge.time_skip))
+                # If this would be a a valid feed-forward connection
+                if edge.time_skip == 0 and edge.input_node.depth < new_node.depth:
+                    time_skip = edge.time_skip
+                else:
+                    time_skip = edge.time_skip if edge.time_skip else True
+
+                new_edge = self.edge_generator(genome, edge.input_node, new_node, rng, recurrent=time_skip)
+                genome.add_edge(new_edge)
+                new_components.append(new_edge)
                 edge.disable()
 
             for edge in parent_node.output_edges:
-                if edge.output_node.depth > new_node.depth:
-                    genome.add_edge(self.edge_generator(genome, new_node, edge.output_node, rng, edge.time_skip))
+                # If this would be a a valid feed-forward connection
+                if edge.time_skip == 0 and edge.output_node.depth > new_node.depth:
+                    time_skip = edge.time_skip
+                else:
+                    time_skip = edge.time_skip if edge.time_skip else True
+
+                new_edge = self.edge_generator(genome, new_node, edge.output_node, rng, recurrent=time_skip)
+                genome.add_edge(new_edge)
+                new_components.append(new_edge)
                 edge.disable()
 
-            # disable the parent nodes that are merged (the above loops disable
-            # their edges
             parent_node.disable()
 
-        # TODO: Manually initialize weights, using the weight generator
-        # self.weight_generator(genome)
+        self.weight_generator(genome, rng, targets=new_components)
 
         return genome
 

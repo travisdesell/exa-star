@@ -180,4 +180,4 @@ class TestDataset(TimeSeriesConfig):
     filenames: Tuple[str, ...] = (
         "~/Downloads/aapl.csv",
     )
-    length: int = 12
+    length: int = 256

@@ -20,7 +20,7 @@ class node_inon_t(inon_t):
     ...
 
 
-class Node(ComparableMixin, Component, torch.nn.Module):
+class Node(ComparableMixin, Component):
 
     def __init__(
         self,
@@ -40,7 +40,7 @@ class Node(ComparableMixin, Component, torch.nn.Module):
             max_sequence_length: is the maximum length of any time series
                 to be processed by the neural network this node is part of
         """
-        super().__init__(type=Node)
+        super().__init__(type=Node, enabled=True)
 
         self.inon: node_inon_t = inon if inon is not None else node_inon_t()
         self.depth: float = depth

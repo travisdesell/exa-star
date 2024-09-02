@@ -98,7 +98,7 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
         self.genomes: List[G] = []
 
     def initialize(self, genome_factory: GenomeFactory[G, D], dataset: D) -> None:
-        seed = genome_factory.get_seed_genome(dataset)
+        seed = genome_factory.get_seed_genome(dataset, genome_factory.rng)
         self.genomes = [seed.clone() for _ in range(self.size)]
 
     def make_generation(

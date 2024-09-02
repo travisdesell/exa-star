@@ -8,5 +8,4 @@ from exastar.genome_operators.merge_node import *
 from exastar.genome_operators.node_generator import *
 from exastar.genome_operators.split_edge import *
 from exastar.genome_operators.split_node import *
-from exastar.genome_operators.toggle_edge import *
-from exastar.genome_operators.toggle_node import *
+from exastar.genome_operators.toggle_component import *

@@ -3,13 +3,15 @@ from itertools import chain, product
 import math
 from typing import cast, Dict, List, Set
 
+from exastar.weights import WeightGenerator
 from genome import MSEValue
 from exastar.genome.component import Edge, Node, InputNode, OutputNode, RecurrentEdge
 from exastar.genome.exastar_genome import EXAStarGenome
 from exastar.time_series import TimeSeries
-
 from genome import FitnessValue
+
 from loguru import logger
+import numpy as np
 import torch
 
 
@@ -21,6 +23,8 @@ class RecurrentGenome(EXAStarGenome[Edge]):
         input_series_names: List[str],
         output_series_names: List[str],
         max_sequence_length: int,
+        weight_generator: WeightGenerator,
+        rng: np.random.Generator
     ) -> RecurrentGenome:
         input_nodes = {
             input_name: InputNode(input_name, 0.0, max_sequence_length)
@@ -40,7 +44,7 @@ class RecurrentGenome(EXAStarGenome[Edge]):
 
         nodes: List[Node] = [n for n in chain(input_nodes.values(), output_nodes.values())]
 
-        return RecurrentGenome(
+        g = RecurrentGenome(
             generation_number,
             list(input_nodes.values()),
             list(output_nodes.values()),
@@ -49,6 +53,8 @@ class RecurrentGenome(EXAStarGenome[Edge]):
             MSEValue(math.inf),
             max_sequence_length
         )
+        weight_generator(g, rng)
+        return g
 
     @staticmethod
     def make_minimal_recurrent(
@@ -56,6 +62,8 @@ class RecurrentGenome(EXAStarGenome[Edge]):
         input_series_names: List[str],
         output_series_names: List[str],
         max_sequence_length: int,
+        weight_generator: WeightGenerator,
+        rng: np.random.Generator
     ) -> RecurrentGenome:
         input_nodes: List[InputNode] = [
             InputNode(input_name, 0.0, max_sequence_length)
@@ -77,7 +85,7 @@ class RecurrentGenome(EXAStarGenome[Edge]):
             else:
                 edge.weight[0] = 1.0
 
-        return RecurrentGenome(
+        g = RecurrentGenome(
             generation_number,
             input_nodes,
             output_nodes,
@@ -86,6 +94,8 @@ class RecurrentGenome(EXAStarGenome[Edge]):
             MSEValue(math.inf),
             max_sequence_length,
         )
+        weight_generator(g, rng)
+        return g
 
     def __init__(
         self,
@@ -120,12 +130,33 @@ class RecurrentGenome(EXAStarGenome[Edge]):
         self.max_sequence_length = max_sequence_length
 
     def sanity_check(self):
+        # Ensure all edges referenced by nodes are in self.edges
+        # and vica versa
         edges_from_nodes: Set[Edge] = set()
         for node in self.nodes:
             edges_from_nodes.update(node.input_edges)
             edges_from_nodes.update(node.output_edges)
 
+            # Check for orphaned nodes
+            if not isinstance(node, InputNode):
+                assert node.input_edges
+
+            if not isinstance(node, OutputNode):
+                assert node.output_edges
+
+            assert node.weights_initialized(), f"node = {node}"
+
         assert set(self.edges) == edges_from_nodes
+
+        # Check that all nodes referenced by edges are contained in self.nodes,
+        # and vica versa
+        nodes_from_edges: Set[Node] = set()
+        for edge in self.edges:
+            nodes_from_edges.add(edge.input_node)
+            nodes_from_edges.add(edge.output_node)
+            assert edge.weights_initialized()
+
+        assert set(self.nodes) == nodes_from_edges
 
     def forward(self, input_series: TimeSeries) -> Dict[str, torch.Tensor]:
         """
@@ -198,7 +229,9 @@ class RecurrentGenome(EXAStarGenome[Edge]):
                 # us calculate the loss without doing backprop at all if iterations == 0
 
                 logger.info(f"iteration {iteration} loss: {loss}")
-
+                for p in self.parameters():
+                    print(p)
+                    print(p.grad)
                 loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()

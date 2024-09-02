@@ -1,4 +1,5 @@
 from exastar.genome.component import (
+    Component,
     Edge,
     edge_inon_t,
     IdentityEdge,

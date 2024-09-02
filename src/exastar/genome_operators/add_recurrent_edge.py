@@ -8,6 +8,7 @@ from exastar.genome_operators.edge_generator import RecurrentEdgeGenerator, Recu
 from exastar.genome.component import InputNode, Node, OutputNode
 from util.functional import is_not_instance
 
+from loguru import logger
 import numpy as np
 
 
@@ -39,6 +40,7 @@ class AddRecurrentEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         Returns:
             A new genome to evaluate.
         """
+        logger.trace("Performing an AddRecurrentEdge mutation")
 
         candidate_input_nodes: List[Node] = list(filter(is_not_instance(OutputNode), genome.nodes))
         input_node = rng.choice(cast(List, candidate_input_nodes))
@@ -47,7 +49,7 @@ class AddRecurrentEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
 
         output_node = rng.choice(cast(List, candidate_output_nodes))
 
-        edge = self.edge_generator(genome, input_node, output_node, rng, recurrent=True)
+        edge = self.edge_generator(genome, input_node, output_node, rng, recurrent=True, weight_generator=self.weight_generator)
 
         if any(map(edge.identical_to, input_node.output_edges)):
             # We already have an identical edge, the mutation fails

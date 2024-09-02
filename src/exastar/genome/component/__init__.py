@@ -1,3 +1,4 @@
+from exastar.genome.component.component import Component
 from exastar.genome.component.edge import Edge, edge_inon_t
 from exastar.genome.component.identity_edge import IdentityEdge
 from exastar.genome.component.input_node import InputNode
