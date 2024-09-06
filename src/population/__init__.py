@@ -85,8 +85,12 @@ class LogWorstGenomeConfig(LogDataProviderConfig):
 
 
 class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
+    """
+    Simple population for synchronous, elitist EAs.
+    """
 
     def __init__(self, size: int, n_elites: int, **kwargs) -> None:
+
         super().__init__(**kwargs)
 
         self.size: int = size
@@ -107,12 +111,28 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
         return [genome_factory.get_task(self) for _ in range(self.size - self.n_elites)]
 
     def integrate_generation(self, genomes: List[Optional[G]]) -> None:
-        self.genomes = self.genomes[: self.n_elites] + cast(
-            List[G], list(filter(is_not_none, genomes))
-        )
+        elites = self.genomes[:self.n_elites]
+        new_genomes: List[G] = []
+        
+        for g in genomes:
+            if g is None:
+                continue
+            try:
+                index = elites.index(g)
+                if elites[index].fitness < g.fitness:
+                    elites.pop(index)
+                    new_genomes.append(g)
+            except ValueError:
+                new_genomes.append(g)
+
+        self.genomes = self.genomes[: self.n_elites] + new_genomes
+
+        # Reversed so our genomes are sorted "best" to "worst"
         self.genomes.sort(
             key=lambda g: g.fitness, reverse=True
         )
+
+        logger.info([g.fitness for g in self.genomes])
 
     def get_parents(self) -> List[G]:
         i, j = self.rng.integers(len(self.genomes), size=2)
@@ -180,6 +200,14 @@ class SteadyStatePopulation[G: Genome, D: Dataset](Population[G, D]):
         else:
             g = genomes[0]
 
+        # If there is a duplciate, remove it.
+        try:
+            index = self.genomes.index(g)
+            if self.genomes[index].fitness < g.fitness:
+                self.genomes.pop(index)
+        except ValueError:
+            ...
+
         if len(self.genomes) >= self.size:
             assert len(self.genomes) == self.size
             if g.fitness > self.genomes[-1].fitness:
@@ -191,7 +219,6 @@ class SteadyStatePopulation[G: Genome, D: Dataset](Population[G, D]):
         # Have to use this weird key function thing to insert in reverse order
         # i.e. from largest fitness to smallest.
         bisect.insort(self.genomes, g, key=functools.cmp_to_key(SteadyStatePopulation.fitness_compare))
-        logger.info(self.genomes)
 
     def get_parents(self) -> List[G]:
         i, j = self.rng.integers(len(self.genomes), size=2)

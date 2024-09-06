@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Callable, Dict, Optional
 from dataclasses import field
 
 from config import configclass
@@ -8,7 +8,7 @@ from exastar.genome_operators.edge_generator import EdgeGenerator, EdgeGenerator
 from exastar.genome_operators.node_generator import EXAStarNodeGenerator, EXAStarNodeGeneratorConfig, NodeGenerator, NodeGeneratorConfig
 from exastar.time_series import TimeSeries
 from exastar.weights import LamarckianWeightGeneratorConfig, WeightGenerator, WeightGeneratorConfig
-from genome import GenomeFactory, GenomeFactoryConfig, MutationOperator, CrossoverOperator, OperatorSelector
+from genome import GenomeFactory, GenomeFactoryConfig, GenomeProvider, MutationOperator, CrossoverOperator, OperatorSelector
 
 import numpy as np
 
@@ -31,12 +31,31 @@ class EXAStarGenomeFactory[G: EXAStarGenome](GenomeFactory[G, TimeSeries]):
         self.node_generator: NodeGenerator = node_generator
         self.edge_generator: EdgeGenerator = edge_generator
         self.weight_generator: WeightGenerator = weight_generator
+        self.generation_counter: int = 0
+
+    def _next_generation_id(self) -> int:
+        i = self.generation_counter
+        self.generation_counter += 1
+        return i
 
     def get_seed_genome(self, dataset: TimeSeries, rng: np.random.Generator) -> G:
-        return self.seed_genome_factory(dataset, self.weight_generator, rng)
+        return self.seed_genome_factory(self._next_generation_id(), dataset, self.weight_generator, rng)
 
     def get_log_data(self, aggregator: Any) -> Dict[str, Any]:
         return {}
+
+    @staticmethod
+    def set_gid(gid: int, g: G) -> G:
+        g.generation_number = gid
+        return g
+
+    def get_task(
+        self, provider: GenomeProvider[G]
+    ) -> Callable[[np.random.Generator], Optional[G]]:
+        task = super().get_task(provider)
+        gid = self._next_generation_id()
+
+        return lambda rng: EXAStarGenomeFactory.set_gid(gid, task(rng))
 
 
 @configclass(name="base_exastar_genome_factory_config", group="genome_factory", target=EXAStarGenomeFactory)

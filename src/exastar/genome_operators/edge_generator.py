@@ -6,6 +6,7 @@ from config import configclass
 from exastar.genome import EXAStarGenome
 from exastar.genome.component import Node, Edge, RecurrentEdge
 
+from loguru import logger
 import numpy as np
 
 from exastar.weights import WeightGenerator
@@ -49,6 +50,34 @@ class EdgeGenerator[G: EXAStarGenome](ABC):
             A new edge for for a computational graph
         """
         ...
+
+    def create_edges(
+        self,
+        genome: G,
+        target_node: Node,
+        candidate_nodes: List[Node],
+        incoming: bool,
+        n_connections: int,
+        recurrent: bool,
+        rng: np.random.Generator,
+    ) -> List[Edge]:
+        new_edges = []
+
+        nodes = rng.choice(cast(List, candidate_nodes), min(len(candidate_nodes), n_connections), replace=False)
+        for other_node in nodes:
+            input_output_pair = other_node, target_node
+
+            if incoming:
+                input_node, output_node = input_output_pair
+            else:
+                output_node, input_node = input_output_pair
+
+            edge = self(genome, input_node, output_node, rng, recurrent=recurrent)
+
+            genome.add_edge(edge)
+            new_edges.append(edge)
+
+        return new_edges
 
 
 @dataclass

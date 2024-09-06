@@ -138,7 +138,12 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
     #     return cls(genome.generation_number, input_nodes, output_nodes, nodes, edges, genome.fitness)
 
     @overrides(Genome)
+    @torch.no_grad()
     def clone(self) -> Self:
+        """
+        Uses `torch.no_grad()` to avoid the potential of copying intermediate / gradient related tensors over. In the
+        future, if we want to save the gradient state to allow resuming of training etc. we should do that elsewhere.
+        """
         return copy.deepcopy(self)
 
     @constmethod
@@ -196,11 +201,12 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
         Resets all the node and edge values for another
         forward pass.
         """
-        for node in self.nodes:
-            node.reset()
+        with torch.no_grad():
+            for node in self.nodes:
+                node.reset()
 
-        for edge in self.edges:
-            edge.reset()
+            for edge in self.edges:
+                edge.reset()
 
     # def add_edge_during_crossover(self, edge: Edge):
     #     """

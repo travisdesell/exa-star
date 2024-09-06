@@ -11,7 +11,13 @@ import numpy as np
 class SeedGenomeFactory[G: EXAStarGenome]:
 
     @abstractmethod
-    def __call__(self, dataset: TimeSeries, weight_generator: WeightGenerator, rng: np.random.Generator) -> G:
+    def __call__(
+        self,
+        generation_id: int,
+        dataset: TimeSeries,
+        weight_generator: WeightGenerator,
+        rng: np.random.Generator
+    ) -> G:
         ...
 
 

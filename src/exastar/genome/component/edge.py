@@ -35,10 +35,7 @@ class Edge(ComparableMixin, Component):
             max_sequence_length: is the maximum length of any time series
                 to be processed by the neural network this edge is part of
         """
-        super().__init__(type=Edge)
-
-        self.enabled: bool = enabled
-        self.active: bool = True
+        super().__init__(type=Edge, enabled=enabled)
 
         self.inon: edge_inon_t = inon if inon is not None else edge_inon_t()
         self.max_sequence_length = max_sequence_length
@@ -77,6 +74,12 @@ class Edge(ComparableMixin, Component):
         clone._connect()
 
         return clone
+
+    def __copy__(self):
+        cls = self.__class__
+        copy = cls.__new__(cls)
+        copy.__dict__.update(self.__dict__)
+        return copy
 
     @overrides(torch.nn.Module)
     def __repr__(self) -> str:

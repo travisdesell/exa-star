@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+import math
 from typing import (
     Callable,
     cast,
@@ -17,6 +18,7 @@ from util.typing import ComparableMixin, constmethod
 
 from loguru import logger
 import numpy as np
+import numpy.typing as npt
 from pandas.core.frame import functools
 
 
@@ -63,6 +65,9 @@ class Genome(ABC, LogDataProvider):
     @constmethod
     def clone(self) -> Self: ...
 
+    @abstractmethod
+    def __eq__(self, other) -> bool: ...
+
     def evaluate[D: Dataset](self, f: Fitness[Self, D], dataset: D) -> FitnessValue[Self]:
         self.fitness = f.compute(self, dataset)
         return self.fitness
@@ -79,7 +84,10 @@ class MSEValue[G: Genome](FitnessValue):
         self.mse: float = mse
 
     def _cmpkey(self) -> Tuple:
-        return (-self.mse, )
+        if math.isnan(self.mse):
+            return (-math.inf, )
+        else:
+            return (-self.mse, )
 
     def __repr__(self) -> str: return f"MSEValue({self.mse})"
 
@@ -89,6 +97,18 @@ class GenomeOperator[G: Genome](ABC):
     def __init__(self, weight: float) -> None:
         # Relative weight used for computing genome operator probabilities.
         self.weight: float = weight
+
+    def roll(self, p: float, rng: np.random.Generator) -> bool:
+        """
+        Returns true with proability 
+        """
+        assert 0 <= p <= 1.0
+        return rng.random() < p
+
+    def rolln(self, p: float, n_rolls: int, rng: np.random.Generator) -> npt.NDArray[np.bool]:
+        assert 0 <= p <= 1.0
+        assert n_rolls > 0
+        return rng.random(n_rolls) < p
 
 
 @dataclass(kw_only=True)
@@ -229,7 +249,7 @@ class GenomeFactory[G: Genome, D: Dataset](ABC, LogDataProvider):
         else:
             # Crossover
             crossover: CrossoverOperator[G] = cast(CrossoverOperator[G], operator)
-            return functools.partial(crossover, provider.get_parents())
+            return functools.partial(crossover, sorted(provider.get_parents(), key=lambda g: g.fitness))
 
 
 @dataclass(kw_only=True)

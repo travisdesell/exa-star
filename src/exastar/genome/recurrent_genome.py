@@ -42,7 +42,8 @@ class RecurrentGenome(EXAStarGenome[Edge]):
             for parameter_name in filter(lambda x: x in output_nodes, input_nodes.keys())
         ]
 
-        nodes: List[Node] = [n for n in chain(input_nodes.values(), output_nodes.values())]
+        nodes: List[Node] = list(chain(input_nodes.values(), output_nodes.values()))
+        logger.info(f"output series: {output_series_names}")
 
         g = RecurrentGenome(
             generation_number,
@@ -53,6 +54,7 @@ class RecurrentGenome(EXAStarGenome[Edge]):
             MSEValue(math.inf),
             max_sequence_length
         )
+
         weight_generator(g, rng)
         return g
 
@@ -111,11 +113,11 @@ class RecurrentGenome(EXAStarGenome[Edge]):
         Initialize base class genome fields and methods.
         Args:
             generation_number: is a unique number for the genome,
-                generated in the order that they were created. higher
-                genome numbers are from genomes generated later
-                in the search.
+              generated in the order that they were created. higher
+              genome numbers are from genomes generated later
+              in the search.
             max_sequence_length: is the maximum length of any time series
-      to be processed by the neural network this node is part of
+              to be processed by the neural network this node is part of
         """
         EXAStarGenome.__init__(
             self,
@@ -141,12 +143,17 @@ class RecurrentGenome(EXAStarGenome[Edge]):
             if not isinstance(node, InputNode):
                 assert node.input_edges
 
-            if not isinstance(node, OutputNode):
+            # Input nodes can be orphaned; output nodes need not have output edges. to not be orphaned.
+            if not isinstance(node, InputNode) and not isinstance(node, OutputNode):
                 assert node.output_edges
 
             assert node.weights_initialized(), f"node = {node}"
 
-        assert set(self.edges) == edges_from_nodes
+        aa = set(self.edges)
+        bb = set(self.inon_to_edge.values())
+        assert aa == edges_from_nodes == bb
+
+        assert set(self.nodes) == set(self.inon_to_node.values())
 
         # Check that all nodes referenced by edges are contained in self.nodes,
         # and vica versa
@@ -156,7 +163,15 @@ class RecurrentGenome(EXAStarGenome[Edge]):
             nodes_from_edges.add(edge.output_node)
             assert edge.weights_initialized()
 
-        assert set(self.nodes) == nodes_from_edges
+        node_set = set(self.nodes)
+        for node in nodes_from_edges:
+            if node not in node_set:
+                assert isinstance(node, InputNode) or isinstance(node, OutputNode)
+
+        for node in node_set:
+            assert node.inon in self.inon_to_node
+        for edge in self.edges:
+            assert edge.inon in self.inon_to_edge
 
     def forward(self, input_series: TimeSeries) -> Dict[str, torch.Tensor]:
         """
@@ -174,7 +189,6 @@ class RecurrentGenome(EXAStarGenome[Edge]):
         assert sorted(self.nodes) == self.nodes
 
         for time_step in range(input_series.series_length):
-            # logger.info(f"Timestep {time_step}")
             for input_node in self.input_nodes:
                 x = input_series.series_dictionary[input_node.parameter_name][time_step]
                 input_node.accumulate(time_step=time_step, value=x)
@@ -214,28 +228,25 @@ class RecurrentGenome(EXAStarGenome[Edge]):
             outputs = self.forward(input_series)
 
             loss = torch.zeros(1)
+            diffs = {i: [] for i in range(len(output_series))}
+
             for parameter_name, values in outputs.items():
                 expected = output_series.series_dictionary[parameter_name]
 
                 for i in range(len(expected)):
                     diff = expected[i] - values[i]
-                    # logger.info(f"expected[{i}]: {expected[i]} - values[{i}]: {values[i]} = {diff}")
-                    loss = loss + diff * diff
+                    diffs[i].append(diff * diff)
 
-            loss = torch.sqrt(loss)
+            timestep_losses = [torch.stack(diffs[i]).mean() for i in range(len(output_series))]
+            loss = torch.stack(timestep_losses).mean()
 
             if iteration < iterations:
                 # don't need to do backpropagate on the last iteration, but also this lets
                 # us calculate the loss without doing backprop at all if iterations == 0
-
-                logger.info(f"iteration {iteration} loss: {loss}")
-                for p in self.parameters():
-                    print(p)
-                    print(p.grad)
                 loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
             else:
-                loss = loss.detach()[0]
+                loss = float(loss)
                 logger.info(f"final fitness (loss): {loss}, type: {type(loss)}")
                 return loss

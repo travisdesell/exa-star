@@ -51,7 +51,7 @@ class RecurrentEdge(Edge):
             f"enabled={self.enabled}, "
             f"active={self.active}, "
             f"time_skip={self.time_skip}, "
-            f"weight={self.weight}"
+            f"weight={repr(self.weight)}"
             ")"
         )
 
@@ -59,7 +59,7 @@ class RecurrentEdge(Edge):
         """
         Resets the edge gradients for the next forward pass.
         """
-        self.weight.grad = None
+        pass
 
     def fire_recurrent_preinput(self):
         """
@@ -80,7 +80,6 @@ class RecurrentEdge(Edge):
         assert self.is_active()
 
         output_value = value * self.weight
-        # logger.info(f"Firing edge {self.input_node.inon} -> {self.output_node.inon}")
         self.output_node.input_fired(
             time_step=time_step + self.time_skip, value=output_value
         )

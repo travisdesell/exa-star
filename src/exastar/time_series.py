@@ -56,6 +56,9 @@ class TimeSeries(Dataset):
                         logger.error(f"\t'{series_name}': {series.shape}")
                     exit(1)
 
+    def __len__(self) -> int:
+        return self.series_length
+
     @staticmethod
     def create_truncated_from_csv(
         filenames: List[str],
@@ -134,6 +137,7 @@ class TimeSeries(Dataset):
         """
         output_series = {}
 
+        logger.info(f"keys: {list(self.series_dictionary.keys())}")
         for series_name in output_series_names:
             output_series[series_name] = self.series_dictionary[series_name][:-offset]
 
@@ -175,9 +179,10 @@ class AAPLTimeSeriesConfig(TimeSeriesConfig):
     )
 
 
-@configclass(name="base_aapl_time_series_dataset", group="dataset", target=TimeSeries.create_truncated_from_csv)
+@configclass(name="base_test_dataset", group="dataset", target=TimeSeries.create_truncated_from_csv)
 class TestDataset(TimeSeriesConfig):
     filenames: Tuple[str, ...] = (
         "~/Downloads/aapl.csv",
     )
     length: int = 256
+    output_series: List[str] = field(default_factory=lambda: ["Close"])

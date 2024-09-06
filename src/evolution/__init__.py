@@ -32,6 +32,7 @@ class EvolutionaryStrategy[G: Genome, D: Dataset](ABC, LogDataAggregator):
 
     def __init__(
         self,
+        environment: Dict[str, str],
         output_directory: str,
         population: Population[G, D],
         genome_factory: GenomeFactory[G, D],
@@ -41,6 +42,8 @@ class EvolutionaryStrategy[G: Genome, D: Dataset](ABC, LogDataAggregator):
         providers: Dict[str, LogDataProvider[Self]],
     ) -> None:
         LogDataAggregator.__init__(self, providers)
+
+        self.environment: Dict[str, str] = environment
 
         self.output_directory: str = output_directory
         self.population: Population = population
@@ -85,15 +88,19 @@ class EvolutionaryStrategy[G: Genome, D: Dataset](ABC, LogDataAggregator):
 
 @dataclass(kw_only=True)
 class EvolutionaryStrategyConfig(LogDataAggregatorConfig):
+    environment: Dict[str, str] = field(default_factory=dict)
     output_directory: str
     population: PopulationConfig
-    genome_factory: GenomeFactoryConfig
+    genome_factory: GenomeFactoryConfig = field(default="${..environment}")
     fitness: FitnessConfig
     dataset: DatasetConfig
     nsteps: int = field(default=10000)
 
 
 class InitTask[E: EvolutionaryStrategy]:
+    """
+    A task to be ran on a separate process to configure state / environment properly.
+    """
 
     def __init__(self) -> None:
         ...
@@ -101,13 +108,24 @@ class InitTask[E: EvolutionaryStrategy]:
     @abstractmethod
     def run(self, values: Dict[str, Any]) -> None: ...
 
-    @abstractmethod
-    def values(self, strategy: E) -> Dict[str, Any]: ...
+    def values(self, strategy: E) -> Dict[str, Any]:
+        return {}
 
 
 @dataclass
 class InitTaskConfig:
     ...
+
+
+class LoguruInitTask[E: EvolutionaryStrategy](InitTask[E]):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def run(self, values: Dict[str, Any]) -> None:
+        pass
+
+    def values(self, strategy: E) -> Dict[str, Any]:
+        return {"output_directory": strategy.output_directory}
 
 
 class DatasetInitTask(InitTask):
@@ -128,6 +146,27 @@ class DatasetInitTaskConfig(InitTaskConfig):
     ...
 
 
+class EnvironmentInitTask(InitTask):
+
+    def __init__(self, environment: Dict[str, str]) -> None:
+        super().__init__()
+        self.environment: Dict[str, str] = environment
+
+    def run(self, values: Dict[str, Any]) -> None:
+        logger.info("RUNNING TASK")
+        for name, value in self.environment.items():
+            if name in os.environ:
+                logger.info(f"Overwriting key {name}:{os.environ[name]} to {value}")
+            else:
+                logger.info(f"Writing to environment {name}:{value}")
+            os.environ[name] = value
+
+
+@configclass(name="base_environment_init_task", group="init_tasks", target=EnvironmentInitTask)
+class EnvironmentInitTaskConfig(InitTaskConfig):
+    environment: Dict[str, str]
+
+
 class ParallelMTStrategy[G: Genome, D: Dataset](EvolutionaryStrategy[G, D]):
     rng: np.random.Generator = np.random.default_rng()
 
@@ -142,8 +181,9 @@ class ParallelMTStrategy[G: Genome, D: Dataset](EvolutionaryStrategy[G, D]):
         super().__init__(**kwargs)
         self.parallelism: int = parallelism if parallelism else mp.cpu_count()
 
-        self.init_tasks: Dict[str, InitTask] = init_tasks
+        self.init_tasks: Dict[str, InitTask] = dict(init_tasks) | {"environment": EnvironmentInitTask(self.environment)}
         self.init_task_values: dict = {}
+
         for task in init_tasks.values():
             self.init_task_values.update(task.values(self))
 

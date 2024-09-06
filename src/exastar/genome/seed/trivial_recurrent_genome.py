@@ -10,12 +10,18 @@ import numpy as np
 class TrivialRecurrentGenomeFactory(SeedGenomeFactory[RecurrentGenome]):
     def __call__(
         self,
+        generation_id: int,
         dataset: TimeSeries,
         weight_generator: WeightGenerator,
         rng: np.random.Generator
     ) -> RecurrentGenome:
         return RecurrentGenome.make_trivial(
-            0, dataset.input_series_names, dataset.output_series_names, dataset.series_length, weight_generator, rng
+            generation_id,
+            dataset.input_series_names,
+            dataset.output_series_names,
+            dataset.series_length,
+            weight_generator,
+            rng
         )
 
 

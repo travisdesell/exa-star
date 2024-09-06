@@ -40,7 +40,7 @@ class Node(ComparableMixin, Component):
             max_sequence_length: is the maximum length of any time series
                 to be processed by the neural network this node is part of
         """
-        super().__init__(type=Node, enabled=True)
+        super().__init__(type=Node, enabled=enabled)
 
         self.inon: node_inon_t = inon if inon is not None else node_inon_t()
         self.depth: float = depth
@@ -53,6 +53,9 @@ class Node(ComparableMixin, Component):
         self.inputs_fired: np.ndarray = np.ndarray(shape=(max_sequence_length,), dtype=np.int32)
 
         self.value = [torch.zeros(1)] * self.max_sequence_length
+
+    def _create_value(self) -> List[torch.Tensor]:
+        return [torch.zeros(1) for _ in range(self.max_sequence_length)]
 
     def __getstate__(self):
         """
@@ -68,8 +71,13 @@ class Node(ComparableMixin, Component):
 
         state["input_edges"] = []
         state["output_edges"] = []
+        state["value"] = []
 
         return state
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self.value = self._create_value()
 
     def __deepcopy__(self, memo):
         """
@@ -87,16 +95,6 @@ class Node(ComparableMixin, Component):
             setattr(clone, k, copy.deepcopy(v, memo))
 
         return clone
-
-    def new(self) -> Self:
-        """
-        Used for creating a deep copy. This just creates a new object with empty edge lists,
-        which will be populated later.
-
-        Note: any torch parameters should be copied over here (our default node has none).
-        """
-        n = Node(self.depth, self.max_sequence_length, self.inon, self.enabled)
-        return n
 
     @overrides(torch.nn.Module)
     def __repr__(self) -> str:
@@ -135,7 +133,9 @@ class Node(ComparableMixin, Component):
         Args:
             edge: a new input edge for this node.
         """
+        assert edge.output_node.inon == self.inon
         assert not any(edge.inon == e.inon for e in self.input_edges)
+
         bisect.insort(self.input_edges, edge)
 
     def add_output_edge(self, edge: Edge):
@@ -145,7 +145,9 @@ class Node(ComparableMixin, Component):
         Args:
             edge: a new output edge for this node.
         """
+        assert edge.input_node.inon == self.inon
         assert not any(edge.inon == e.inon for e in self.output_edges)
+
         bisect.insort(self.output_edges, edge)
 
     def input_fired(self, time_step: int, value: torch.Tensor):
@@ -182,9 +184,7 @@ class Node(ComparableMixin, Component):
         forward and backward pass.
         """
         self.inputs_fired[:] = 0
-        with torch.no_grad():
-            for ts in self.value:
-                ts[:] = 0.0
+        self.value = [torch.zeros(1)] * self.max_sequence_length
 
     def accumulate(self, time_step: int, value: torch.Tensor):
         """
@@ -206,7 +206,6 @@ class Node(ComparableMixin, Component):
         Args:
             time_step: is the time step the input is being fired from.
         """
-        # logger.info(f"forward node: {self.inon}")
 
         # check to make sure in the case of input nodes which
         # have recurrent connections feeding into them that
@@ -219,9 +218,6 @@ class Node(ComparableMixin, Component):
             f", self.inputs_fired[{time_step}]: {self.inputs_fired[time_step]} != {self.required_inputs}"
         )
 
-        for output_edge in self.output_edges:  # filter(Component.is_active, self.output_edges):
+        for output_edge in self.output_edges:
             if output_edge.is_active():
-                # logger.info(f"    FIRING: {output_edge}")
                 output_edge.forward(time_step=time_step, value=self.value[time_step])
-            else:
-                pass  # logger.info(f"NOT FIRING: {output_edge)
