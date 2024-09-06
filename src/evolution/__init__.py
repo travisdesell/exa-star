@@ -1,7 +1,17 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, cast, Callable, Dict, List, Optional, Self
-import multiprocess as mp
+from typing import TYPE_CHECKING, Any, cast, Callable, Dict, List, Optional, Self
+
+# Type checking for the `multiprocess` module is broken, but that packing perfectly shadows the built-in multiprocessing
+# package. So, import the `multiprocessing` package only for type checking and use `multiprocess` for the actual
+# behavior.
+if TYPE_CHECKING:
+    import multiprocessing as mp
+    from multiprocessing.pool import Pool
+else:
+    import multiprocess as mp
+    from multiprocess.pool import Pool
+
 import os
 import sys
 
@@ -51,6 +61,8 @@ class EvolutionaryStrategy[G: Genome, D: Dataset](ABC, LogDataAggregator):
         self.fitness: Fitness[G, D] = fitness
         self.dataset: D = dataset
 
+        self.rng: np.random.Generator = np.random.default_rng()
+
         self.nsteps: int = nsteps
         self.log: DataFrame
 
@@ -77,7 +89,7 @@ class EvolutionaryStrategy[G: Genome, D: Dataset](ABC, LogDataAggregator):
     def run(self):
         os.makedirs(self.output_directory, exist_ok=True)
 
-        self.population.initialize(self.genome_factory, self.dataset)
+        self.population.initialize(self.genome_factory, self.dataset, self.rng)
         with self:
             for istep in range(self.nsteps):
                 self.step()
@@ -91,7 +103,7 @@ class EvolutionaryStrategyConfig(LogDataAggregatorConfig):
     environment: Dict[str, str] = field(default_factory=dict)
     output_directory: str
     population: PopulationConfig
-    genome_factory: GenomeFactoryConfig = field(default="${..environment}")
+    genome_factory: GenomeFactoryConfig
     fitness: FitnessConfig
     dataset: DatasetConfig
     nsteps: int = field(default=10000)
@@ -173,7 +185,7 @@ class ParallelMTStrategy[G: Genome, D: Dataset](EvolutionaryStrategy[G, D]):
     @staticmethod
     def init(init_tasks: Dict[str, InitTask], values: Dict[str, Any]) -> None:
         for name, task in init_tasks.items():
-            process = mp.current_process()
+            process = mp.current_process()  # type: ignore
             logger.info(f"Running init task {name} on process {process}")
             task.run(values)
 
@@ -201,8 +213,8 @@ class SynchronousMTStrategy[G: Genome, D: Dataset](ParallelMTStrategy[G, D]):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.pool: mp.Pool = mp.Pool(self.parallelism, initializer=ParallelMTStrategy.init,
-                                     initargs=(self.init_tasks, self.init_task_values, ))
+        self.pool: Pool = mp.Pool(self.parallelism, initializer=ParallelMTStrategy.init,
+                                  initargs=(self.init_tasks, self.init_task_values, ))
         self.counter: int = 0
 
     def __enter__(self) -> Self:
@@ -215,7 +227,7 @@ class SynchronousMTStrategy[G: Genome, D: Dataset](ParallelMTStrategy[G, D]):
     def step(self) -> None:
         logger.info("Starting step...")
         tasks: List[Callable[[np.random.Generator], Optional[G]]] = (
-            self.population.make_generation(self.genome_factory)
+            self.population.make_generation(self.genome_factory, self.rng)
         )
 
         fitness = self.fitness
@@ -248,21 +260,21 @@ class AsyncMTStrategy[G: Genome, D: Dataset](ParallelMTStrategy[G, D]):
     queue: mp.Queue = mp.Queue()
 
     @staticmethod
-    def init(queue: mp.Queue, init_tasks: Dict[str, InitTask], values: Dict[str, Any]) -> None:
+    def init_async(queue: mp.Queue, init_tasks: Dict[str, InitTask], values: Dict[str, Any]) -> None:
         AsyncMTStrategy.queue = queue
         ParallelMTStrategy.init(init_tasks, values)
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.i: int = 0
-        self.pool: mp.Pool = mp.Pool(self.parallelism, initializer=AsyncMTStrategy.init,
-                                     initargs=(AsyncMTStrategy.queue, self.init_tasks, self.init_task_values, ))
+        self.pool: Pool = mp.Pool(self.parallelism, initializer=AsyncMTStrategy.init_async,
+                                  initargs=(AsyncMTStrategy.queue, self.init_tasks, self.init_task_values, ))
 
     def __enter__(self) -> Self:
         fitness = self.fitness
         for _ in range(self.parallelism):
             logger.info("Creating task")
-            task = self.population.make_generation(self.genome_factory)
+            task = self.population.make_generation(self.genome_factory, self.rng)
             self.pool.apply_async(AsyncMTStrategy.f, (fitness, task)).get()
 
         return self
@@ -298,7 +310,7 @@ class AsyncMTStrategy[G: Genome, D: Dataset](ParallelMTStrategy[G, D]):
 
         self.population.integrate_generation(genomes)
 
-        tasks = self.population.make_generation(self.genome_factory)
+        tasks = self.population.make_generation(self.genome_factory, self.rng)
 
         def callback(_result):
             logger.info("task completed...")

@@ -14,6 +14,8 @@ from loguru import logger
 import numpy as np
 import torch
 
+from util.typing import overrides
+
 
 class RecurrentGenome(EXAStarGenome[Edge]):
 
@@ -202,21 +204,14 @@ class RecurrentGenome(EXAStarGenome[Edge]):
 
         return outputs
 
-    def train(
+    @overrides(EXAStarGenome)
+    def train_genome(
         self,
         input_series: TimeSeries,
         output_series: TimeSeries,
         optimizer: torch.optim.Optimizer,
         iterations: int,
-    ):
-        """Trains the genome for a given number of iterations.
-
-        Args:
-            input_series: The input time series to train on.
-            output_series: The output (expected) time series to learn from.
-            opitmizer: The pytorch optimizer to use to adapt weights.
-            iterations: How many iterations to train for.
-        """
+    ) -> float:
         self.calculate_reachability()
 
         assert self.viable
@@ -250,3 +245,6 @@ class RecurrentGenome(EXAStarGenome[Edge]):
                 loss = float(loss)
                 logger.info(f"final fitness (loss): {loss}, type: {type(loss)}")
                 return loss
+
+        # unreachable
+        return math.inf

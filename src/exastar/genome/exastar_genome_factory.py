@@ -50,9 +50,9 @@ class EXAStarGenomeFactory[G: EXAStarGenome](GenomeFactory[G, TimeSeries]):
         return g
 
     def get_task(
-        self, provider: GenomeProvider[G]
+        self, provider: GenomeProvider[G], rng: np.random.Generator,
     ) -> Callable[[np.random.Generator], Optional[G]]:
-        task = super().get_task(provider)
+        task = super().get_task(provider, rng)
         gid = self._next_generation_id()
 
         return lambda rng: EXAStarGenomeFactory.set_gid(gid, task(rng))

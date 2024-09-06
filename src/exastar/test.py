@@ -1,3 +1,4 @@
+"""
 import sys
 from typing import Callable, List, Optional, Self
 
@@ -107,3 +108,4 @@ class EXAStarTestStrategy[G: EXAStarGenome, D: TimeSeries](EvolutionaryStrategy[
 @configclass(name="base_exastar_test_strategy", target=EXAStarTestStrategy)
 class EXAStarTestStrategyConfig(EvolutionaryStrategyConfig):
     ...
+"""

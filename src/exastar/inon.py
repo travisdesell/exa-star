@@ -1,9 +1,13 @@
-import multiprocess as mp
-import threading
-from typing import Any, Dict, Self, Optional
+from typing import TYPE_CHECKING, Any, Dict, Self, Optional
+
+if TYPE_CHECKING:
+    import multiprocessing as mp
+else:
+    import multiprocess as mp
+
 
 from config import configclass
-from evolution import InitTask, InitTaskConfig, ParallelMTStrategy, SynchronousMTStrategy
+from evolution import InitTask, InitTaskConfig, ParallelMTStrategy
 
 from loguru import logger
 

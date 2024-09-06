@@ -17,9 +17,8 @@ from util.log import LogDataProvider
 import graphviz
 from loguru import logger
 import math
-import matplotlib
+import matplotlib.colors
 import matplotlib.pyplot as plt
-import networkx as nx
 import numpy as np
 import torch
 
@@ -101,41 +100,24 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
             "Use a helper function, or create one. "
         )
 
-    # def __getstate__(self) -> Dict[str, Any]:
-    #     return {}
+    @abstractmethod
+    def train_genome(
+        self,
+        input_series: TimeSeries,
+        output_series: TimeSeries,
+        optimizer: torch.optim.Optimizer,
+        iterations: int,
+    ) -> float:
+        """
+        Trains the genome for a given number of iterations.
 
-    # def __getattr__(self, attr: str) -> Any:
-    #     """
-    #     Overridden to prevent direct access to fields that have strict ordering requirements.
-    #     """
-    #     match (self.constructing, attr):
-    #         case (False, "nodes" | "input_nodes" | "output_nodes" | "edges"):
-    #             self._raise_access_exception()
-    #         case _:
-    #             return super().__getattr__(attr)
-
-    # def __setattr__(self, attr: str, value: Any) -> None:
-    #     match attr:
-    #         case (False, "nodes" | "input_nodes" | "output_nodes" | "edges"):
-    #             self._raise_access_exception()
-    #         case _:
-    #             return super().__setattr__(attr, value)
-
-    # @classmethod
-    # def _clone(cls, genome: EXAStarGenome) -> Self:
-    #     # `new` creates a copy of the object but does not copy the edge lists.
-    #     nodes: List[Node] = [node.new() for node in genome.nodes]
-    #     input_nodes: List[InputNode] = cast(List[InputNode], list(
-    #         filter(lambda x: isinstance(x, InputNode), nodes))
-    #     )
-    #     output_nodes: List[OutputNode] = cast(List[OutputNode], list(
-    #         filter(lambda x: isinstance(x, OutputNode), nodes))
-    #     )
-
-    #     inon_to_node: Dict[node_inon_t, Node] = {node.inon: node for node in nodes}
-    #     edges: List[E] = [edge.clone(inon_to_node) for edge in genome.edges]
-
-    #     return cls(genome.generation_number, input_nodes, output_nodes, nodes, edges, genome.fitness)
+        Args:
+            input_series: The input time series to train on.
+            output_series: The output (expected) time series to learn from.
+            opitmizer: The pytorch optimizer to use to adapt weights.
+            iterations: How many iterations to train for.
+        """
+        ...
 
     @overrides(Genome)
     @torch.no_grad()
@@ -207,135 +189,6 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
 
             for edge in self.edges:
                 edge.reset()
-
-    # def add_edge_during_crossover(self, edge: Edge):
-    #     """
-    #     Adds edge to the genome during the crossover operation.
-    #     This will need to have its input and output nodes found and
-    #     set given their innovation numbers. This needs to be called
-    #     after all new nodes have been first added during crossover.
-
-    #     Args:
-    #         edge: is the edge to add
-    #     """
-    #     assert edge.inon not in self.inon_to_edge
-    #     assert edge.input_node is None
-    #     assert edge.output_node is None
-    #     assert edge.input_node_inon
-    #     assert edge.output_node_inon
-
-    #     if (
-    #         edge.input_innovation_number not in self.node_map.keys()
-    #         or edge.output_innovation_number not in self.node_map.keys()
-    #     ):
-    #         # do not add edges which don't have both an input node and output
-    #         # node in the genome
-    #         return
-
-    #     self.edges.append(edge)
-    #     self.edge_map[edge.innovation_number] = edge
-
-    #     edge.input_node = self.node_map[edge.input_innovation_number]
-    #     edge.input_node.add_output_edge(edge)
-
-    #     edge.output_node = self.node_map[edge.output_innovation_number]
-    #     edge.output_node.add_input_edge(edge)
-
-    # def connect_edges_during_crossover(self):
-    #     """Goes through all the edges in the genome to see
-    #     if any have an input or output node as None. If so
-    #     a lookup will happen given the node map to connect
-    #     the edge appropriately.
-    #     """
-
-    #     for edge in self.edges:
-    #         if edge.input_node is None:
-    #             if edge.input_innovation_number in self.node_map.keys():
-    #                 edge.input_node = self.node_map[edge.input_innovation_number]
-    #                 edge.input_node.add_output_edge(edge)
-
-    #         if edge.output_node is None:
-    #             if edge.output_innovation_number in self.node_map.keys():
-    #                 edge.output_node = self.node_map[edge.output_innovation_number]
-    #                 edge.output_node.add_input_edge(edge)
-
-    def plot(self, genome_name: Optional[str] = None):
-        """Display this graph using graphviz.
-        Args:
-            genome_name: specifices what genome name (and filename) for the
-                graphviz file.
-        """
-        figure, axes = plt.subplots()
-
-        if genome_name is None:
-            genome_name = f"genome_{self.generation_number}"
-
-        dot = graphviz.Digraph(genome_name, directory="./output")
-        dot.attr(labelloc="t", label=f"Genome Fitness: {self.fitness}% MAE")
-
-        with dot.subgraph() as source_graph:
-            source_graph.attr(rank="source")
-            source_graph.attr("node", shape="doublecircle", color="green")
-            source_graph.attr(pad="0.01", nodesep="0.05", ranksep="0.9")
-            for node in sorted(self.input_nodes):
-                source_graph.node(
-                    f"node {node.inon}", label=f"{node.parameter_name}"
-                )
-
-        with dot.subgraph() as sink_graph:
-            sink_graph.attr(rank="sink")
-            sink_graph.attr("node", shape="doublecircle", color="blue")
-            sink_graph.attr(pad="0.01", nodesep="0.05", ranksep="0.9")
-            for node in sorted(self.output_nodes):
-                sink_graph.node(
-                    f"node {node.inon}", label=f"{node.parameter_name}"
-                )
-
-        for node in self.nodes:
-            if not isinstance(node, InputNode) and not isinstance(node, OutputNode):
-                dot.node(f"node {node.inon}")
-
-        min_weight = math.inf
-        max_weight = -math.inf
-        for edge in self.edges:
-            weight = edge.weight[0].detach().item()
-            if weight > max_weight:
-                max_weight = weight
-            if weight < min_weight:
-                min_weight = weight
-
-        eps = 0.0001
-
-        for edge in self.edges:
-            weight = edge.weight[0].detach().item()
-            # color_val = weight ** 2 / (1 + weight ** 2)
-
-            color_map = None
-            if weight > 0:
-                color_val = ((weight / (max_weight + eps)) / 2.0) + 0.5
-                color_map = plt.get_cmap("Blues")
-            else:
-                color_val = -((weight / (min_weight + eps)) / 2.0) + 0.5
-                color_map = plt.get_cmap("Reds")
-
-            color = matplotlib.colors.to_hex(color_map(color_val))
-            if edge.time_skip > 0:
-                dot.edge(
-                    f"node {edge.input_node.inon}",
-                    f"node {edge.output_node.inon}",
-                    color=color,
-                    label=f"skip {edge.time_skip}",
-                    style="dashed",
-                )
-            else:
-                dot.edge(
-                    f"node {edge.input_node.inon}",
-                    f"node {edge.output_node.inon}",
-                    color=color,
-                    label=f"skip {edge.time_skip}",
-                )
-
-        dot.view()
 
     def is_valid(self) -> bool:
         """Check that nothing strange happened in a mutation or crossover operation,
@@ -413,7 +266,7 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
             lambda edge: edge.input_node,
         )
 
-        active_components: Set[Node | Edge] = forward_reachable_components.intersection(backward_reachable_components)
+        active_components: Set[Component] = forward_reachable_components.intersection(backward_reachable_components)
         for component in active_components:
             component.activate()
 
@@ -517,12 +370,22 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
         edge_counts = np.array(edge_counts)
 
         # make sure these are at least 1.0 so we can grow the network
-        avg_count = max(1.0, np.mean(edge_counts))
-        std_count = max(1.0, np.std(edge_counts))
+        avg_count: float = max(1.0, float(np.mean(edge_counts)))
+        std_count: float = max(1.0, float(np.std(edge_counts)))
 
         return (avg_count, std_count)
 
     @abstractmethod
-    def forward(self, input_series: TimeSeries):
-        """Performs a forward pass through a computational graph."""
+    def forward(self, input_series: TimeSeries) -> Dict[str, torch.Tensor]:
+        """
+        Performs a forward pass through the recurrent computational graph.
+
+        Args:
+            input_series: are the input time series for the model.
+
+        Returns:
+            A dict of a list of tensors, one entry for each parameter, where the
+            key of the dict is the predicted parameter name.
+        """
+
         ...

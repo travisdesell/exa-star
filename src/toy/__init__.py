@@ -43,6 +43,9 @@ class ToyGenome(Genome):
     def __str__(self) -> str:
         return self.__repr__()
 
+    def __eq__(self, other) -> bool:
+        return self.value == other.value
+
     def get_log_data(self, aggregator: None) -> Dict[str, Any]:
         return {
             "fitness": self.fitness,
@@ -136,7 +139,7 @@ class ToyGenomeFactory(GenomeFactory[ToyGenome, ToyDataset]):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
 
-    def get_seed_genome(self, dataset: ToyDataset) -> ToyGenome:
+    def get_seed_genome(self, dataset: ToyDataset, rng: np.random.Generator) -> ToyGenome:
         g = ToyGenome(0)
         g.fitness = ToyFitnessValue(0)
         return g

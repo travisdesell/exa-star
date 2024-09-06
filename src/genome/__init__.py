@@ -160,10 +160,10 @@ class GenomeProvider[G: Genome]:
     def __init__(self) -> None: ...
 
     @abstractmethod
-    def get_parents(self) -> List[G]: ...
+    def get_parents(self, rng: np.random.Generator) -> List[G]: ...
 
     @abstractmethod
-    def get_genome(self) -> G: ...
+    def get_genome(self, rng: np.random.Generator) -> G: ...
 
 
 class OperatorSelector(ABC, LogDataProvider):
@@ -225,31 +225,30 @@ class GenomeFactory[G: Genome, D: Dataset](ABC, LogDataProvider):
 
         assert len(self.mutation_operators), "You must specify at least one mutation operation."
 
-        self.rng: np.random.Generator = np.random.default_rng()
 
     @abstractmethod
     def get_seed_genome(self, dataset: D, rng: np.random.Generator) -> G: ...
 
-    def get_mutation(self) -> MutationOperator[G]:
-        return self.operator_selector.choice(self.mutation_operators, self.rng)
+    def get_mutation(self, rng: np.random.Generator) -> MutationOperator[G]:
+        return self.operator_selector.choice(self.mutation_operators, rng)
 
-    def get_crossover(self) -> CrossoverOperator[G]:
-        return self.operator_selector.choice(self.crossover_operators, self.rng)
+    def get_crossover(self, rng: np.random.Generator) -> CrossoverOperator[G]:
+        return self.operator_selector.choice(self.crossover_operators, rng)
 
     def get_task(
-        self, provider: GenomeProvider[G]
+        self, provider: GenomeProvider[G], rng: np.random.Generator,
     ) -> Callable[[np.random.Generator], Optional[G]]:
-        operator: GenomeOperator[G] = self.operator_selector.choice(self.operators, self.rng)
+        operator: GenomeOperator[G] = self.operator_selector.choice(self.operators, rng)
 
         if isinstance(operator, MutationOperator):
             # Mutation
             mutation: MutationOperator[G] = cast(MutationOperator[G], operator)
-            genome: G = provider.get_genome()
+            genome: G = provider.get_genome(rng)
             return lambda r: mutation(genome, r)
         else:
             # Crossover
             crossover: CrossoverOperator[G] = cast(CrossoverOperator[G], operator)
-            return functools.partial(crossover, sorted(provider.get_parents(), key=lambda g: g.fitness))
+            return functools.partial(crossover, sorted(provider.get_parents(rng), key=lambda g: g.fitness))
 
 
 @dataclass(kw_only=True)

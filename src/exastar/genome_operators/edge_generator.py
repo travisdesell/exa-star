@@ -224,7 +224,7 @@ class AltRecEdgeGenerator[G: EXAStarGenome](AltEdgeGenerator):
                     time_skip = self.sample_time_skip(rng)
                 else:
                     # If not recurrent, filter input nodes to ensure correct depth
-                    possible_inputs = list(filter(lambda node: node.depth < output_node.depth, possible_inputs))
+                    possible_inputs: List = list(filter(lambda node: node.depth < output_node.depth, possible_inputs))
 
                 input_node: Node = rng.choice(possible_inputs)
 
@@ -236,7 +236,7 @@ class AltRecEdgeGenerator[G: EXAStarGenome](AltEdgeGenerator):
                     time_skip = self.sample_time_skip(rng)
                 else:
                     # If not recurrent, filter output nodes to ensure correct depth
-                    possible_outputs = list(filter(lambda node: node.depth > input_node.depth, possible_outputs))
+                    possible_outputs: List = list(filter(lambda node: node.depth > input_node.depth, possible_outputs))
 
                 output_node: Node = rng.choice(possible_outputs)
 
