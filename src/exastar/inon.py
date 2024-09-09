@@ -7,7 +7,7 @@ else:
 
 
 from config import configclass
-from evolution import InitTask, InitTaskConfig, ParallelMTStrategy
+from evolution import InitTask, InitTaskConfig, ParallelMPStrategy
 
 from loguru import logger
 
@@ -37,7 +37,7 @@ class inon_t(int):
         return number
 
 
-class InonInitTask[E: ParallelMTStrategy](InitTask):
+class InonInitTask[E: ParallelMPStrategy](InitTask):
 
     def __init__(self) -> None:
         super().__init__()

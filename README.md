@@ -1,6 +1,13 @@
 # EXA-STAR
 This repository contains the source code for a generic, evolutionary algorithms framework. While geared towards neuroevolution, the interfaces are generic enough to define a wide variety of evolutionary algorithms.
 
+## Project Status
+The following things are on the TODO list:
+- Finish Hydra configuration options for loguru, the logging library we use. Need to be able to specify format and output files, taking into consideration the possibility of multiprocessing / MPI.
+- Hydra configuration options for pytorch, particularly the devices that we use.
+
+If you would like to contribute, these may be a good place to start. This list is also probably incomplete so `grep -nr TODO src` may yield some more interesting tasks.
+
 ## Overview
 The code is in the `src/` directory, and defines the following generic modules that are used to define evolutionary algorithms:
 ```

@@ -1,5 +1,5 @@
 defaults:
-  - base_synchronous_mt_strategy
+  - base_synchronous_mp_strategy
   - population: base_simple_population
   - genome_factory: base_exastar_genome_factory_config
   - genome_factory/seed_genome_factory: base_trivial_recurrent_seed_genome_factory
@@ -17,7 +17,7 @@ defaults:
   - dataset: base_test_dataset
 
 environment:
-  OBJC_DISABLE_INITIALIZE_FORK_SAFETY: "YES"
+  HYDRA_FULL_ERROR: "1"
 
 output_directory: "output/test"
 nsteps: 32000

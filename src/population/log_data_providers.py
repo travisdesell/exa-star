@@ -13,6 +13,9 @@ from loguru import logger
 class LogBestGenome[G: Genome, D: Dataset](LogDataProvider[Population[G, D]]):
 
     def get_log_data(self, aggregator: Population[G, D]) -> Dict[str, Any]:
+        """
+        Grab the best genomes' log data from the population.
+        """
         return self.prefix(
             "best_genome_", aggregator.get_best_genome().get_log_data(None)
         )
@@ -26,6 +29,9 @@ class LogBestGenomeConfig(LogDataProviderConfig):
 class LogWorstGenome[G: Genome, D: Dataset](LogDataProvider[Population[G, D]]):
 
     def get_log_data(self, aggregator: Population[G, D]) -> Dict[str, Any]:
+        """
+        Grab the worst best genomes' log data from the population.
+        """
         return self.prefix(
             "worst_genome_", aggregator.get_worst_genome().get_log_data(None)
         )
@@ -39,6 +45,9 @@ class LogWorstGenomeConfig(LogDataProviderConfig):
 class LogRecentGenome[G: Genome, D: Dataset](LogDataProvider[SteadyStatePopulation[G, D]]):
 
     def get_log_data(self, aggregator: SteadyStatePopulation[G, D]) -> Dict[str, Any]:
+        """
+        Grabs the log data for the most recent genome, only applicable to SteadStateGenome
+        """
         return self.prefix(
             "recent_genome_", aggregator.most_recent_genome.get_log_data(None) if aggregator.most_recent_genome else {}
         )

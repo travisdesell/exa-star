@@ -5,14 +5,19 @@ from typing import Callable, List, Optional
 
 from config import configclass
 from dataset import Dataset
-from genome import Genome, GenomeFactory
+from genome import Genome, GenomeFactory, GenomeProvider
 from population.population import Population, PopulationConfig
 
 from loguru import logger
 import numpy as np
 
+from util.typing import overrides
+
 
 class SteadyStatePopulation[G: Genome, D: Dataset](Population[G, D]):
+    """
+    A population that creates generations of size 1, and is meant to continuously be updated asynchronously.
+    """
 
     def __init__(self, size: int, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -58,14 +63,22 @@ class SteadyStatePopulation[G: Genome, D: Dataset](Population[G, D]):
         else:
             g = genomes[0]
 
-        # If there is a duplciate, remove it.
+        # Check for a duplicate genome
         try:
             index = self.genomes.index(g)
+
+            # There is a duplicate, and it is worse than the new genome - remove it.
             if self.genomes[index].fitness < g.fitness:
                 self.genomes.pop(index)
+            else:
+                # out new genome is worse - return so we don't insert it.
+                return
+
+        # thrown if `g` is not found in `self.genomes`
         except ValueError:
             ...
 
+        # We need to remove the worst genome to accomodate the new genome.
         if len(self.genomes) >= self.size:
             assert len(self.genomes) == self.size
             if g.fitness > self.genomes[-1].fitness:
@@ -79,10 +92,16 @@ class SteadyStatePopulation[G: Genome, D: Dataset](Population[G, D]):
         # i.e. from largest fitness to smallest.
         bisect.insort(self.genomes, g, key=functools.cmp_to_key(SteadyStatePopulation.fitness_compare))
 
+    @overrides(GenomeProvider)
     def get_parents(self, rng: np.random.Generator) -> List[G]:
-        i, j = rng.integers(len(self.genomes), size=2)
+        """
+        TODO: add an `n` paremeter to more easily change the number of parents that will be selected.
+        """
+        assert len(self.genomes) >= 2
+        i, j = rng.choice(len(self.genomes), size=2, replace=False)
         return [self.genomes[i], self.genomes[j]]
 
+    @overrides(GenomeProvider)
     def get_genome(self, rng: np.random.Generator) -> G:
         return self.genomes[rng.integers(len(self.genomes))]
 

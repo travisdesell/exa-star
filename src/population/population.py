@@ -11,6 +11,10 @@ import numpy as np
 
 
 class Population[G: Genome, D: Dataset](GenomeProvider, LogDataAggregator):
+    """
+    Interface for a population. The model of population this enforces is one that generates genomes one generation at a
+    time, and integrates an entire eveluated generation.
+    """
 
     def __init__(self, providers: Dict[str, LogDataProvider[Self]]) -> None:
         LogDataAggregator.__init__(self, providers)
@@ -37,6 +41,8 @@ class Population[G: Genome, D: Dataset](GenomeProvider, LogDataAggregator):
         """
         Complementary to `self.make_generation`, integrates the evaluated genomes into the population (or attempts to at
         least).
+
+        Note that the tasks that make up a generation are failable, so `genomes` may contain empty values (i.e. None).
         """
         ...
 

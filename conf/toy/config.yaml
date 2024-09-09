@@ -1,5 +1,5 @@
 defaults:
-  - base_async_mt_strategy
+  - base_async_mp_strategy
   - population: base_steady_state_population
   - log_data_providers@population.providers.x: base_log_recent_genome
   - genome_factory: toy

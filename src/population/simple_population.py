@@ -12,7 +12,12 @@ import numpy as np
 
 class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
     """
-    Simple population for synchronous, elitist EAs.
+    Simple population for synchronous, elitist EAs. There is a total of `self.size` genomes in the population. Each
+    generation, `self.size - self.n_elites` new tasks are created. After evaluation, all but the `self.n_elites` best
+    genomes are discarded and the newly evaluated genomes are placed in the generation.
+
+    Note that the semantics of fitness are important to understand the code here. Read the documnetation of
+    `genome.Fitness` for details.
     """
 
     def __init__(self, size: int, n_elites: int, **kwargs) -> None:
@@ -34,24 +39,38 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
     def make_generation(
         self, genome_factory: GenomeFactory[G, D], rng: np.random.Generator
     ) -> List[Callable[[np.random.Generator], Optional[G]]]:
+        """
+        Create a new generation consisting of `self.size - self.n_elites` genome tasks.
+        """
         return [genome_factory.get_task(self, rng) for _ in range(self.size - self.n_elites)]
 
     def integrate_generation(self, genomes: List[Optional[G]]) -> None:
+        """
+        Discards all but the elite genomes and adds in the newly evaluated genomes. In the case of a duplicate genome,
+        the one with worse fitness is discarded.
+        """
         elites = self.genomes[:self.n_elites]
         new_genomes: List[G] = []
 
         for g in genomes:
             if g is None:
                 continue
+
+            # See if there is a duplicate of this genome among the elites
             try:
                 index = elites.index(g)
+
+                # If the elite has worse fitness, discard it. Otherwise keep it and ignore the new genome
                 if elites[index].fitness < g.fitness:
                     elites.pop(index)
                     new_genomes.append(g)
+
             except ValueError:
+                # thrown when `list.index(obj)` is called and obj is not in the list
+                # in this case it means genome is not among the elites, so we can add it.
                 new_genomes.append(g)
 
-        self.genomes = self.genomes[: self.n_elites] + new_genomes
+        self.genomes = elites + new_genomes
 
         # Reversed so our genomes are sorted "best" to "worst"
         self.genomes.sort(
@@ -61,7 +80,9 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
         logger.info([g.fitness for g in self.genomes])
 
     def get_parents(self, rng: np.random.Generator) -> List[G]:
-        i, j = rng.integers(len(self.genomes), size=2)
+        assert len(self.genomes) > 2
+        # Two unique parents
+        i, j = rng.choice(len(self.genomes), size=2, replace=False)
         return [self.genomes[i], self.genomes[j]]
 
     def get_genome(self, rng: np.random.Generator) -> G:
