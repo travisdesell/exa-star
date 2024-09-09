@@ -175,16 +175,8 @@ class RecurrentGenome(EXAStarGenome[Edge]):
         for edge in self.edges:
             assert edge.inon in self.inon_to_edge
 
+    @overrides(EXAStarGenome)
     def forward(self, input_series: TimeSeries) -> Dict[str, torch.Tensor]:
-        """
-        Performs a forward pass through the recurrent computational graph.
-        Args:
-            input_series: are the input time series for the model.
-
-        Returns:
-            A dict of a list of tensors, one entry for each parameter, where the
-                key of the dict is the predicted parameter name.
-        """
         for edge in filter(Edge.is_active, self.edges):
             edge.fire_recurrent_preinput()
 

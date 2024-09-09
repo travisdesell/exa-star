@@ -190,6 +190,88 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
             for edge in self.edges:
                 edge.reset()
 
+    def plot(self, genome_name: Optional[str] = None):
+        """
+        Display this graph using graphviz.
+
+        Note that the python graphviz library lacks type information, so type: ignore litters this method.
+
+        Args:
+            genome_name: specifices what genome name (and filename) for the
+                graphviz file.
+        """
+        figure, axes = plt.subplots()
+
+        if genome_name is None:
+            genome_name = f"genome_{self.generation_number}"
+
+        dot = graphviz.Digraph(genome_name, directory="./output")
+        dot.attr(labelloc="t", label=f"Genome Fitness: {self.fitness}% MAE")
+
+        with dot.subgraph() as source_graph:  # type: ignore
+            source_graph.attr(rank="source")
+            source_graph.attr("node", shape="doublecircle", color="green")
+            source_graph.attr(pad="0.01", nodesep="0.05", ranksep="0.9")
+            for node in sorted(self.input_nodes):
+                source_graph.node(
+                    f"node {node.inon}", label=f"{node.parameter_name}"
+                )
+
+        with dot.subgraph() as sink_graph:  # type: ignore
+            sink_graph.attr(rank="sink")
+            sink_graph.attr("node", shape="doublecircle", color="blue")
+            sink_graph.attr(pad="0.01", nodesep="0.05", ranksep="0.9")
+            for node in sorted(self.output_nodes):
+                sink_graph.node(
+                    f"node {node.inon}", label=f"{node.parameter_name}"
+                )
+
+        for node in self.nodes:
+            if not isinstance(node, InputNode) and not isinstance(node, OutputNode):
+                dot.node(f"node {node.inon}")
+
+        min_weight = math.inf
+        max_weight = -math.inf
+        for edge in self.edges:
+            weight = edge.weight[0].detach().item()
+            if weight > max_weight:
+                max_weight = weight
+            if weight < min_weight:
+                min_weight = weight
+
+        eps = 0.0001
+
+        for edge in self.edges:
+            weight = edge.weight[0].detach().item()
+            # color_val = weight ** 2 / (1 + weight ** 2)
+
+            color_map = None
+            if weight > 0:
+                color_val = ((weight / (max_weight + eps)) / 2.0) + 0.5
+                color_map = plt.get_cmap("Blues")
+            else:
+                color_val = -((weight / (min_weight + eps)) / 2.0) + 0.5
+                color_map = plt.get_cmap("Reds")
+
+            color = matplotlib.colors.to_hex(color_map(color_val))
+            if edge.time_skip > 0:
+                dot.edge(
+                    f"node {edge.input_node.inon}",
+                    f"node {edge.output_node.inon}",
+                    color=color,
+                    label=f"skip {edge.time_skip}",
+                    style="dashed",
+                )
+            else:
+                dot.edge(
+                    f"node {edge.input_node.inon}",
+                    f"node {edge.output_node.inon}",
+                    color=color,
+                    label=f"skip {edge.time_skip}",
+                )
+
+        dot.view()
+
     def is_valid(self) -> bool:
         """Check that nothing strange happened in a mutation or crossover operation,
         e.g., all nodes have input and output edges (unless they are input or output

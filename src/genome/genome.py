@@ -8,6 +8,9 @@ from util.typing import constmethod
 
 
 class Genome(ABC, LogDataProvider):
+    """
+    Abstract genome interface. All it really does is require that genomes can be cloned and can be compared for equality
+    """
 
     def __init__(self, fitness: FitnessValue, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)

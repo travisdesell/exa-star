@@ -4,6 +4,9 @@ from typing import Optional, Tuple, Type
 
 class ComparableMixin:
     """
+    A type trait that will automatically implement rich-comparisons if you define a comparison key function
+    (see `_cmpkey`)
+
     If you are using multiple inheritence, it is pertinent that this class is inherited before any interfaces
     or abstract classes. Failure to do so will mess up the order of constructor calls.
     """
@@ -13,7 +16,13 @@ class ComparableMixin:
         self._comparison_parent_type: Optional[Type] = type
 
     @abstractmethod
-    def _cmpkey(self) -> Tuple: ...
+    def _cmpkey(self) -> Tuple:
+        """
+        Returns:
+            The comparison key for this object. All objects of the same type should return a tuple of the same type and 
+            length.
+        """
+        ...
 
     def _compare(self, other, f):
         if self._comparison_parent_type \
@@ -43,12 +52,6 @@ class ComparableMixin:
     def __ge__(self, other):
         return self._compare(other, lambda a, b: a >= b)
 
-    def __eq__(self, other):
-        return self._compare(other, lambda a, b: a == b)
-
-    def __ne__(self, other):
-        return self._compare(other, lambda a, b: a != b)
-
 
 def constmethod(func):
     """
@@ -73,6 +76,10 @@ def constmethod(func):
 
 
 def overrides(interface_class):
+    """
+    A decorator that marks a method as having been overridden. This also verifies that the method being overridden is
+    indeed from the specified interface class.
+    """
     def overrider(method):
         assert (method.__name__ in dir(interface_class))
         return method

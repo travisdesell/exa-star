@@ -80,7 +80,7 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
         logger.info([g.fitness for g in self.genomes])
 
     def get_parents(self, rng: np.random.Generator) -> List[G]:
-        assert len(self.genomes) > 2
+        assert len(self.genomes) >= 2
         # Two unique parents
         i, j = rng.choice(len(self.genomes), size=2, replace=False)
         return [self.genomes[i], self.genomes[j]]

@@ -13,12 +13,20 @@ from loguru import logger
 
 
 class inon_t(int):
+    """
+    An innovation number. This is a subclass of int and should have no more overhead than an int and inherits all of its
+    ordering, arithmetic, etc.
+    """
     counter: int = 0
-    mod_class: int = 0
     divisor: int = 1
 
     @staticmethod
     def set_mod_class(mod_class: int, divisor: int) -> None:
+        """
+        Sets the congruence class that will be used in this process. Congruence classes are non-overlapping sets of
+        integers `mod divisor`.
+        https://en.wikipedia.org/wiki/Modular_arithmetic#Congruence_classes
+        """
         inon_t.counter = mod_class
         inon_t.divisor = divisor
 
@@ -38,16 +46,28 @@ class inon_t(int):
 
 
 class InonInitTask[E: ParallelMPStrategy](InitTask):
+    """
+    An initialization task (see ParallelMPStrategy) that ensures that no two processes are using an overlapping set of
+    innovation numbers.
+    """
 
     def __init__(self) -> None:
         super().__init__()
 
     def run(self, values: Dict[str, Any]) -> None:
+        """
+        Fetch an integer from the id_queue (see `self.values` to see how this is created) and use it to set the modular
+        congruence class of the innovation numbers for this process.
+        """
         mod_class, divisor = values["id_queue"].get()
         inon_t.set_mod_class(mod_class, divisor)
         logger.info(f"setting mod class to `{mod_class} mod {divisor}`")
 
     def values(self, strategy: E) -> Dict[str, Any]:
+        """
+        Creates a queue and places integers [0, strategy.parallelism + 1) in the queue. The innovation number space will
+        effectively be partitioned into strategy.parallelism + 1 non-overlapping sets.
+        """
         q = mp.Queue()
 
         for i in range(strategy.parallelism):
