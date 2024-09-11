@@ -132,7 +132,7 @@ class RecurrentEdgeGenerator[G: EXAStarGenome](EdgeGenerator[G]):
             assert input_node != output_node
             assert input_node.depth < output_node.depth
 
-        edge = RecurrentEdge(input_node, output_node, target_genome.input_nodes[0].max_sequence_length, True, time_skip)
+        edge = RecurrentEdge(input_node, output_node, target_genome.input_nodes[0].max_sequence_length, time_skip)
 
         # Normally we would have to iterate through edge.parameters() and initialize all of them, but RecurrentEdge
         # is a concrete class and we know it only has one weight.
@@ -249,4 +249,4 @@ class AltRecEdgeGenerator[G: EXAStarGenome](AltEdgeGenerator):
                 input_node: Node = cast(Node, input)
                 output_node: Node = cast(Node, output)
 
-        return RecurrentEdge(input_node, output_node, target_genome.input_nodes[0].max_sequence_length, True, time_skip)
+        return RecurrentEdge(input_node, output_node, target_genome.input_nodes[0].max_sequence_length, time_skip)

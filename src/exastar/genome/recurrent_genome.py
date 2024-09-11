@@ -3,6 +3,7 @@ from itertools import chain, product
 import math
 from typing import cast, Dict, List, Set
 
+from exastar.genome.visitor.reachability_visitor import ReachabilityVisitor
 from exastar.weights import WeightGenerator
 from genome import MSEValue
 from exastar.genome.component import Edge, Node, InputNode, OutputNode, RecurrentEdge
@@ -39,8 +40,7 @@ class RecurrentGenome(EXAStarGenome[Edge]):
         }
 
         edges: List[Edge] = [
-            RecurrentEdge(input_nodes[parameter_name],
-                          output_nodes[parameter_name], max_sequence_length, True, 0)
+            RecurrentEdge(input_nodes[parameter_name], output_nodes[parameter_name], max_sequence_length, 0)
             for parameter_name in filter(lambda x: x in output_nodes, input_nodes.keys())
         ]
 
@@ -81,7 +81,7 @@ class RecurrentGenome(EXAStarGenome[Edge]):
 
         edges: List[Edge] = []
         for input_node, output_node in product(input_nodes, output_nodes):
-            edge = RecurrentEdge(input_node, output_node, max_sequence_length, True, 0)
+            edge = RecurrentEdge(input_node, output_node, max_sequence_length, 0)
 
             if input_node.parameter_name == output_node.parameter_name:
                 # set the weight to 1 as a default (use the previous value as the forecast)
@@ -153,7 +153,7 @@ class RecurrentGenome(EXAStarGenome[Edge]):
 
         aa = set(self.edges)
         bb = set(self.inon_to_edge.values())
-        assert aa == edges_from_nodes == bb
+        assert aa == edges_from_nodes == bb, f"{aa}\n{bb}\n{edges_from_nodes}"
 
         assert set(self.nodes) == set(self.inon_to_node.values())
 
@@ -204,7 +204,8 @@ class RecurrentGenome(EXAStarGenome[Edge]):
         optimizer: torch.optim.Optimizer,
         iterations: int,
     ) -> float:
-        self.calculate_reachability()
+        # Computes and sets `active` status
+        ReachabilityVisitor(self).visit()
 
         assert self.viable
         self.sanity_check()

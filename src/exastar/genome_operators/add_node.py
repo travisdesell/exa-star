@@ -7,6 +7,7 @@ from exastar.genome import EXAStarGenome
 from exastar.genome.component import Node
 from exastar.genome.component.component import Component
 from exastar.genome.component.edge import Edge
+from exastar.genome.visitor.edge_distribution_visitor import EdgeDistributionVisitor
 from exastar.genome_operators.exastar_mutation_operator import EXAStarMutationOperator, EXAStarMutationOperatorConfig
 
 from loguru import logger
@@ -67,19 +68,19 @@ class AddNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
         outgoing_candidates = genome.nodes[splitr:]
 
         new_components: List[Component] = [new_node]
-        n_incoming = int(max(not require_recurrent, rng.normal(*genome.get_edge_distributions("input_edges", False))))
+        n_incoming = int(max(not require_recurrent, rng.normal(*EdgeDistributionVisitor(True, False, genome).visit())))
         new_components.extend(self.edge_generator.create_edges(genome, new_node, incoming_candidates,
                               True, max(0, n_incoming), False, rng))
 
-        n_outgoing = int(max(not require_recurrent, rng.normal(*genome.get_edge_distributions("output_edges", False))))
+        n_outgoing = int(max(not require_recurrent, rng.normal(*EdgeDistributionVisitor(False, False, genome).visit())))
         new_components.extend(self.edge_generator.create_edges(genome, new_node, outgoing_candidates,
                               False, max(0, n_outgoing), False, rng))
 
-        n_incoming_rec = int(max(require_recurrent, rng.normal(*genome.get_edge_distributions("input_edges", True))))
+        n_incoming_rec = int(max(require_recurrent, rng.normal(*EdgeDistributionVisitor(True, True, genome).visit())))
         new_components.extend(self.edge_generator.create_edges(genome, new_node, recurrent_candidates,
                               True, max(0, n_incoming_rec), True, rng))
 
-        n_outgoing_rec = int(max(require_recurrent, rng.normal(*genome.get_edge_distributions("output_edges", True))))
+        n_outgoing_rec = int(max(require_recurrent, rng.normal(*EdgeDistributionVisitor(False, True, genome).visit())))
         new_components.extend(self.edge_generator.create_edges(genome, new_node, recurrent_candidates,
                               False, max(0, n_outgoing_rec), True, rng))
 

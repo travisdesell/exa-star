@@ -22,6 +22,7 @@ from population import Population
 from util.log import LogDataProvider, LogDataProviderConfig
 
 import numpy as np
+from loguru import logger
 
 
 class ToyGenome(Genome):
@@ -157,7 +158,7 @@ class PrintBestToyGenome(LogDataProvider[Population[ToyGenome, ToyDataset]]):
 
     def get_log_data(self, aggregator: Population[ToyGenome, ToyDataset]) -> Dict[str, Any]:
 
-        print(str(aggregator.get_best_genome()))
+        logger.info(f"Best Genome: {str(aggregator.get_best_genome())}")
 
         return {}
 

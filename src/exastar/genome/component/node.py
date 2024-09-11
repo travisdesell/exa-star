@@ -1,8 +1,7 @@
 from __future__ import annotations
 import bisect
 import copy
-from itertools import chain
-from typing import Dict, List, Optional, Self, TYPE_CHECKING, Tuple
+from typing import List, Optional, TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
     from exastar.genome.component.edge import Edge
@@ -17,30 +16,41 @@ import torch
 
 
 class node_inon_t(inon_t):
+    """
+    Define a new type so comparisons to base `inon_t` and any other child classes will return `False`.
+    """
     ...
 
 
 class Node(ComparableMixin, Component):
+    """
+    Neural network node for recurrent neural networks. Sortable courtesy of `ComparableMixin`, state, activation state,
+    and `torch.nn.Module` stuff courtesy of `Component`.
+    """
 
     def __init__(
         self,
         depth: float,
         max_sequence_length: int,
         inon: Optional[node_inon_t] = None,
-        enabled: bool = True
+        enabled: bool = True,
+        active: bool = True,
+        weights_initialized: bool = False,
     ) -> None:
         """
         Initializes an abstract Node object with base functionality for building
         computational graphs.
 
         Args:
-            inon: is the node's unique innovation number
-            depth: is a number between 0 (input node) and 1 (output node) which
-                represents how deep this node is within the computational graph.
-            max_sequence_length: is the maximum length of any time series
-                to be processed by the neural network this node is part of
+            depth: A number between 0 (input node) and 1 (output node) which represents how deep this node is within
+              the computational graph.
+            max_sequence_length: Is the maximum length of any time series to be processed by the neural network this
+              node is part of.
+            inon: Is the node's unique innovation number.
+
+            See `exastar.genome.component.Component` for details on further arguments.
         """
-        super().__init__(type=Node, enabled=enabled)
+        super().__init__(type=Node, enabled=enabled, active=active, weights_initialized=weights_initialized)
 
         self.inon: node_inon_t = inon if inon is not None else node_inon_t()
         self.depth: float = depth
@@ -52,9 +62,12 @@ class Node(ComparableMixin, Component):
 
         self.inputs_fired: np.ndarray = np.ndarray(shape=(max_sequence_length,), dtype=np.int32)
 
-        self.value = [torch.zeros(1)] * self.max_sequence_length
+        self.value: List[torch.Tensor] = self._create_value()
 
     def _create_value(self) -> List[torch.Tensor]:
+        """
+        A series of 0s for the empty state of `self.value`.
+        """
         return [torch.zeros(1) for _ in range(self.max_sequence_length)]
 
     def __getstate__(self):
@@ -63,6 +76,8 @@ class Node(ComparableMixin, Component):
         large networks if we include input and outptut edges. Instead, we will rely on the construction of
         new edges to add the appropriate input and output edges. See exastar.genome.component.Edge.__setstate__
         to see how this is done.
+
+        `self.value` is not copied, meaining resumable training will not work.
 
         Returns:
             state dictionary sans the input and output edges
@@ -76,6 +91,9 @@ class Node(ComparableMixin, Component):
         return state
 
     def __setstate__(self, state):
+        """
+        Note that this __setstate__ will mess up training after a clone since it re-creates `self.value`.
+        """
         super().__setstate__(state)
         self.value = self._create_value()
 
@@ -116,20 +134,29 @@ class Node(ComparableMixin, Component):
 
     @overrides(ComparableMixin)
     def _cmpkey(self) -> Tuple:
+        """
+        Sort nodes by their depth.
+        """
         return (self.depth, )
 
     @overrides(object)
     def __hash__(self) -> int:
-        return self.inon
+        """
+        The innovation number provides a perfect hash.
+        """
+        return int(self.inon)
 
     @overrides(object)
     def __eq__(self, other: object) -> bool:
+        """
+        Nodes with the same innovation number should be equal.
+        """
         return isinstance(other, Node) and self.inon == other.inon
 
     def add_input_edge(self, edge: Edge):
         """
-        Adds an input edge to this node, if it is not already present
-        in the Node's list of input edges.
+        Adds an input edge to this node.
+
         Args:
             edge: a new input edge for this node.
         """
@@ -140,8 +167,8 @@ class Node(ComparableMixin, Component):
 
     def add_output_edge(self, edge: Edge):
         """
-        Adds an output edge to this node, if it is not already present
-        in the Node's list of output edges.
+        Adds an output edge to this node.
+
         Args:
             edge: a new output edge for this node.
         """
@@ -152,12 +179,11 @@ class Node(ComparableMixin, Component):
 
     def input_fired(self, time_step: int, value: torch.Tensor):
         """
-        Used to track how many input edges have had forward called and
-        passed their value to this Node.
+        Used to track how many input edges have had forward called and passed their value to this Node.
 
         Args:
-            time_step: is the time step the input is being fired from.
-            value: is the tensor being passed forward from the input edge.
+            time_step: The time step the input is being fired from.
+            value: The tensor being passed forward from the input edge.
         """
 
         if time_step < self.max_sequence_length:
@@ -180,36 +206,32 @@ class Node(ComparableMixin, Component):
 
     def reset(self):
         """
-        Resets the parameters and values of this node for the next
-        forward and backward pass.
+        Resets the parameters and values of this node for the next forward and backward pass.
         """
         self.inputs_fired[:] = 0
         self.value = [torch.zeros(1)] * self.max_sequence_length
 
     def accumulate(self, time_step: int, value: torch.Tensor):
         """
-        Used by child classes to accumulate inputs being fired to the
-        Node. Input nodes simply act with the identity activation function
-        so simply sum up the values.
+        Used by child classes to accumulate inputs being fired to the Node. Input nodes simply act with the identity
+        activation function so simply sum up the values.
 
         Args:
-            time_step: is the time step the input is being fired from.
-            value: is the tensor being passed forward from the input edge.
+            time_step: The time step the input is being fired from.
+            value: The tensor being passed forward from the input edge.
         """
         self.value[time_step] = self.value[time_step] + value
 
     def forward(self, time_step: int):
         """
-        Propagates an input node's value forward for a given time step. Will
-        check to see if any recurrent into the input node have been fired first.
+        Propagates an input node's value forward for a given time step. Will check to see if any recurrent into the
+        input node have been fired first.
 
         Args:
-            time_step: is the time step the input is being fired from.
+            time_step: The time step the input is being fired from.
         """
 
-        # check to make sure in the case of input nodes which
-        # have recurrent connections feeding into them that
-        # all recurrent edges have fired
+        # Ensure the correct number of inputs have fired (`self.required_inputs` is the number of active incoming edges)
         assert self.inputs_fired[time_step] == self.required_inputs, (
             f"Calling forward on node '{self}' at time "
             f"step {time_step}, where all incoming recurrent edges have not "

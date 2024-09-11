@@ -24,6 +24,33 @@ import torch
 
 
 class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
+    """
+    # Overview
+    The EXAStarGenome emulates an EXAMM Genome. A neural network is represented as a set of input nodes and output
+    nodes, connected by a set of hidden nodes and edges. Each node and edge contains a single value, meaning the genome
+    represents neural networks at the level of individual neurons.
+
+    The lists of nodes are ordered, and this order must be maintained. See `EXAStarGenome.add_node` for an example. The
+    `inon_to_X` maps are simply there for convenience, and are of particular use when doing crossover.
+
+    It is also worth noting that there are no copies of nodes or edges: all references to a node or edge are references
+    to the same object, not a clone of the same object. This somewhat complicates the process of cloning the genomes as
+    a naive deepcopy can easily cause a stackoverflow. The precise strategy used to avoid this is detailed in the
+    `EXAStarGenome.clone` method.
+
+    # Torch Module
+    This genome is a PyTorch module, and inherits torch.nn.Module as such. There is a lot of behavior that we get
+    automatically as a consequence of this. For example, the `EXAStarGenome.parameters()` method will return an Iterator
+    of all of the attributes this object contains that are parameters as well as any parameters any sub-modules of this
+    object contain.
+
+    Nodes and edges are themselves torch modules, but we store them in lists which does not properly register them as
+    sub-modules. In order to ensure this functionality works smoothly, we maintain a `torch.nn.ModuelList` containing
+    all nodes and edges - it should also contain any other modules the genome containss.
+
+    # ComparableMixin
+    Genomes are sorted by their fitness.
+    """
 
     def __init__(
         self,
@@ -62,8 +89,9 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
         # Shadows `self.edges` but we need to do this for the `torch.nn.Module` interface to pick up on these.
         self.torch_modules: torch.nn.ModuleList = torch.nn.ModuleList(edges + nodes)
 
+        self.viable: bool = True
+
         self._validate()
-        # self.constructing: bool = False
 
     def _cmpkey(self) -> Tuple:
         return self.fitness._cmpkey()
@@ -76,6 +104,7 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
         assert set(filter(lambda x: isinstance(x, OutputNode), self.nodes)) == set(self.output_nodes)
 
     def __hash__(self) -> int:
+        """"""
         return self.generation_number
 
     def __eq__(self, other: object) -> bool:
@@ -168,7 +197,8 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
 
     def add_edge(self, edge: E) -> None:
         """
-        Adds an edge when creating this gnome
+        Adds an edge when creating this gnome.
+
         Args:
             edge: is the edge to add
         """
@@ -189,273 +219,6 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
 
             for edge in self.edges:
                 edge.reset()
-
-    def plot(self, genome_name: Optional[str] = None):
-        """
-        Display this graph using graphviz.
-
-        Note that the python graphviz library lacks type information, so type: ignore litters this method.
-
-        Args:
-            genome_name: specifices what genome name (and filename) for the
-                graphviz file.
-        """
-        figure, axes = plt.subplots()
-
-        if genome_name is None:
-            genome_name = f"genome_{self.generation_number}"
-
-        dot = graphviz.Digraph(genome_name, directory="./output")
-        dot.attr(labelloc="t", label=f"Genome Fitness: {self.fitness}% MAE")
-
-        with dot.subgraph() as source_graph:  # type: ignore
-            source_graph.attr(rank="source")
-            source_graph.attr("node", shape="doublecircle", color="green")
-            source_graph.attr(pad="0.01", nodesep="0.05", ranksep="0.9")
-            for node in sorted(self.input_nodes):
-                source_graph.node(
-                    f"node {node.inon}", label=f"{node.parameter_name}"
-                )
-
-        with dot.subgraph() as sink_graph:  # type: ignore
-            sink_graph.attr(rank="sink")
-            sink_graph.attr("node", shape="doublecircle", color="blue")
-            sink_graph.attr(pad="0.01", nodesep="0.05", ranksep="0.9")
-            for node in sorted(self.output_nodes):
-                sink_graph.node(
-                    f"node {node.inon}", label=f"{node.parameter_name}"
-                )
-
-        for node in self.nodes:
-            if not isinstance(node, InputNode) and not isinstance(node, OutputNode):
-                dot.node(f"node {node.inon}")
-
-        min_weight = math.inf
-        max_weight = -math.inf
-        for edge in self.edges:
-            weight = edge.weight[0].detach().item()
-            if weight > max_weight:
-                max_weight = weight
-            if weight < min_weight:
-                min_weight = weight
-
-        eps = 0.0001
-
-        for edge in self.edges:
-            weight = edge.weight[0].detach().item()
-            # color_val = weight ** 2 / (1 + weight ** 2)
-
-            color_map = None
-            if weight > 0:
-                color_val = ((weight / (max_weight + eps)) / 2.0) + 0.5
-                color_map = plt.get_cmap("Blues")
-            else:
-                color_val = -((weight / (min_weight + eps)) / 2.0) + 0.5
-                color_map = plt.get_cmap("Reds")
-
-            color = matplotlib.colors.to_hex(color_map(color_val))
-            if edge.time_skip > 0:
-                dot.edge(
-                    f"node {edge.input_node.inon}",
-                    f"node {edge.output_node.inon}",
-                    color=color,
-                    label=f"skip {edge.time_skip}",
-                    style="dashed",
-                )
-            else:
-                dot.edge(
-                    f"node {edge.input_node.inon}",
-                    f"node {edge.output_node.inon}",
-                    color=color,
-                    label=f"skip {edge.time_skip}",
-                )
-
-        dot.view()
-
-    def is_valid(self) -> bool:
-        """Check that nothing strange happened in a mutation or crossover operation,
-        e.g., all nodes have input and output edges (unless they are input or output
-        nodes).
-
-        Returns:
-            True if the genome is valid, false otherwise.
-        """
-
-        for node in self.nodes:
-            if not isinstance(node, InputNode) and not isinstance(node, OutputNode):
-                if len(node.input_edges) == 0:
-                    print("INVALID GENOME:")
-                    print(self)
-                    print(f"node: {node} was not valid!")
-                    return False
-
-                if len(node.output_edges) == 0:
-                    print("INVALID GENOME:")
-                    print(self)
-                    print(f"node: {node} was not valid!")
-                    return False
-        return True
-
-    def _reachable_components(
-        self,
-        nodes_to_visit: deque[Node],
-        visit_node: Callable[[Node], List[Edge]],
-        visit_edge: Callable[[Edge], Node]
-    ) -> Set[Component]:
-
-        reachable: Set[Component] = set()
-
-        visited_nodes: Set[Node] = set()
-
-        while nodes_to_visit:
-            node = nodes_to_visit.popleft()
-            # if node in visited_nodes:
-            #     continue
-            visited_nodes.add(node)
-
-            if not node.enabled:
-                continue
-
-            reachable.add(node)
-
-            for edge in filter(Edge.is_enabled, visit_node(node)):
-                reachable.add(edge)
-                output_node: Node = visit_edge(edge)
-
-                if output_node and output_node not in visited_nodes:
-                    nodes_to_visit.append(output_node)
-
-        return reachable
-
-    def calculate_reachability(self):
-        """Determines which nodes and edges are forward and backward
-        reachable so we know which to use in the forward and backward
-        training passes. Will set a `viable` field to True if all the
-        outputs of the neural network are reachable.
-        """
-
-        for component in itertools.chain(self.nodes, self.edges):
-            component.active = False
-
-        forward_reachable_components: Set[Component] = self._reachable_components(
-            deque(self.input_nodes),
-            lambda node: node.output_edges,
-            lambda edge: edge.output_node,
-        )
-        backward_reachable_components: Set[Component] = self._reachable_components(
-            deque(self.output_nodes),
-            lambda node: node.input_edges,
-            lambda edge: edge.input_node,
-        )
-
-        active_components: Set[Component] = forward_reachable_components.intersection(backward_reachable_components)
-        for component in active_components:
-            component.activate()
-
-        # set the nodes and edges to active if they will actually be involved
-        # in computing the outputs
-        for node in self.nodes:
-            # set the required inputs for each node
-            node.required_inputs = 0
-
-        for edge in filter(Edge.is_active, self.edges):
-            edge.output_node.required_inputs += 1
-
-        # determine if the network is viable
-        self.viable = True
-        for node in self.output_nodes:
-            if node not in forward_reachable_components:
-                self.viable = False
-                break
-
-    def get_weight_distribution(self) -> Tuple[float, float]:
-        """
-        Gets the mean and standard deviation of the weights in this genome.
-
-        Args:
-            min_weight_std_dev: is the minimum possible weight standard deviation,
-                so that we use distributions that return more than a single
-                weight.
-
-        Returns:
-            A tuple of the (avg, stddev) of the genome's weights.
-        """
-        nweights: int = 0
-        sum: float = 0.0
-
-        parameters = []
-
-        for component in itertools.chain(self.nodes, self.edges):
-            if not component.weights_initialized() or component.is_disabled():
-                continue
-
-            for parameter in component.parameters():
-                sum += float(parameter.sum())
-                nweights += parameter.numel()
-                parameters.append(parameter)
-
-        # An empty genome / genome with only uninitialized weights
-        if nweights == 0:
-            return 0, 1
-
-        mean: float = sum / nweights
-
-        stdsum: float = 0.0
-
-        for parameter in parameters:
-            stdsum += float(torch.square(mean - parameter).sum())
-
-        std: float = math.sqrt(stdsum / nweights)
-
-        return mean, std
-
-    def get_edge_distributions(self, edge_type: str, recurrent: bool) -> Tuple[float, float]:
-        """Gets the mean and standard deviation for the number of input and output
-        edges for all nodes in the given genome, for either recurrent or non-recurrent
-        edges.
-
-        Args:
-            genome: the genome to calulate statistics for
-            recurrent: true if calculating statistics for recurrent edges, false
-                otherwise
-
-        Returns:
-            A tuple of the mean (input edge count, standard deviation input edge count,
-            mean output edge count, standard deviation output edge count). These values
-            will be increased to 1 if less than that to preserve a decent distribution.
-
-        """
-        assert edge_type == "input_edges" or edge_type == "output_edges"
-
-        # get mean/stddev statistics for recurrent and non-recurrent input and output edges
-        edge_counts = []
-
-        for node in self.nodes:
-            if node.enabled:
-                count = 0
-                if recurrent:
-                    # recurrent edges can come out or go into of input or ouput nodes
-                    count = sum(
-                        1 for edge in getattr(node, edge_type) if edge.time_skip >= 0
-                    )
-                else:
-                    count = sum(
-                        1 for edge in getattr(node, edge_type) if edge.time_skip == 0
-                    )
-
-                # input or output nodes (or orphaned nodes in crossover which will later be
-                # connected) will have a count of 0 and we can not use that in calculating
-                # the statistics
-                if count != 0:
-                    edge_counts.append(count)
-
-        edge_counts = np.array(edge_counts)
-
-        # make sure these are at least 1.0 so we can grow the network
-        avg_count: float = max(1.0, float(np.mean(edge_counts)))
-        std_count: float = max(1.0, float(np.std(edge_counts)))
-
-        return (avg_count, std_count)
 
     @abstractmethod
     def forward(self, input_series: TimeSeries) -> Dict[str, torch.Tensor]:

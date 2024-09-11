@@ -45,8 +45,9 @@ class EXAStarGenomeFactory[G: EXAStarGenome](GenomeFactory[G, TimeSeries]):
         return {}
 
     @staticmethod
-    def set_gid(gid: int, g: G) -> G:
-        g.generation_number = gid
+    def set_gid(gid: int, g: Optional[G]) -> Optional[G]:
+        if g is not None:
+            g.generation_number = gid
         return g
 
     def get_task(

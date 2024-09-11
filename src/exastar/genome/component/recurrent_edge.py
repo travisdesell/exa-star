@@ -1,24 +1,31 @@
-from typing import Dict, Optional, Self, cast
+from typing import Optional, cast
 
 from exastar.genome.component.edge import Edge, edge_inon_t
-from exastar.genome.component.node import Node, node_inon_t
+from exastar.genome.component.node import Node
 
-from util.typing import overrides
 
 from loguru import logger
 import torch
 
 
 class RecurrentEdge(Edge):
+    """
+    A (potentially) recurrent edge: multiplies the input nodes value by a weight and fires to output node at timestep
+    `t + 1 + time_skip`, where `time_skip` can be 0. A timeskip of 0 is simply a normal edge, any positive integer is
+    a recurrent edge.
+    """
+
     def __init__(
         self,
         input_node: Node,
         output_node: Node,
         max_sequence_length: int,
-        enabled: bool,
         time_skip: int,
         inon: Optional[edge_inon_t] = None,
-    ):
+        enabled: bool = True,
+        active: bool = True,
+        weights_initialized: bool = False,
+    ) -> None:
         """
         Initializes an IdentityEdge, which simply passes the input value to the output
         node without using any weights.
@@ -26,13 +33,17 @@ class RecurrentEdge(Edge):
             input_node: is the input node of the edge
             output_node: is the output node of the edge
             max_sequence_length: is the maximum length of any time series
-                to be processed by the neural network this edge is part of
+              to be processed by the neural network this edge is part of
             time_skip: how many time steps between the input node and
-                the output node
-        """
-        super().__init__(input_node, output_node, max_sequence_length, enabled, inon)
+              the output node
 
-        self.time_skip = time_skip
+            See `exastar.genome.component.Edge` for documentation of `enabled`, `active`, and `weights_initialized`.
+        """
+        super().__init__(input_node, output_node, max_sequence_length, inon, enabled, active, weights_initialized)
+
+        self.time_skip: int = time_skip
+
+        # Consider this uninitialized. Cast is present because of a (possible) bug in pyright.
         self.weight: torch.nn.Parameter = cast(torch.nn.Parameter, torch.nn.Parameter(torch.ones(1)))
 
         if time_skip == 0:
@@ -40,8 +51,7 @@ class RecurrentEdge(Edge):
 
     def __repr__(self) -> str:
         """
-        Returns:
-            An easily readable string representation of this object.
+        Returns a unique string representation.
         """
         return (
             "RecurrentEdge("

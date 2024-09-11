@@ -47,7 +47,6 @@ class MergeNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
         new_node = self.node_generator(child_depth, genome, rng)
         genome.add_node(new_node)
 
-        print(f"creating new node at depth: {child_depth}")
         new_components: List[Component] = [new_node]
         for parent_node in [node1, node2]:
             for edge in parent_node.input_edges:
@@ -81,6 +80,6 @@ class MergeNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
         return genome
 
 
-@ configclass(name="base_merge_node_mutation", group="genome_factory/mutation_operators", target=MergeNode)
+@configclass(name="base_merge_node_mutation", group="genome_factory/mutation_operators", target=MergeNode)
 class MergeNodeConfig(EXAStarMutationOperatorConfig):
     ...

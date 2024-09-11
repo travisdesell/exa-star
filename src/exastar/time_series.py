@@ -137,7 +137,6 @@ class TimeSeries(Dataset):
         """
         output_series = {}
 
-        logger.info(f"keys: {list(self.series_dictionary.keys())}")
         for series_name in output_series_names:
             output_series[series_name] = self.series_dictionary[series_name][:-offset]
 

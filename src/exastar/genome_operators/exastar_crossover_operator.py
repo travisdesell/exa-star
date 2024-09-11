@@ -1,13 +1,14 @@
 import bisect
 from copy import deepcopy
 from dataclasses import field
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 from config import configclass
 from exastar.genome.component import Edge, edge_inon_t, Node, node_inon_t
 from exastar.genome.component.component import Component
 from exastar.genome.component.input_node import InputNode
 from exastar.genome.component.output_node import OutputNode
+from exastar.genome.visitor.edge_distribution_visitor import EdgeDistributionVisitor
 from genome import CrossoverOperator, CrossoverOperatorConfig
 from exastar.genome import EXAStarGenome
 from exastar.genome_operators.node_generator import NodeGenerator, NodeGeneratorConfig
@@ -129,8 +130,11 @@ class EXAStarCrossoverOperator[G: EXAStarGenome](CrossoverOperator[G]):
                 # We roll to see if the node should be enabled once for each secondary parent
                 # that has the node enabled.
                 n_rolls = sum(n.enabled for n in grouped_nodes[node.inon])
-                # rng.random(n_rolls) < self.secondary_parent_selection_p)
-                node.enabled = any(self.rolln(self.secondary_parent_selection_p, n_rolls, rng))
+
+                if n_rolls:
+                    node.enabled = any(self.rolln(self.secondary_parent_selection_p, n_rolls, rng))
+                else:
+                    node.enabled = False
 
         # PHASE 2: randomly accept some nodes from secondary children
 
@@ -142,7 +146,7 @@ class EXAStarCrossoverOperator[G: EXAStarGenome](CrossoverOperator[G]):
         new_nodes: List[Node] = []
         for nodes in filter(lambda n: n[0].inon not in child_genome.inon_to_node, grouped_nodes.values()):
             n_rolls = sum(n.enabled for n in nodes)
-            if any(self.rolln(self.secondary_parent_selection_p, n_rolls, rng)):
+            if n_rolls and any(self.rolln(self.secondary_parent_selection_p, n_rolls, rng)):
                 # Node deepcopy does not include any input or output edges.
                 node = nodes[0]
                 node_copy = deepcopy(node, {id(node.input_edges): [], id(node.output_edges): []})
@@ -191,8 +195,13 @@ class EXAStarCrossoverOperator[G: EXAStarGenome](CrossoverOperator[G]):
 
         # PHASE 4: Address orphaned nodes, creating new edges to ensure they are forward and backward reachable.
 
+        input_edge_dist: Tuple[float, float] = EdgeDistributionVisitor(True, False, child_genome).visit()
+        rec_input_edge_dist: Tuple[float, float] = EdgeDistributionVisitor(True, True, child_genome).visit()
+        output_edge_dist: Tuple[float, float] = EdgeDistributionVisitor(True, False, child_genome).visit()
+        rec_output_edge_dist: Tuple[float, float] = EdgeDistributionVisitor(True, True, child_genome).visit()
+
         new_edges: List[Edge] = []
-        # Connect orphaned nodes to something
+        # Connect nodes that arent forwards and backwards reachable.
         for node in new_nodes:
             splitl = bisect.bisect_left(child_genome.nodes, node)
             splitr = bisect.bisect_right(child_genome.nodes, node)
@@ -203,7 +212,7 @@ class EXAStarCrossoverOperator[G: EXAStarGenome](CrossoverOperator[G]):
 
                 incoming_candidates = child_genome.nodes[:splitl]
                 n_incoming = int(
-                    max(not require_recurrent, rng.normal(*child_genome.get_edge_distributions("input_edges", False)))
+                    max(not require_recurrent, rng.normal(*input_edge_dist))
                 )
                 new_edges.extend(self.edge_generator.create_edges(child_genome, node,
                                  incoming_candidates, True, n_incoming, False, rng))
@@ -211,7 +220,7 @@ class EXAStarCrossoverOperator[G: EXAStarGenome](CrossoverOperator[G]):
                 # Disallow self-recurrent
                 incoming_candidates_rec = [n for n in child_genome.nodes if node.inon != n.inon]
                 n_incoming_rec = int(
-                    max(require_recurrent, rng.normal(*child_genome.get_edge_distributions("input_edges", True)))
+                    max(require_recurrent, rng.normal(*rec_input_edge_dist))
                 )
                 new_edges.extend(self.edge_generator.create_edges(child_genome, node,
                                  incoming_candidates_rec, True, n_incoming_rec, True, rng))
@@ -222,7 +231,7 @@ class EXAStarCrossoverOperator[G: EXAStarGenome](CrossoverOperator[G]):
 
                 outgoing_candidates = child_genome.nodes[splitr:]
                 n_outgoing = int(
-                    max(not require_recurrent, rng.normal(*child_genome.get_edge_distributions("output_edges", False)))
+                    max(not require_recurrent, rng.normal(*output_edge_dist))
                 )
 
                 new_edges.extend(self.edge_generator.create_edges(child_genome, node,
@@ -231,7 +240,7 @@ class EXAStarCrossoverOperator[G: EXAStarGenome](CrossoverOperator[G]):
                 # Disallow self-recurrent
                 outgoing_candidates_rec = [n for n in child_genome.nodes if node.inon != n.inon]
                 n_outgoing_rec = int(
-                    max(require_recurrent, rng.normal(*child_genome.get_edge_distributions("output_edges", True)))
+                    max(require_recurrent, rng.normal(*rec_output_edge_dist))
                 )
                 new_edges.extend(self.edge_generator.create_edges(child_genome, node,
                                  outgoing_candidates_rec, False, n_outgoing_rec, True, rng))
@@ -294,7 +303,7 @@ class EXAStarCrossoverOperator[G: EXAStarGenome](CrossoverOperator[G]):
         return point + avg_gradient * self.roll_line_search_step_size(rng)
 
 
-@ configclass(name="base_exastar_crossover", group="genome_factory/crossover_operators", target=EXAStarCrossoverOperator)
+@configclass(name="base_exastar_crossover", group="genome_factory/crossover_operators", target=EXAStarCrossoverOperator)
 class EXAStarCrossoverOperatorConfig(CrossoverOperatorConfig):
     node_generator: NodeGeneratorConfig = field(default="${genome_factory.node_generator}")  # type: ignore
     edge_generator: EdgeGeneratorConfig = field(default="${genome_factory.edge_generator}")  # type: ignore

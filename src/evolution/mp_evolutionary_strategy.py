@@ -181,8 +181,8 @@ class SynchronousMPStrategy[G: Genome, D: Dataset](ParallelMPStrategy[G, D]):
 
         with open(f"{output_dir}/{i}.genome", "wb") as file:
             dill.dump(genome, file)
+
         if genome:
-            print(torch.get_default_device())
             genome.evaluate(fitness, EvolutionaryStrategy.get_dataset())
 
         return genome

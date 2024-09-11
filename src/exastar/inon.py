@@ -44,6 +44,18 @@ class inon_t(int):
         inon_t.counter += inon_t.divisor
         return number
 
+    def __eq__(self, other) -> bool:
+        """
+        Override eq to allow subclasses of `inon_t` that won't be considered equal with one another.
+
+        So, if we have `edge_inon_t(4)` and `node_inon_t(4)`, they should not be equal. This is simply done by checking
+        the type. This is done by using an exact type comparison
+        """
+        return super().__eq__(other) and type(self) is type(other)
+
+    def __hash__(self) -> int:
+        return self
+
 
 class InonInitTask[E: ParallelMPStrategy](InitTask):
     """
