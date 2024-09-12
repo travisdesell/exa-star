@@ -56,6 +56,8 @@ Using Hydra should also ensure that our experiments are robust and easily reprod
 
 Experiments in Hydra are defined in `.yaml` files - these can be modular or all defined in-line, it is up to you. The EA defined in `src/toy` should serve as a basic starter for how Hydra is used in this project.
 
+For a deeper understanding of how Hydra works, refer to `HYDRA.md`.
+
 # Running
 You need a new-ish version of python - at least enough to support `match` meaning >= 3.10.
 
