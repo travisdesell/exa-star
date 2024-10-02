@@ -1,6 +1,8 @@
-numpy<2.0
+numpy
 torch
 loguru
 matplotlib
 pandas
 graphviz
+hydra-core
+multiprocess
