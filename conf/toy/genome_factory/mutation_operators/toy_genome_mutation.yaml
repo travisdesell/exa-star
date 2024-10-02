@@ -1,0 +1,4 @@
+defaults:
+  - base_toy_genome_mutation
+range: 10
+weight: 1.0

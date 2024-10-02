@@ -1,0 +1,5 @@
+defaults:
+  - base_simple_population
+  - /log_data_providers@providers.print_best: print_best_toy_genome
+size: 128
+n_elites: 16

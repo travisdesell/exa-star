@@ -1,0 +1,10 @@
+defaults:
+  - base_toy_genome_factory
+  - mutation_operators@mutation_operators.basic: toy_genome_mutation
+  - crossover_operators@crossover_operators.basic: toy_genome_crossover
+mutation_operators:
+  basic:
+    range: 10
+crossover_operators:
+  basic:
+    weight: 0.25
