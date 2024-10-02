@@ -95,7 +95,7 @@ class TimeSeries(Dataset):
                 np.int16,
                 np.int8,
                 np.uint8,
-                np.bool,
+                bool,
             }:
                 series_dictionary[series_name] = torch.tensor(values.to_numpy())
             else:

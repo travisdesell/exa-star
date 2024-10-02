@@ -27,7 +27,7 @@ class GenomeOperator[G: Genome](ABC):
         assert 0 <= p <= 1.0
         return rng.random() < p
 
-    def rolln(self, p: float, n_rolls: int, rng: np.random.Generator) -> npt.NDArray[np.bool]:
+    def rolln(self, p: float, n_rolls: int, rng: np.random.Generator) -> npt.NDArray[bool]:
         """
         Returns `n_rolls` iid booleans which each have probability `p` of being True.
         """
