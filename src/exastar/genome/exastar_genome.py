@@ -157,9 +157,9 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
         """
         return copy.deepcopy(self)
 
-    @constmethod
     @overrides(LogDataProvider[None])
-    def get_log_data(self, aggregator: None) -> Dict[str, Any]: ...
+    def get_log_data(self, aggregator: None) -> Dict[str, Any]:
+        return {}
 
     def add_node(self, node: Node) -> None:
         """
