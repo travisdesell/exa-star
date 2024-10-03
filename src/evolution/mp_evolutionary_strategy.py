@@ -176,11 +176,8 @@ class SynchronousMPStrategy[G: Genome, D: Dataset](ParallelMPStrategy[G, D]):
         self.pool.terminate()
 
     @staticmethod
-    def f(fitness, task, i, output_dir) -> None:
+    def f(fitness, task) -> None:
         genome = task(ParallelMPStrategy.get_rng())
-
-        with open(f"{output_dir}/{i}.genome", "wb") as file:
-            dill.dump(genome, file)
 
         if genome:
             genome.evaluate(fitness, EvolutionaryStrategy.get_dataset())
@@ -195,8 +192,7 @@ class SynchronousMPStrategy[G: Genome, D: Dataset](ParallelMPStrategy[G, D]):
 
         genomes: List[Optional[G]] = self.pool.starmap(
             SynchronousMPStrategy.f,
-            list(zip(cycle([self.fitness]), tasks, range(self.counter,
-                     self.counter + len(tasks)), cycle([self.output_directory])))
+            list(zip(cycle([self.fitness]), tasks))
         )
         self.population.integrate_generation(genomes)
         self.counter += len(genomes)
@@ -246,6 +242,8 @@ class AsyncMPStrategy[G: Genome, D: Dataset](ParallelMPStrategy[G, D]):
 
     @staticmethod
     def f(fitness, tasks) -> None:
+        if len(tasks) > 1:
+            raise Exception("Generation size greather than 1 is not supported for async MP strategy")
         try:
             genomes = []
             for task in tasks:
@@ -270,8 +268,9 @@ class AsyncMPStrategy[G: Genome, D: Dataset](ParallelMPStrategy[G, D]):
 
         tasks = self.population.make_generation(self.genome_factory, self.rng)
 
-        fitness = self.fitness
-        self.pool.apply_async(AsyncMPStrategy.f, (fitness, tasks))
+        self.pool.apply_async(
+            AsyncMPStrategy.f, (self.fitness, tasks)
+        )
 
         logger.trace(f"end step {self.i}")
         self.i += 1
