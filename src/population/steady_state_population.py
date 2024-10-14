@@ -31,7 +31,7 @@ class SteadyStatePopulation[G: Genome, D: Dataset](Population[G, D]):
         self.most_recent_genome: G
 
     def initialize(self, genome_factory: GenomeFactory[G, D], dataset: D, rng: np.random.Generator) -> None:
-        self.genomes = [genome_factory.get_seed_genome(dataset, rng)]
+        self.genomes = [genome_factory.get_seed_genome(dataset, rng) for x in range(self.size)]
         self.most_recent_genome = genome_factory.get_seed_genome(dataset, rng)
 
     def make_generation(

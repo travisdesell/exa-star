@@ -1,5 +1,5 @@
 defaults:
-  - base_synchronous_mp_strategy
+  - base_async_mp_strategy
   - population: base_simple_population
   - genome_factory: base_exastar_genome_factory_config
   - genome_factory/seed_genome_factory: base_trivial_recurrent_seed_genome_factory
@@ -21,7 +21,7 @@ environment:
 
 output_directory: "output/test"
 nsteps: 32000
-parallelism: 2
+parallelism: 3
 population:
   size: 10
   n_elites: 2

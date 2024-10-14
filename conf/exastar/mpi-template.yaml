@@ -1,6 +1,6 @@
 defaults:
-  - base_synchronous_mp_strategy
-  - population: base_simple_population
+  - base_async_mpi_strategy
+  - population: base_steady_state_population
   - genome_factory: base_exastar_genome_factory_config
   - genome_factory/seed_genome_factory: base_trivial_recurrent_seed_genome_factory
   - genome_factory/mutation_operators@genome_factory.mutation_operators.add_node: base_add_node_mutation
@@ -11,17 +11,15 @@ defaults:
   - genome_factory/mutation_operators@genome_factory.mutation_operators.merge_node: base_merge_node_mutation
   - genome_factory/mutation_operators@genome_factory.mutation_operators.split_edge: base_split_edge_mutation
   - genome_factory/mutation_operators@genome_factory.mutation_operators.split_node: base_split_node_mutation
-  - init_tasks@init_tasks.dataset: base_dataset_init_task
-  - init_tasks@init_tasks.inon: base_inon_init_task
   - fitness: base_exastar_mse
   - dataset: base_test_dataset
 
-environment:
-  HYDRA_FULL_ERROR: "1"
+hydra:
+  job:
+    env_set:
+      HYDRA_FULL_ERROR: "1"
 
 output_directory: "output/test"
 nsteps: 32000
-parallelism: 2
 population:
   size: 10
-  n_elites: 2
