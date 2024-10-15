@@ -11,6 +11,7 @@ defaults:
   - genome_factory/mutation_operators@genome_factory.mutation_operators.merge_node: base_merge_node_mutation
   - genome_factory/mutation_operators@genome_factory.mutation_operators.split_edge: base_split_edge_mutation
   - genome_factory/mutation_operators@genome_factory.mutation_operators.split_node: base_split_node_mutation
+  - init_tasks@init_tasks.inon: base_mpi_inon_init_task
   - fitness: base_exastar_mse
   - dataset: base_test_dataset
 

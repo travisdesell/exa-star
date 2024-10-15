@@ -33,10 +33,11 @@ class MPIEvolutionaryStrategy[G: Genome, D: Dataset](EvolutionaryStrategy[G, D])
         self.rank: int = self.comm.Get_rank()
         self.done: bool = False
 
+        # Switch the pickle implementation in MPI to dill, which is more flexible / can serialize more things.
         MPI.pickle.__init__(dill.dumps, dill.loads)
 
+        # Add rank to log lines
         loguru.logger.remove()
-
         loguru.logger.add(
             sys.stderr,
             format="| <level>{level: <6}</level>| RANK " + str(self.rank) +
@@ -154,9 +155,10 @@ class AsyncMPIWorkerStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
                 if genome:
                     logger.info("Evaluating fitness")
                     genome.fitness = genome.evaluate(self.fitness, self.dataset)
-
+                    logger.info("Finished evaluation")
                 results.append(genome)
 
+            logger.info("Sending results to main")
             self.comm.send(results, dest=status.Get_source())
         else:
             self.done = True
@@ -165,16 +167,19 @@ class AsyncMPIWorkerStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
         return f"{self.output_directory}/worker_{self.rank}_log.csv"
 
     def run(self):
-        with self:
-            while not self.done:
-                logger.info(f"Starting step {self.log_rows}")
-                self.step()
+        try:
+            with self:
+                while not self.done:
+                    logger.info(f"Starting step {self.log_rows}")
+                    self.step()
 
-                self.update_log(self.log_rows)
-                self.log_rows += 1
-                logger.info(f"Ending step {self.log_rows}")
+                    self.update_log(self.log_rows)
+                    self.log_rows += 1
+                    logger.info(f"Ending step {self.log_rows}")
 
-        self.log[:self.log_rows].to_csv(self.get_log_path())
+            self.log[:self.log_rows].to_csv(self.get_log_path())
+        except Exception as e:
+            logger.info(f"FAILED with exception {e}")
 
 
 def async_mpi_strategy_factory(**kwargs):

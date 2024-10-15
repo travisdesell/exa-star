@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING, Any, Dict, Self, Optional
 
+from mpi4py import MPI
+
 if TYPE_CHECKING:
     import multiprocessing as mp
 else:
@@ -57,7 +59,7 @@ class inon_t(int):
         return self
 
 
-class InonInitTask[E: ParallelMPStrategy](InitTask):
+class MultiProcInonInitTask[E: ParallelMPStrategy](InitTask):
     """
     An initialization task (see ParallelMPStrategy) that ensures that no two processes are using an overlapping set of
     innovation numbers.
@@ -90,6 +92,33 @@ class InonInitTask[E: ParallelMPStrategy](InitTask):
         return {"id_queue": q}
 
 
-@configclass(name="base_inon_init_task", group="init_tasks", target=InonInitTask)
-class InonInitTaskConfig(InitTaskConfig):
+@configclass(name="base_mp_inon_init_task", group="init_tasks", target=MultiProcInonInitTask)
+class MultiProcInonInitTaskConfig(InitTaskConfig):
+    ...
+
+
+class MPIInonInitTask[E: ParallelMPStrategy](InitTask):
+    """
+    An initialization task (see ParallelMPStrategy) that ensures that no two processes are using an overlapping set of
+    innovation numbers.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def run(self, values: Dict[str, Any]) -> None:
+        """
+        Fetch an integer from the id_queue (see `self.values` to see how this is created) and use it to set the modular
+        congruence class of the innovation numbers for this process.
+        """
+        mod_class, divisor = MPI.COMM_WORLD.Get_rank(), MPI.COMM_WORLD.Get_size()
+        logger.info(f"setting mod class to `{mod_class} mod {divisor}`")
+        inon_t.set_mod_class(mod_class, divisor)
+
+    def values(self, strategy: E) -> Dict[str, Any]:
+        return {}
+
+
+@configclass(name="base_mpi_inon_init_task", group="init_tasks", target=MPIInonInitTask)
+class MPIInonInitTaskConfig(InitTaskConfig):
     ...
