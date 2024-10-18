@@ -195,9 +195,13 @@ class SynchronousMPStrategy[G: Genome, D: Dataset](ParallelMPStrategy[G, D]):
 
         genomes: List[Optional[G]] = self.pool.starmap(
             SynchronousMPStrategy.f,
-            list(zip(cycle([self.fitness]), tasks, range(self.counter,
-                     self.counter + len(tasks)), cycle([self.output_directory])))
+            list(zip(
+                cycle([self.fitness]),
+                tasks,
+                range(self.counter, self.counter + len(tasks)),
+                cycle([self.output_directory])))
         )
+        logger.info("integrating generation...")
         self.population.integrate_generation(genomes)
         self.counter += len(genomes)
         logger.info("step complete...")

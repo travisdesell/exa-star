@@ -119,6 +119,9 @@ class EXAStarCrossoverOperator[G: EXAStarGenome](CrossoverOperator[G]):
         # PHASE 1: retain all nodes and edges from primay parent, disabling some nodes randomly
         child_genome = parents[0].clone()
 
+        for parent in parents:
+            child_genome.parents.append(parent.generation_number)
+
         # For each node in the primary parent, include enabled nodes that pass a roll against
         # `self.primary_parent_selection_p`. For disabled nodes, roll for each instance of that node in other
         # children and enable the node if any of them pass

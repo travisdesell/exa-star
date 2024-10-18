@@ -4,8 +4,10 @@ import bisect
 from collections import deque
 import copy
 import itertools
+from queue import Queue
 from typing import Any, Callable, cast, Dict, List, Optional, Self, Set, Tuple
 
+import networkx as nx
 from exastar.genome.component import Edge, edge_inon_t, Node, node_inon_t, InputNode, OutputNode
 from exastar.genome.component.component import Component
 from genome import Genome, FitnessValue
@@ -59,7 +61,7 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
         output_nodes: List[OutputNode],
         nodes: List[Node],
         edges: List[E],
-        fitness: FitnessValue,
+        fitness: FitnessValue
     ) -> None:
         """
         Initialize base class genome fields and methods.
@@ -92,6 +94,8 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
         self.viable: bool = True
 
         self._validate()
+
+        self.parents = []
 
     def _cmpkey(self) -> Tuple:
         return self.fitness._cmpkey()
@@ -155,7 +159,9 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
         Uses `torch.no_grad()` to avoid the potential of copying intermediate / gradient related tensors over. In the
         future, if we want to save the gradient state to allow resuming of training etc. we should do that elsewhere.
         """
-        return copy.deepcopy(self)
+        g = copy.deepcopy(self)
+        g.parents.append(self.generation_number)
+        return g
 
     @constmethod
     @overrides(LogDataProvider[None])
@@ -219,6 +225,26 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
 
             for edge in self.edges:
                 edge.reset()
+
+    def to_dict(self):
+        """
+        Converts the genome to a format that can be saved via json.
+        This is meant to be somewhat readable.
+
+        Returns:
+            dict: A dict containing the information needed to build a family tree.
+        """
+
+        node_inons: List[node_inon_t] = [n.inon for n in self.nodes]
+        edge_inons: List[edge_inon_t] = [e.inon for e in self.edges]
+
+        return {
+            'nodes': node_inons,
+            'edges': edge_inons,
+            'generation_number': self.generation_number,
+            'parents': self.parents,
+            'fitness': float(self.fitness.mse)
+        }
 
     @abstractmethod
     def forward(self, input_series: TimeSeries) -> Dict[str, torch.Tensor]:

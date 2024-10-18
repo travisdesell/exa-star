@@ -9,6 +9,11 @@ from population.population import Population, PopulationConfig
 from loguru import logger
 import numpy as np
 
+from population.family_tree_tracker import FamilyTreeTracker
+from population.visualization import (
+    visualize_family_tree, convert_to_numerical, visualize_family_tree, get_pca_positions, get_pca_colors)
+from population.graphing_model import map_genomes_to_2d
+
 
 class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
     """
@@ -32,9 +37,12 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
         # Genomes should be sorted by fitness
         self.genomes: List[G] = []
 
+        self.family_tree_tracker = FamilyTreeTracker()
+
     def initialize(self, genome_factory: GenomeFactory[G, D], dataset: D, rng: np.random.Generator) -> None:
         seed = genome_factory.get_seed_genome(dataset, rng)
         self.genomes = [seed.clone() for _ in range(self.size)]
+        self.track_all_genomes()
 
     def make_generation(
         self, genome_factory: GenomeFactory[G, D], rng: np.random.Generator
@@ -77,6 +85,8 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
             key=lambda g: g.fitness, reverse=True
         )
 
+        self.track_all_genomes()
+
     def get_parents(self, rng: np.random.Generator) -> List[G]:
         assert len(self.genomes) >= 2
         # Two unique parents
@@ -91,6 +101,36 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
 
     def get_worst_genome(self) -> G:
         return self.genomes[-1]
+
+    def track_all_genomes(self):
+        self.family_tree_tracker.track_genomes(self.genomes)
+
+
+    def perform_visualizations(self):
+        """
+        For performing visualizations at the end of a run.
+        """
+
+        graph, node_genes, edge_genes, fitnesses = self.family_tree_tracker.load_genomes()
+
+        best_fitness = float('inf')
+        best_genome_id = -1
+        for genome_id, fitness in fitnesses.items():
+            if fitness < best_fitness:
+                best_fitness = fitness
+                best_genome_id = genome_id
+
+        genes_matrix, genome_id_to_index = convert_to_numerical(node_genes)
+
+        best_genes = genes_matrix[genome_id_to_index[best_genome_id]]
+
+        positions = map_genomes_to_2d(genes_matrix, genome_id_to_index, best_genes)
+
+        colors = get_pca_colors(genes_matrix, genome_id_to_index)
+
+        colors[best_genome_id] = (0, 0, 0)
+
+        visualize_family_tree(graph, positions, colors)
 
 
 @configclass(name="base_simple_population", group="population", target=SimplePopulation)

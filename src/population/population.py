@@ -52,6 +52,9 @@ class Population[G: Genome, D: Dataset](GenomeProvider, LogDataAggregator):
     @abstractmethod
     def get_worst_genome(self) -> G: ...
 
+    @abstractmethod
+    def perform_visualizations(self) -> None: ...
+
 
 @dataclass
 class PopulationConfig(LogDataAggregatorConfig):

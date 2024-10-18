@@ -109,6 +109,8 @@ class EvolutionaryStrategy[G: Genome, D: Dataset](ABC, LogDataAggregator):
                 self.step()
                 self.update_log(istep)
 
+            self.population.perform_visualizations()
+
         self.log.to_csv(f"{self.output_directory}/log.csv")
 
 
