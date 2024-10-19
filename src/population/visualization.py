@@ -118,6 +118,12 @@ def visualize_family_tree(graph: nx.DiGraph, positions: dict, node_colors: dict)
 
 
 def save_figure(figure_save_dir: str="figures"):
+    """
+    Save the figure using matplotlib.pyplot.
+
+    Args:
+        figure_save_dir (str): The directory to save the figure in.
+    """
 
     # maximum number of times you can attempt to save a file
     max_tries = 1_000_000
