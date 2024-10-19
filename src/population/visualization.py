@@ -95,7 +95,7 @@ def get_pca_colors(genes_matrix: np.ndarray, genome_id_to_index: dict):
     return {gid: reduced_genes_mat[index] for gid, index in genome_id_to_index.items()}
 
 
-def visualize_family_tree(graph: nx.DiGraph, positions: dict, node_colors: dict, figure_save_dir: str="figures"):
+def visualize_family_tree(graph: nx.DiGraph, positions: dict, node_colors: dict):
     """
     Display a graph with positions and node colors.
 
@@ -114,7 +114,10 @@ def visualize_family_tree(graph: nx.DiGraph, positions: dict, node_colors: dict,
     nx.draw(graph, pos, with_labels=False, node_color=colors, node_size=500, arrows=True)
     plt.title("Family Tree")
 
-    # code for saving figures...
+    save_figure()
+
+
+def save_figure(figure_save_dir: str="figures"):
 
     # maximum number of times you can attempt to save a file
     max_tries = 1_000_000
@@ -124,6 +127,7 @@ def visualize_family_tree(graph: nx.DiGraph, positions: dict, node_colors: dict,
 
     for _ in range(max_tries):
 
+        # it tries to find an unused filename to save the figure
         file_counter += 1
         fname = f'Figure_{file_counter}.png'
         fpath = os.path.join(figure_save_dir, fname)

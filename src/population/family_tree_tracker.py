@@ -6,6 +6,10 @@ import numpy as np
 from loguru import logger
 
 class FamilyTreeTracker:
+    """
+    A class used to track relations between nodes, along with other attributes.
+    This saves the genome data as a series of lines in a temporary file, and
+    """
 
     def __init__(self, temp_file_dir: str='temp_genome_data', delete_temp_file: bool=True):
 
@@ -15,12 +19,15 @@ class FamilyTreeTracker:
         # create a temporary filename to store genome data in
         current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S" + str(np.random.randint(0, 1)))
 
+        # keeps a string reference to the directory that temporary files are stored in
         self.temp_file_dir = temp_file_dir
 
+        # stores a string  reference to the filepath of the temporary file
         self.family_tracker_file = os.path.join(
             temp_file_dir,
             f'temp_genome_data_{current_time}_{str(np.random.randint(1_000, 9_999))}')
 
+        # make the temporary file directory if it doesn't already exist
         if (not os.path.exists(temp_file_dir)) or (not os.path.isdir(temp_file_dir)):
             os.mkdir(temp_file_dir)
 
@@ -31,9 +38,14 @@ class FamilyTreeTracker:
         Args:
             genomes (list): A list of genomes to track.
         """
+        # make sure it is actually a list
         if (genomes is not None) and hasattr(genomes, '__len__'):
             with open(self.family_tracker_file, 'a') as f:
+
+                # iterate over all genomes
                 for genome in genomes:
+
+                    # store the json data as another line that is appended to the end
                     f.write(json.dumps(genome.to_dict()) + '\n')
         else:
             raise TypeError(f"Object of type {type(genomes)} does not support __len__()")
@@ -74,6 +86,7 @@ class FamilyTreeTracker:
                     parents = genome_data['parents']
                     fitness = genome_data['fitness']
 
+                    # set the attributes for this node id
                     node_genes[genome_id] = nodes
                     edge_genes[genome_id] = edges
                     fitnesses[genome_id] = fitness
@@ -81,11 +94,13 @@ class FamilyTreeTracker:
                     # add the node to make sure it is in the graph
                     graph.add_node(genome_id)
 
+                    # make sure 'parents' exists and can be iterated over
                     if (parents is not None) and hasattr(parents, '__len__'):
 
                         # iterate through all parents
                         for p_id in parents:
 
+                            # don't store self-connections
                             if genome_id != p_id:
 
                                 # add the edge now
@@ -93,10 +108,29 @@ class FamilyTreeTracker:
 
                 # check if we need to delete the file when done
                 if self._delete_temp_file:
-                    # delete the temporary file
-                    os.remove(self.family_tracker_file)
-
-                    dir_contents = os.listdir(self.temp_file_dir)
-                    logger.info(f"directory contents: {dir_contents}")
+                    self.delete_temp_file()
 
                 return graph, node_genes, edge_genes, fitnesses
+
+    def delete_temp_file(self):
+        """
+        Delete the temporary file when done. Also deletes the folder if this was the only one.
+        """
+
+        # delete the temporary file
+        os.remove(self.family_tracker_file)
+
+        # directory contents
+        dir_contents = os.listdir(self.temp_file_dir)
+        dir_contents = [file for file in dir_contents if file != '.DS_Store']
+
+        # if it is empty except for '.DS_Store'
+        if len(dir_contents) == 0:
+
+            # remove '.DS_Store' if it is in the folder
+            ds_store_path = os.path.join(self.temp_file_dir, '.DS_Store')
+            if os.path.exists(ds_store_path):
+                os.remove(ds_store_path)
+
+            # remove the directory if it is empty
+            os.rmdir(self.temp_file_dir)
