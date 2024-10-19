@@ -1,7 +1,7 @@
 defaults:
-  - base_async_mp_strategy
-  - population: base_steady_state_population
-  - log_data_providers@population.providers.x: base_log_recent_genome
+  - base_sync_mpi_strategy
+  - population: base_simple_population
+  # - log_data_providers@population.providers.x: base_log_recent_genome
   - genome_factory: toy
   - fitness: toy_fitness
   - dataset: base_toy_dataset

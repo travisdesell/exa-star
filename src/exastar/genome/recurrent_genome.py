@@ -5,11 +5,10 @@ from typing import cast, Dict, List, Set
 
 from exastar.genome.visitor.reachability_visitor import ReachabilityVisitor
 from exastar.weights import WeightGenerator
-from genome import MSEValue
 from exastar.genome.component import Edge, Node, InputNode, OutputNode, RecurrentEdge
 from exastar.genome.exastar_genome import EXAStarGenome
 from exastar.time_series import TimeSeries
-from genome import FitnessValue
+from genome import FitnessValue, MSEValue
 
 from loguru import logger
 import numpy as np
@@ -201,7 +200,7 @@ class RecurrentGenome(EXAStarGenome[Edge]):
         self,
         input_series: TimeSeries,
         output_series: TimeSeries,
-        optimizer: torch.optim.Optimizer,
+        optimizer: torch.optim.optimizer.Optimizer,
         iterations: int,
     ) -> float:
         # Computes and sets `active` status

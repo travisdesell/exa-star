@@ -95,5 +95,5 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
 
 @configclass(name="base_simple_population", group="population", target=SimplePopulation)
 class SimplePopulationConfig(PopulationConfig):
-    size: int = field(default=3)
-    n_elites: int = field(default=2)
+    size: int = field(default=10)
+    n_elites: int = field(default=4)

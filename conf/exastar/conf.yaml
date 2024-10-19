@@ -12,7 +12,7 @@ defaults:
   - genome_factory/mutation_operators@genome_factory.mutation_operators.split_edge: base_split_edge_mutation
   - genome_factory/mutation_operators@genome_factory.mutation_operators.split_node: base_split_node_mutation
   - init_tasks@init_tasks.dataset: base_dataset_init_task
-  - init_tasks@init_tasks.inon: base_inon_init_task
+  - init_tasks@init_tasks.inon: base_mp_inon_init_task
   - fitness: base_exastar_mse
   - dataset: base_test_dataset
 

@@ -1,4 +1,3 @@
-from dataclasses import field
 import os
 from time import sleep, time_ns
 from typing import Any, Dict, List, Optional, Self, Tuple
@@ -28,7 +27,7 @@ from loguru import logger
 class ToyGenome(Genome):
 
     def __init__(self, value: float, **kwargs) -> None:
-        super().__init__(**kwargs)
+        super().__init__(fitness=ToyFitnessValue(value), **kwargs)
 
         self.value: float = value
         self.start_time: int = 0
@@ -88,7 +87,9 @@ class ToyDatasetConfig(DatasetConfig):
 class ToyFitness(Fitness[ToyGenome, ToyDataset]):
     def compute(self, genome: ToyGenome, dataset: ToyDataset) -> ToyFitnessValue:
         genome.start_time = time_ns()
+        logger.info(f"Sleeping for {genome.value / 1000}s...")
         sleep(abs(genome.value / 1000))
+        logger.info("Done.")
         genome.end_time = time_ns()
         genome.evaluator = os.getpid()
         return ToyFitnessValue(genome.value)
@@ -127,7 +128,9 @@ class ToyGenomeCrossover(CrossoverOperator[ToyGenome]):
     ) -> Optional[ToyGenome]:
         g0, g1 = parents[:2]
 
-        return ToyGenome((g0.value + g1.value) / 2)
+        gradient = g0.value - g1.value
+
+        return ToyGenome(g0.value + gradient * rng.uniform(-0.5, 0.5))
 
 
 @configclass(name="base_toy_genome_crossover", group="genome_factory/crossover_operators", target=ToyGenomeCrossover)
@@ -142,7 +145,6 @@ class ToyGenomeFactory(GenomeFactory[ToyGenome, ToyDataset]):
 
     def get_seed_genome(self, dataset: ToyDataset, rng: np.random.Generator) -> ToyGenome:
         g = ToyGenome(0)
-        g.fitness = ToyFitnessValue(0)
         return g
 
     def get_log_data(self, aggregator: Any) -> Dict[str, Any]:

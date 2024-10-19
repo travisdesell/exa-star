@@ -5,7 +5,7 @@ from config import configclass
 from exastar.genome.exastar_genome import EXAStarGenome
 from exastar.genome.seed import SeedGenomeFactory, SeedGenomeFactoryConfig
 from exastar.genome_operators.edge_generator import EdgeGenerator, EdgeGeneratorConfig, RecurrentEdgeGeneratorConfig
-from exastar.genome_operators.node_generator import EXAStarNodeGenerator, EXAStarNodeGeneratorConfig, NodeGenerator, NodeGeneratorConfig
+from exastar.genome_operators.node_generator import EXAStarNodeGeneratorConfig, NodeGenerator, NodeGeneratorConfig
 from exastar.time_series import TimeSeries
 from exastar.weights import LamarckianWeightGeneratorConfig, WeightGenerator, WeightGeneratorConfig
 from genome import GenomeFactory, GenomeFactoryConfig, GenomeProvider, MutationOperator, CrossoverOperator, OperatorSelector
