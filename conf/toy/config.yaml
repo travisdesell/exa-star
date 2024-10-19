@@ -1,5 +1,5 @@
 defaults:
-  - base_sync_mpi_strategy
+  - base_async_mpi_strategy
   - population: base_simple_population
   # - log_data_providers@population.providers.x: base_log_recent_genome
   - genome_factory: toy

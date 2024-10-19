@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, cast, Dict, Self
+from typing import Any, Optional, cast, Dict, Self, Type
+import types
 
 import os
 
@@ -69,17 +70,51 @@ class EvolutionaryStrategy[G: Genome, D: Dataset](ABC, LogDataAggregator):
         """
         ...
 
+    @abstractmethod
+    def get_log_path(self) -> str:
+        """
+        The path of the CSV file log data should be written to.
+        """
+        return f"{self.output_directory}/log.csv"
+
     def __enter__(self) -> Self:
         """
         Use this to open any resources which will require teardown, like file handles, processes, etc.
-        """
-        ...
 
-    def __exit__(self, *args) -> None:
+        More technical documentation copied from Python's contextlib:
+
+        Enter the runtime context related to this object. The with statement will bind this method’s return value to the
+        target(s) specified in the as clause of the statement, if any.
         """
-        Complementary to `__enter__`, closes any resources it opens.
+        return self
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type],
+        exc_value: Optional[Exception],
+        trace: Optional[types.TracebackType]
+    ) -> None:
         """
-        ...
+        This should close any resources opened by __enter__. This will also write any existing log data to the data log,
+        even if there was an exception.
+
+        More technical documentation copied from Python's contextlib:
+
+        Exit the runtime context related to this object. The parameters describe the exception that caused the context
+        to be exited. If the context was exited without an exception, all three arguments will be None.
+
+        If an exception is supplied, and the method wishes to suppress the exception (i.e., prevent it from being
+        propagated), it should return a true value. Otherwise, the exception will be processed normally upon exit from
+        this method.
+
+        Note that __exit__() methods should not reraise the passed-in exception; this is the caller’s responsibility.
+
+        Args:
+            exc_type: If this was called as a aresult of an exception, this is that exceptions type.
+            exc_value: The value of that exception, if there is an exception.
+            trace: The traceback of the exception, if there is an exception.
+        """
+        self.log.to_csv(self.get_log_path())
 
     def update_log(self, istep: int) -> None:
         """
@@ -108,8 +143,6 @@ class EvolutionaryStrategy[G: Genome, D: Dataset](ABC, LogDataAggregator):
             for istep in range(self.nsteps):
                 self.step()
                 self.update_log(istep)
-
-        self.log.to_csv(f"{self.output_directory}/log.csv")
 
 
 @dataclass(kw_only=True)

@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from itertools import cycle
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Self
 
+
 # Type checking for the `multiprocess` module is broken, but that packing perfectly shadows the built-in multiprocessing
 # package. So, import the `multiprocessing` package only for type checking and use `multiprocess` for the actual
 # behavior.
@@ -20,11 +21,10 @@ from config import configclass
 from dataset import Dataset
 from evolution.evolutionary_strategy import EvolutionaryStrategy, EvolutionaryStrategyConfig
 from genome import Genome
+from util.typing import overrides
 
-import dill
 from loguru import logger
 import numpy as np
-import torch
 
 
 class InitTask[E: EvolutionaryStrategy]:
@@ -168,10 +168,10 @@ class SynchronousMPStrategy[G: Genome, D: Dataset](ParallelMPStrategy[G, D]):
                                   initargs=(self.init_tasks, self.init_task_values, ))
         self.counter: int = 0
 
-    def __enter__(self) -> Self:
-        return self
-
+    @overrides(EvolutionaryStrategy)
     def __exit__(self, *args) -> None:
+        super().__exit__(*args)
+
         self.pool.close()
         self.pool.terminate()
 
@@ -227,6 +227,7 @@ class AsyncMPStrategy[G: Genome, D: Dataset](ParallelMPStrategy[G, D]):
         self.pool: Pool = mp.Pool(self.parallelism, initializer=AsyncMPStrategy.init_async,
                                   initargs=(AsyncMPStrategy.queue, self.init_tasks, self.init_task_values, ))
 
+    @overrides(EvolutionaryStrategy)
     def __enter__(self) -> Self:
         fitness = self.fitness
         for _ in range(self.parallelism):
@@ -236,7 +237,10 @@ class AsyncMPStrategy[G: Genome, D: Dataset](ParallelMPStrategy[G, D]):
 
         return self
 
+    @overrides(EvolutionaryStrategy)
     def __exit__(self, *args) -> None:
+        super().__exit__(*args)
+
         self.pool.close()
         self.pool.terminate()
 
