@@ -6,6 +6,12 @@ import numpy as np
 
 
 class GraphingModel(nn.Module):
+    """
+    A simple neural network used to perform a mapping of N to 2,
+    where N is the maximum number of genes.
+    The 2D result is used for visualization purposes.
+    """
+
     def __init__(self, genome_size, hidden_size):
         super(GraphingModel, self).__init__()
         self.layer1 = nn.Linear(genome_size, hidden_size)
@@ -19,13 +25,17 @@ class GraphingModel(nn.Module):
         return x
 
     def adjust_output_bias(self, founder_genome_output):
-        """ Adjust bias so that the founder genome maps to [0, 0] """
+        """
+        Adjust bias so that the founder genome maps to [0, 0]
+        """
         with torch.no_grad():
             # Reshape founder_genome_output to match the shape of the bias
             self.layer2.bias -= founder_genome_output.view_as(self.layer2.bias)
 
     def apply_rotation(self, final_genome_output):
-        """ Rotate final genome output to [1, 0] using a rotation matrix """
+        """
+        Rotate final genome output to [1, 0] using a rotation matrix
+        """
         with torch.no_grad():
             final_genome_output = final_genome_output.squeeze()
 
@@ -45,6 +55,9 @@ class GraphingModel(nn.Module):
             self.layer2.bias = nn.Parameter(rot @ self.layer2.bias)
 
     def calc_gamma(self, dataloader):
+        """
+        Calculate the gamma value needed for this.
+        """
         with torch.no_grad():
             total = 0.0
             count = 0

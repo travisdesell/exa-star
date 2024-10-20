@@ -4,6 +4,9 @@ import networkx as nx
 import os
 import numpy as np
 from loguru import logger
+from population.visualization.visualization import visualize_family_tree, make_dir_if_not_exists
+from population.visualization.graphing_model import map_genomes_to_2d
+from population.visualization.gene_data_processing import convert_genes_to_numerical, get_pca_positions, get_pca_colors
 
 class FamilyTreeTracker:
     """
@@ -28,8 +31,7 @@ class FamilyTreeTracker:
             f'temp_genome_data_{current_time}_{str(np.random.randint(1_000, 9_999))}')
 
         # make the temporary file directory if it doesn't already exist
-        if (not os.path.exists(temp_file_dir)) or (not os.path.isdir(temp_file_dir)):
-            os.mkdir(temp_file_dir)
+        make_dir_if_not_exists(temp_file_dir)
 
     def track_genomes(self, genomes: list):
         """
@@ -134,3 +136,42 @@ class FamilyTreeTracker:
 
             # remove the directory if it is empty
             os.rmdir(self.temp_file_dir)
+
+
+    def perform_visualizations(self):
+        """
+        For performing visualizations at the end of a run.
+        """
+
+        # load the genomes from a temporary file
+        graph, node_genes, edge_genes, fitnesses = self.load_genomes()
+
+        # find the best fitness, so we can mark the best genome
+        best_fitness = float('inf')
+        best_genome_id = -1
+        for genome_id, fitness in fitnesses.items():
+            if fitness < best_fitness:
+                best_fitness = fitness
+                best_genome_id = genome_id
+
+        # take the list of gene IDs and convert to a (float) vector format
+        genes_matrix, genome_id_to_index = convert_genes_to_numerical(node_genes)
+
+        # get the genes of the global best
+        best_genes = genes_matrix[genome_id_to_index[best_genome_id]]
+
+        # get the positions by mapping to 2D
+        positions = map_genomes_to_2d(genes_matrix, genome_id_to_index, best_genes)
+
+        # use PCA to determine colors
+        colors = get_pca_colors(genes_matrix, genome_id_to_index)
+
+        # mark the global best with black (because white background)
+        colors[best_genome_id] = (0, 0, 0)
+
+        # set the subdirectory name
+        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        cur_run_directory = f"run_results_{current_time}"
+
+        # perform the visualizations and save
+        visualize_family_tree(graph, positions, colors, "genetic_distances", cur_run_directory)

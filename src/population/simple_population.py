@@ -8,11 +8,9 @@ from population.population import Population, PopulationConfig
 
 from loguru import logger
 import numpy as np
+from datetime import datetime
 
-from population.family_tree_tracker import FamilyTreeTracker
-from population.visualization import (
-    visualize_family_tree, convert_to_numerical, visualize_family_tree, get_pca_positions, get_pca_colors)
-from population.graphing_model import map_genomes_to_2d
+from population.visualization.family_tree_tracker import FamilyTreeTracker
 
 
 class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
@@ -105,32 +103,8 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
     def track_all_genomes(self):
         self.family_tree_tracker.track_genomes(self.genomes)
 
-
     def perform_visualizations(self):
-        """
-        For performing visualizations at the end of a run.
-        """
-
-        graph, node_genes, edge_genes, fitnesses = self.family_tree_tracker.load_genomes()
-
-        best_fitness = float('inf')
-        best_genome_id = -1
-        for genome_id, fitness in fitnesses.items():
-            if fitness < best_fitness:
-                best_fitness = fitness
-                best_genome_id = genome_id
-
-        genes_matrix, genome_id_to_index = convert_to_numerical(node_genes)
-
-        best_genes = genes_matrix[genome_id_to_index[best_genome_id]]
-
-        positions = map_genomes_to_2d(genes_matrix, genome_id_to_index, best_genes)
-
-        colors = get_pca_colors(genes_matrix, genome_id_to_index)
-
-        colors[best_genome_id] = (0, 0, 0)
-
-        visualize_family_tree(graph, positions, colors)
+        self.family_tree_tracker.perform_visualizations()
 
 
 @configclass(name="base_simple_population", group="population", target=SimplePopulation)

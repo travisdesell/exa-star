@@ -1,9 +1,6 @@
 import numpy as np
 from sklearn.decomposition import PCA
-import matplotlib.pyplot as plt
-import networkx as nx
 from loguru import logger
-import os
 
 
 def _gene_list_to_numerical(gene_ids, gene_index_dict):
@@ -23,7 +20,7 @@ def _gene_list_to_numerical(gene_ids, gene_index_dict):
     return arr
 
 
-def convert_to_numerical(genome_genes: dict):
+def convert_genes_to_numerical(genome_genes: dict):
     """
     Convert all genome node or edge lists into a numerical format for further processing.
 
@@ -93,54 +90,3 @@ def get_pca_colors(genes_matrix: np.ndarray, genome_id_to_index: dict):
     reduced_genes_mat -= reduced_genes_mat.min(axis=0)
     reduced_genes_mat /= reduced_genes_mat.max(axis=0)
     return {gid: reduced_genes_mat[index] for gid, index in genome_id_to_index.items()}
-
-
-def visualize_family_tree(graph: nx.DiGraph, positions: dict, node_colors: dict):
-    """
-    Display a graph with positions and node colors.
-
-    Args:
-        graph (nd.DiGraph): The graph of relations
-        positions (dict): The positions of the nodes
-        node_colors (dict): The colord of the nodes.
-    """
-
-    # create the layout for the graph
-    pos = nx.spring_layout(graph, pos=positions, fixed=positions.keys(), seed=42)
-
-    # convert colors to list
-    colors = [node_colors[node] for node in graph.nodes]
-    plt.figure(figsize=(6, 6))
-    nx.draw(graph, pos, with_labels=False, node_color=colors, node_size=500, arrows=True)
-    plt.title("Family Tree")
-
-    save_figure()
-
-
-def save_figure(figure_save_dir: str="figures"):
-    """
-    Save the figure using matplotlib.pyplot.
-
-    Args:
-        figure_save_dir (str): The directory to save the figure in.
-    """
-
-    # maximum number of times you can attempt to save a file
-    max_tries = 1_000_000
-
-    # the counter that keeps track of which numbered file it is
-    file_counter = 0
-
-    for _ in range(max_tries):
-
-        # it tries to find an unused filename to save the figure
-        file_counter += 1
-        fname = f'Figure_{file_counter}.png'
-        fpath = os.path.join(figure_save_dir, fname)
-
-        if (not os.path.exists(fpath)) or (not os.path.isfile(fpath)):
-            plt.savefig(fpath)
-            logger.info(f"Saved figure to {fpath}")
-            return
-
-    logger.error("Failed attempt to save figure.")
