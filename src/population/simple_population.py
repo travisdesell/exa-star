@@ -5,12 +5,10 @@ from config import configclass
 from dataset import Dataset
 from genome import Genome, GenomeFactory
 from population.population import Population, PopulationConfig
+from population.visualization.family_tree_tracker import FamilyTreeTracker
 
 from loguru import logger
 import numpy as np
-from datetime import datetime
-
-from population.visualization.family_tree_tracker import FamilyTreeTracker
 
 
 class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
@@ -102,9 +100,6 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
 
     def track_all_genomes(self):
         self.family_tree_tracker.track_genomes(self.genomes)
-
-    def perform_visualizations(self):
-        self.family_tree_tracker.perform_visualizations()
 
 
 @configclass(name="base_simple_population", group="population", target=SimplePopulation)

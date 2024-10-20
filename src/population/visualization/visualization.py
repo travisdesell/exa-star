@@ -5,6 +5,9 @@ from loguru import logger
 
 
 def make_dir_if_not_exists(dir_path: str):
+    """
+    If a directory doesn't exist, make it.
+    """
     if (not os.path.exists(dir_path)) or (not os.path.isdir(dir_path)):
         os.mkdir(dir_path)
 

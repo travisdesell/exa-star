@@ -7,7 +7,6 @@ import itertools
 from queue import Queue
 from typing import Any, Callable, cast, Dict, List, Optional, Self, Set, Tuple
 
-import networkx as nx
 from exastar.genome.component import Edge, edge_inon_t, Node, node_inon_t, InputNode, OutputNode
 from exastar.genome.component.component import Component
 from genome import Genome, FitnessValue
@@ -16,7 +15,6 @@ from util.typing import ComparableMixin
 from util.typing import constmethod, overrides
 from util.log import LogDataProvider
 
-import graphviz
 from loguru import logger
 import math
 import matplotlib.colors
@@ -225,26 +223,6 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
 
             for edge in self.edges:
                 edge.reset()
-
-    def to_dict(self):
-        """
-        Converts the genome to a format that can be saved via json.
-        This is meant to be somewhat readable.
-
-        Returns:
-            dict: A dict containing the information needed to build a family tree.
-        """
-
-        node_inons: List[node_inon_t] = [n.inon for n in self.nodes]
-        edge_inons: List[edge_inon_t] = [e.inon for e in self.edges]
-
-        return {
-            'nodes': node_inons,
-            'edges': edge_inons,
-            'generation_number': self.generation_number,
-            'parents': self.parents,
-            'fitness': float(self.fitness.mse)
-        }
 
     @abstractmethod
     def forward(self, input_series: TimeSeries) -> Dict[str, torch.Tensor]:

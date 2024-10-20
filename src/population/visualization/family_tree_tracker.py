@@ -1,17 +1,21 @@
+from population.visualization.visualization import create_and_save_figure, make_dir_if_not_exists
+from population.visualization.graphing_model import get_neural_net_positions
+from population.visualization.gene_data_processing import convert_genes_to_numerical, get_pca_positions, get_pca_colors
 from datetime import datetime
 import json
 import networkx as nx
 import os
 import numpy as np
 from loguru import logger
-from population.visualization.visualization import create_and_save_figure, make_dir_if_not_exists
-from population.visualization.graphing_model import get_neural_net_positions
-from population.visualization.gene_data_processing import convert_genes_to_numerical, get_pca_positions, get_pca_colors
+from collections.abc import Sequence
+from typing import List, Tuple, Optional
+from genome import Genome
 
-class FamilyTreeTracker:
+
+class FamilyTreeTracker[G: Genome]:
     """
     A class used to track relations between nodes, along with other attributes.
-    This saves the genome data as a series of lines in a temporary file, and
+    This saves the genome data as a series of lines in a temporary file.
     """
 
     def __init__(self, temp_file_dir: str='temp_genome_data', delete_temp_file: bool=True):
@@ -33,26 +37,25 @@ class FamilyTreeTracker:
         # make the temporary file directory if it doesn't already exist
         make_dir_if_not_exists(temp_file_dir)
 
-    def track_genomes(self, genomes: list):
+    def track_genomes(self, genomes: List[G]):
         """
         Track a list of genomes by adding them to a temporary file.
 
         Args:
-            genomes (list): A list of genomes to track.
+            genomes (List): A list of genomes to track.
         """
         # make sure it is actually a list
-        if (genomes is not None) and hasattr(genomes, '__len__'):
-            with open(self.family_tracker_file, 'a') as f:
+        assert isinstance(genomes, Sequence)
 
-                # iterate over all genomes
-                for genome in genomes:
+        # open our temporary file
+        with open(self.family_tracker_file, 'a') as f:
 
-                    # store the json data as another line that is appended to the end
-                    f.write(json.dumps(genome.to_dict()) + '\n')
-        else:
-            raise TypeError(f"Object of type {type(genomes)} does not support __len__()")
+            # iterate over all genomes
+            for genome in genomes:
+                # store the json data as another line that is appended to the end
+                f.write(json.dumps(FamilyTreeTracker._genome_to_dict(genome)) + '\n')
 
-    def load_genomes(self):
+    def load_genomes(self) -> Optional[Tuple[nx.DiGraph, dict[int, list[int]], dict[int, list[int]], dict[int, float]]]:
         """
         Load all genomes as a graph.
 
@@ -96,17 +99,15 @@ class FamilyTreeTracker:
                     # add the node to make sure it is in the graph
                     graph.add_node(genome_id)
 
-                    # make sure 'parents' exists and can be iterated over
-                    if (parents is not None) and hasattr(parents, '__len__'):
+                    assert isinstance(parents, Sequence)
 
-                        # iterate through all parents
-                        for p_id in parents:
+                    # iterate through all parents
+                    for p_id in parents:
 
-                            # don't store self-connections
-                            if genome_id != p_id:
-
-                                # add the edge now
-                                graph.add_edge(p_id, genome_id)
+                        # don't store self-connections
+                        if genome_id != p_id:
+                            # add the edge now
+                            graph.add_edge(p_id, genome_id)
 
                 # check if we need to delete the file when done
                 if self._delete_temp_file:
@@ -199,3 +200,24 @@ class FamilyTreeTracker:
 
         # perform the visualizations and save the resulting figures
         create_and_save_figure(graph, positions, colors, base_fname, cur_run_directory)
+
+    @staticmethod
+    def _genome_to_dict(genome: G):
+        """
+        Converts the genome to a format that can be saved via json.
+        This is meant to be somewhat readable.
+
+        Returns:
+            dict: A dict containing the information needed to build a family tree.
+        """
+
+        node_inons = [n.inon for n in genome.nodes]
+        edge_inons = [e.inon for e in genome.edges]
+
+        return {
+            'nodes': node_inons,
+            'edges': edge_inons,
+            'generation_number': genome.generation_number,
+            'parents': genome.parents,
+            'fitness': float(genome.fitness.mse)
+        }

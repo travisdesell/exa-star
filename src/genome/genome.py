@@ -27,6 +27,3 @@ class Genome(ABC, LogDataProvider):
     def evaluate[D: Dataset](self, f: Fitness[Self, D], dataset: D) -> FitnessValue[Self]:
         self.fitness = f.compute(self, dataset)
         return self.fitness
-
-    @abstractmethod
-    def to_dict(self): ...
