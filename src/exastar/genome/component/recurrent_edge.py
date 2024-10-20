@@ -3,8 +3,6 @@ from typing import Optional, cast
 from exastar.genome.component.edge import Edge, edge_inon_t
 from exastar.genome.component.node import Node
 
-
-from loguru import logger
 import torch
 
 

@@ -1,12 +1,10 @@
 import bisect
 import math
-from typing import cast, List
+from typing import List
 
 from config import configclass
 from exastar.genome import EXAStarGenome
-from exastar.genome.component import Node
 from exastar.genome.component.component import Component
-from exastar.genome.component.edge import Edge
 from exastar.genome.visitor.edge_distribution_visitor import EdgeDistributionVisitor
 from exastar.genome_operators.exastar_mutation_operator import EXAStarMutationOperator, EXAStarMutationOperatorConfig
 

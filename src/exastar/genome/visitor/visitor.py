@@ -13,4 +13,5 @@ class Visitor[G: EXAStarGenome, R]:
         self.genome: G = genome
 
     @abstractmethod
-    def visit(self) -> R: ...
+    def visit(self) -> R:
+        ...

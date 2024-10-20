@@ -63,6 +63,6 @@ class SplitEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         return genome
 
 
-@ configclass(name="base_split_edge_mutation", group="genome_factory/mutation_operators", target=SplitEdge)
+@configclass(name="base_split_edge_mutation", group="genome_factory/mutation_operators", target=SplitEdge)
 class SplitEdgeConfig(EXAStarMutationOperatorConfig):
     ...

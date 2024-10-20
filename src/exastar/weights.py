@@ -1,12 +1,10 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import List, Optional, cast
-
+from dataclasses import dataclass
+from typing import List, Optional
 from config import configclass
 from exastar.genome.component import Node
 from exastar.genome import EXAStarGenome
 
-from loguru import logger
 import numpy as np
 import torch
 
@@ -77,7 +75,8 @@ class WeightGenerator[G: EXAStarGenome](ABC):
                     edge.set_weights_initialized(True)
 
     @abstractmethod
-    def generate(self, parameter: torch.nn.Parameter, fan_in: int, fan_out: int, rng: np.random.Generator) -> None: ...
+    def generate(self, parameter: torch.nn.Parameter, fan_in: int, fan_out: int, rng: np.random.Generator) -> None:
+        ...
 
 
 class KaimingWeightGenerator[G: EXAStarGenome](WeightGenerator[G]):

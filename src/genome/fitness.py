@@ -24,7 +24,8 @@ class FitnessValue[G: Genome](ComparableMixin):
 
     @classmethod
     @abstractmethod
-    def worst(cls) -> Self: ...
+    def worst(cls) -> Self:
+        ...
 
     @abstractmethod
     def _cmpkey(self) -> Tuple:
@@ -38,10 +39,12 @@ class FitnessValue[G: Genome](ComparableMixin):
 
 class Fitness[G: Genome, D: Dataset]:
 
-    def __init__(self) -> None: ...
+    def __init__(self) -> None:
+        ...
 
     @abstractmethod
-    def compute(self, genome: G, dataset: D) -> FitnessValue[G]: ...
+    def compute(self, genome: G, dataset: D) -> FitnessValue[G]:
+        ...
 
 
 @dataclass
@@ -66,4 +69,5 @@ class MSEValue[G: Genome](FitnessValue):
         else:
             return (-self.mse, )
 
-    def __repr__(self) -> str: return f"MSEValue({self.mse})"
+    def __repr__(self) -> str:
+        return f"MSEValue({self.mse})"

@@ -7,7 +7,6 @@ from exastar.genome.component.output_node import OutputNode
 from exastar.genome_operators.exastar_mutation_operator import EXAStarMutationOperator, EXAStarMutationOperatorConfig
 from util.functional import is_not_instance
 
-from loguru import logger
 import numpy as np
 
 
@@ -31,7 +30,7 @@ class SetComponentEnabled[G: EXAStarGenome](EXAStarMutationOperator[G]):
             return list(filter(is_not_instance(OutputNode), filter(lambda e: e.enabled, g.nodes)))
         return SetComponentEnabled(False, visit_genome, *args, **kwargs)
 
-    @ staticmethod
+    @staticmethod
     def enable_node(*args, **kwargs) -> 'SetComponentEnabled[G]':
         def visit_genome(g: G) -> List[Component]:
             return list(filter(is_not_instance(OutputNode), filter(lambda e: e.disabled(), g.nodes)))
@@ -58,25 +57,25 @@ class SetComponentEnabled[G: EXAStarGenome](EXAStarMutationOperator[G]):
         return genome
 
 
-@ configclass(name="base_disable_edge_mutation", group="genome_factory/mutation_operators",
-              target=SetComponentEnabled.disable_edge)
+@configclass(name="base_disable_edge_mutation", group="genome_factory/mutation_operators",
+             target=SetComponentEnabled.disable_edge)
 class DisableEdgeConfig(EXAStarMutationOperatorConfig):
     ...
 
 
-@ configclass(name="base_disable_edge_mutation", group="genome_factory/mutation_operators",
-              target=SetComponentEnabled.enable_edge)
+@configclass(name="base_disable_edge_mutation", group="genome_factory/mutation_operators",
+             target=SetComponentEnabled.enable_edge)
 class EnableEdgeConfig(EXAStarMutationOperatorConfig):
     ...
 
 
-@ configclass(name="base_disable_node_mutation", group="genome_factory/mutation_operators",
-              target=SetComponentEnabled.disable_node)
+@configclass(name="base_disable_node_mutation", group="genome_factory/mutation_operators",
+             target=SetComponentEnabled.disable_node)
 class DisableNodeConfig(EXAStarMutationOperatorConfig):
     ...
 
 
-@ configclass(name="base_enable_node_mutation", group="genome_factory/mutation_operators",
-              target=SetComponentEnabled.enable_node)
+@configclass(name="base_enable_node_mutation", group="genome_factory/mutation_operators",
+             target=SetComponentEnabled.enable_node)
 class EnableNodeConfig(EXAStarMutationOperatorConfig):
     ...

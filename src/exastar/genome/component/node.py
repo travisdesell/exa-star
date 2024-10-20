@@ -10,7 +10,6 @@ from exastar.inon import inon_t
 from exastar.genome.component.component import Component
 from util.typing import ComparableMixin, overrides
 
-from loguru import logger
 import numpy as np
 import torch
 

@@ -19,10 +19,12 @@ class Genome(ABC, LogDataProvider):
 
     @abstractmethod
     @constmethod
-    def clone(self) -> Self: ...
+    def clone(self) -> Self:
+        ...
 
     @abstractmethod
-    def __eq__(self, other) -> bool: ...
+    def __eq__(self, other) -> bool:
+        ...
 
     def evaluate[D: Dataset](self, f: Fitness[Self, D], dataset: D) -> FitnessValue[Self]:
         self.fitness = f.compute(self, dataset)
