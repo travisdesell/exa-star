@@ -137,7 +137,6 @@ class FamilyTreeTracker:
             # remove the directory if it is empty
             os.rmdir(self.temp_file_dir)
 
-
     def perform_visualizations(self):
         """
         For performing visualizations at the end of a run.
@@ -154,8 +153,36 @@ class FamilyTreeTracker:
                 best_fitness = fitness
                 best_genome_id = genome_id
 
+        # set the subdirectory name
+        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        cur_run_directory = f"run_results_{current_time}"
+
+        # create the figures...
+
+        # figure for node genes
+        FamilyTreeTracker.visualize_genes(
+            graph, node_genes, best_genome_id, "node_genes_figure", cur_run_directory)
+
+        # figure for edge genes
+        FamilyTreeTracker.visualize_genes(
+            graph, edge_genes, best_genome_id, "edge_genes_figure", cur_run_directory)
+
+    @staticmethod
+    def visualize_genes(graph: nx.DiGraph, genes: dict, best_genome_id: int, base_fname: str, cur_run_directory: str):
+        """
+        Take a particular type of genes for the genomes (nodes or edges),
+        and visualize positions and colors based on them.
+
+        Args:
+            graph (nx.DiGraph): The graph of genomes and relations.
+            genes (dict): The genes being graphed.
+            best_genome_id (int): The ID of the best genome.
+            base_fname (str): The base filename of the figure.
+            cur_run_directory (str): The directory that the run
+        """
+
         # take the list of gene IDs and convert to a (float) vector format
-        genes_matrix, genome_id_to_index = convert_genes_to_numerical(node_genes)
+        genes_matrix, genome_id_to_index = convert_genes_to_numerical(genes)
 
         # get the genes of the global best
         best_genes = genes_matrix[genome_id_to_index[best_genome_id]]
@@ -169,9 +196,5 @@ class FamilyTreeTracker:
         # mark the global best with black (because white background)
         colors[best_genome_id] = (0, 0, 0)
 
-        # set the subdirectory name
-        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        cur_run_directory = f"run_results_{current_time}"
-
         # perform the visualizations and save
-        visualize_family_tree(graph, positions, colors, "genetic_distances", cur_run_directory)
+        visualize_family_tree(graph, positions, colors, base_fname, cur_run_directory)
