@@ -6,3 +6,4 @@ pandas
 graphviz
 hydra-core
 multiprocess
+scikit-learn

@@ -4,6 +4,7 @@ import bisect
 from collections import deque
 import copy
 import itertools
+from queue import Queue
 from typing import Any, Callable, cast, Dict, List, Optional, Self, Set, Tuple
 
 from exastar.genome.component import Edge, edge_inon_t, Node, node_inon_t, InputNode, OutputNode
@@ -14,7 +15,6 @@ from util.typing import ComparableMixin
 from util.typing import constmethod, overrides
 from util.log import LogDataProvider
 
-import graphviz
 from loguru import logger
 import math
 import matplotlib.colors
@@ -59,7 +59,7 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
         output_nodes: List[OutputNode],
         nodes: List[Node],
         edges: List[E],
-        fitness: FitnessValue,
+        fitness: FitnessValue
     ) -> None:
         """
         Initialize base class genome fields and methods.
@@ -92,6 +92,8 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
         self.viable: bool = True
 
         self._validate()
+
+        self.parents = []
 
     def _cmpkey(self) -> Tuple:
         return self.fitness._cmpkey()
@@ -155,7 +157,9 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
         Uses `torch.no_grad()` to avoid the potential of copying intermediate / gradient related tensors over. In the
         future, if we want to save the gradient state to allow resuming of training etc. we should do that elsewhere.
         """
-        return copy.deepcopy(self)
+        g = copy.deepcopy(self)
+        g.parents.append(self.generation_number)
+        return g
 
     @constmethod
     @overrides(LogDataProvider[None])

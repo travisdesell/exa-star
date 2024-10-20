@@ -5,6 +5,7 @@ from config import configclass
 from dataset import Dataset
 from genome import Genome, GenomeFactory
 from population.population import Population, PopulationConfig
+from population.visualization.family_tree_tracker import FamilyTreeTracker
 
 from loguru import logger
 import numpy as np
@@ -32,9 +33,12 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
         # Genomes should be sorted by fitness
         self.genomes: List[G] = []
 
+        self.family_tree_tracker = FamilyTreeTracker()
+
     def initialize(self, genome_factory: GenomeFactory[G, D], dataset: D, rng: np.random.Generator) -> None:
         seed = genome_factory.get_seed_genome(dataset, rng)
         self.genomes = [seed.clone() for _ in range(self.size)]
+        self.track_all_genomes()
 
     def make_generation(
         self, genome_factory: GenomeFactory[G, D], rng: np.random.Generator
@@ -77,6 +81,8 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
             key=lambda g: g.fitness, reverse=True
         )
 
+        self.track_all_genomes()
+
     def get_parents(self, rng: np.random.Generator) -> List[G]:
         assert len(self.genomes) >= 2
         # Two unique parents
@@ -91,6 +97,9 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
 
     def get_worst_genome(self) -> G:
         return self.genomes[-1]
+
+    def track_all_genomes(self):
+        self.family_tree_tracker.track_genomes(self.genomes)
 
 
 @configclass(name="base_simple_population", group="population", target=SimplePopulation)
