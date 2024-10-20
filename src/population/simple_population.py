@@ -1,12 +1,12 @@
 from dataclasses import field
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Sequence
 
 from config import configclass
 from dataset import Dataset
-from genome import Genome, GenomeFactory
+from genome import Genome, GenomeFactory, GenomeProvider
 from population.population import Population, PopulationConfig
+from util.typing import overrides
 
-from loguru import logger
 import numpy as np
 
 
@@ -21,7 +21,6 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
     """
 
     def __init__(self, size: int, n_elites: int, **kwargs) -> None:
-
         super().__init__(**kwargs)
 
         self.size: int = size
@@ -62,13 +61,16 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
 
                 # If the elite has worse fitness, discard it. Otherwise keep it and ignore the new genome
                 if elites[index].fitness < g.fitness:
-                    elites.pop(index)
+                    self.on_genome_removed(elites.pop(index))
                     new_genomes.append(g)
 
             except ValueError:
                 # thrown when `list.index(obj)` is called and obj is not in the list
                 # in this case it means genome is not among the elites, so we can add it.
                 new_genomes.append(g)
+
+        for new_genome in new_genomes:
+            self.on_genome_inserted(new_genome)
 
         self.genomes = elites + new_genomes
 
@@ -77,20 +79,28 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
             key=lambda g: g.fitness, reverse=True
         )
 
+    @overrides(GenomeProvider[G])
     def get_parents(self, rng: np.random.Generator) -> List[G]:
         assert len(self.genomes) >= 2
         # Two unique parents
         i, j = rng.choice(len(self.genomes), size=2, replace=False)
         return [self.genomes[i], self.genomes[j]]
 
+    @overrides(GenomeProvider[G])
     def get_genome(self, rng: np.random.Generator) -> G:
         return self.genomes[rng.integers(len(self.genomes))]
 
+    @overrides(Population[G, D])
     def get_best_genome(self) -> G:
         return self.genomes[0]
 
+    @overrides(Population[G, D])
     def get_worst_genome(self) -> G:
         return self.genomes[-1]
+
+    @overrides(Population[G, D])
+    def get_genomes(self) -> Sequence[G]:
+        return list(self.genomes)
 
 
 @configclass(name="base_simple_population", group="population", target=SimplePopulation)

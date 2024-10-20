@@ -1,7 +1,7 @@
 import bisect
 from dataclasses import field
 import functools
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Sequence
 
 from config import configclass
 from dataset import Dataset
@@ -69,7 +69,7 @@ class SteadyStatePopulation[G: Genome, D: Dataset](Population[G, D]):
 
             # There is a duplicate, and it is worse than the new genome - remove it.
             if self.genomes[index].fitness < g.fitness:
-                self.genomes.pop(index)
+                self.on_genome_removed(self.genomes.pop(index))
             else:
                 # out new genome is worse - return so we don't insert it.
                 return
@@ -80,9 +80,8 @@ class SteadyStatePopulation[G: Genome, D: Dataset](Population[G, D]):
 
         # We need to remove the worst genome to accomodate the new genome.
         if len(self.genomes) >= self.size:
-            assert len(self.genomes) == self.size
             if g.fitness > self.genomes[-1].fitness:
-                self.genomes.pop()
+                self.on_genome_removed(self.genomes.pop())
             else:
                 return
 
@@ -92,7 +91,9 @@ class SteadyStatePopulation[G: Genome, D: Dataset](Population[G, D]):
         # i.e. from largest fitness to smallest.
         bisect.insort(self.genomes, g, key=functools.cmp_to_key(SteadyStatePopulation.fitness_compare))
 
-    @overrides(GenomeProvider)
+        self.on_genome_inserted(g)
+
+    @overrides(GenomeProvider[G])
     def get_parents(self, rng: np.random.Generator) -> List[G]:
         """
         TODO: add an `n` paremeter to more easily change the number of parents that will be selected.
@@ -101,15 +102,21 @@ class SteadyStatePopulation[G: Genome, D: Dataset](Population[G, D]):
         i, j = rng.choice(len(self.genomes), size=2, replace=False)
         return [self.genomes[i], self.genomes[j]]
 
-    @overrides(GenomeProvider)
+    @overrides(GenomeProvider[G])
     def get_genome(self, rng: np.random.Generator) -> G:
         return self.genomes[rng.integers(len(self.genomes))]
 
+    @overrides(Population[G, D])
     def get_best_genome(self) -> G:
         return self.genomes[0]
 
+    @overrides(Population[G, D])
     def get_worst_genome(self) -> G:
         return self.genomes[-1]
+
+    @overrides(Population[G, D])
+    def get_genomes(self) -> Sequence[G]:
+        return list(self.genomes)
 
 
 @configclass(name="base_steady_state_population", group="population", target=SteadyStatePopulation)
