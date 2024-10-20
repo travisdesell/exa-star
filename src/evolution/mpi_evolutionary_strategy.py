@@ -36,7 +36,7 @@ class Tags(Enum):
     FINALIZE = 2
 
     # Sent by a worker to the master process to begin the asynchronous exchange of tasks and results.
-    INTIALIZE = 3
+    INITIALIZE = 3
 
     # Sent by a worker process to the master process; signals that an exception occurred and the master should begint
     # the process of safely shutting down.
@@ -96,10 +96,19 @@ class MPIEvolutionaryStrategy[G: Genome, D: Dataset](EvolutionaryStrategy[G, D])
         return status, obj
 
     @abstractmethod
-    def _run_inner(self) -> None: ...
+    def _run_inner(self) -> None:
+        """
+        This method should contain the actual evolutionary loop. It will be wrapped in a try-except by
+        `MPIEvolutionaryStrategy::run`.
+        """
+        ...
 
     @overrides(EvolutionaryStrategy)
     def run(self) -> None:
+        """
+        Calls the inner evolutionary loop and catches any exceptions; these should be handles by `self.__exit__` before
+        reeaching this method.
+        """
         try:
             self._run_inner()
         except Exception as e:
@@ -130,6 +139,9 @@ class AsyncMPIMasterStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
 
     @overrides(EvolutionaryStrategy)
     def __enter__(self) -> Self:
+        """
+        Initializes the popluation.
+        """
         self.population.initialize(self.genome_factory, self.dataset, self.rng)
         return super().__enter__()
 
@@ -185,7 +197,7 @@ class AsyncMPIMasterStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
                 self.n_generations += 1
 
             # An initialization task. We just have to send a task to the worker to start the exchange.
-            case Tags.INTIALIZE.value:
+            case Tags.INITIALIZE.value, _:
                 logger.info("Received initialize request from worker.")
 
             # Anything else is unexpected and will make the program explode.
@@ -206,6 +218,9 @@ class AsyncMPIMasterStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
 
     @overrides(MPIEvolutionaryStrategy)
     def _run_inner(self) -> None:
+        """
+        With `self` as a context, calls `self.step` until the requisite number of generations has been evaluated.
+        """
         with self:
             while True:
                 logger.info(f"Starting step {self.n_generations} / {self.nsteps}")
@@ -236,9 +251,13 @@ class AsyncMPIWorkerStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
 
     @overrides(EvolutionaryStrategy)
     def __enter__(self) -> Self:
+        """
+        Sends an initialization message to the master and sets the population to None, as workers do not have a
+        popluation.
+        """
         logger.info("Sending initialization message to master")
 
-        self.comm.send(None, dest=0, tag=Tags.RESULT.value)
+        self.comm.send(None, dest=0, tag=Tags.INITIALIZE.value)
         self.population = None  # type: ignore
 
         return super().__enter__()
@@ -271,6 +290,12 @@ class AsyncMPIWorkerStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
 
     @overrides(EvolutionaryStrategy)
     def step(self) -> None:
+        """
+        A single step for this asychronous worker involves waiting for tasks from the master process, executing those
+        tasks, and sending the results to the mater process.
+
+        If a FINALIZE message is received instead of a task, `self.done` is set to True.
+        """
         logger.info("Waiting for a task")
         status, obj = self.recv(source=0)
 
@@ -308,6 +333,9 @@ class AsyncMPIWorkerStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
 
     @overrides(MPIEvolutionaryStrategy)
     def _run_inner(self) -> None:
+        """
+        With `self` as a context, calls `self.step` until `self.done` is set. Updates the log after each step.
+        """
         with self:
             while not self.done:
                 logger.info(f"Starting step {self.log_rows}")
@@ -317,10 +345,12 @@ class AsyncMPIWorkerStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
                 self.log_rows += 1
                 logger.info(f"Ending step {self.log_rows}")
 
-        self.log[:self.log_rows].to_csv(self.get_log_path())
-
 
 def async_mpi_strategy_factory(**kwargs):
+    """
+    A factory method for Asychronous MPI strategies. This will instantiate `AsyncMPIMasterStrategy` for the process with
+    rank 0, and a `AsyncMPIWorkerStrategy` for all other processes.
+    """
     if MPI.COMM_WORLD.Get_rank() == 0:
         return AsyncMPIMasterStrategy(**kwargs)
     else:
@@ -356,6 +386,9 @@ class SynchronousMPIMasterStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrateg
 
     @overrides(EvolutionaryStrategy)
     def __enter__(self) -> Self:
+        """
+        Initializes the population
+        """
         self.population.initialize(self.genome_factory, self.dataset, self.rng)
         return super().__enter__()
 
@@ -385,6 +418,15 @@ class SynchronousMPIMasterStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrateg
 
     @overrides(EvolutionaryStrategy)
     def step(self) -> None:
+        """
+        Creates a generation of tasks and splits them into `self.n_workers` chunks. These chunks are distributed to
+        workers, executed, and the results are gathered in this method. These results are combined and integrated into
+        the popluation.
+
+        This method also must watch out for failures on the workers. If that occurs, an exception is thrown after gather
+        all results from worker. Then, an exception is thrown which will be handled by `self.__exit__`. See that for
+        details on the safe termination sequence.
+        """
         logger.info("About to generate tasks...")
         tasks = self.population.make_generation(self.genome_factory, self.rng)
 
@@ -428,6 +470,10 @@ class SynchronousMPIMasterStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrateg
 
     @overrides(MPIEvolutionaryStrategy)
     def _run_inner(self) -> None:
+        """
+        With `self` as a context, performs steps and updates the log until `self.nsteps` generations have been
+        evaluated.
+        """
         with self:
             while True:
                 logger.info(f"Starting step {self.n_generations} / {self.nsteps}")
@@ -464,6 +510,9 @@ class SynchronousMPIWorkerStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrateg
 
     @overrides(EvolutionaryStrategy)
     def __enter__(self) -> Self:
+        """
+        Sets the population to None since workers do not have populatons.
+        """
         self.population = None  # type: ignore
         return super().__enter__()
 
@@ -491,6 +540,10 @@ class SynchronousMPIWorkerStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrateg
 
     @overrides(EvolutionaryStrategy)
     def step(self) -> None:
+        """
+        A single sychronous step of evolution for the worker. Essentially, the worker receives a list of tasks and
+        executes them. Then, the results are sent to the master process.
+        """
         logger.info("Waiting for a task")
         status, obj = self.recv(source=0)
 
@@ -523,6 +576,12 @@ class SynchronousMPIWorkerStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrateg
 
     @overrides(MPIEvolutionaryStrategy)
     def _run_inner(self) -> None:
+        """
+        Enters `self` as a context and calls `self.step` until `self.done` is set to True. Updates log after each step.
+
+        If an exception occurs in the body of the loop, it will first be handled by `self.__exit__`. This will start a
+        safe termination sequence, see self.__exit__.
+        """
         with self:
             while not self.done:
                 logger.info(f"Starting step {self.log_rows}")
@@ -533,10 +592,12 @@ class SynchronousMPIWorkerStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrateg
 
                 logger.info(f"Ending step {self.log_rows}")
 
-        self.log[:self.log_rows].to_csv(self.get_log_path())
-
 
 def sync_mpi_strategy_factory(**kwargs):
+    """
+    A factory method that will instantiate `SynchronousMPIMasterStrategy` on the process with rank 0, and a
+    `SynchronousMPIWorkerStrategy` on all other processes.
+    """
     if MPI.COMM_WORLD.Get_rank() == 0:
         return SynchronousMPIMasterStrategy(**kwargs)
     else:

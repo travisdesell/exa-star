@@ -25,13 +25,22 @@ from loguru import logger
 
 
 class ToyGenome(Genome):
+    """
+    This toy genome simply represents a number that also happens to be its fitness.
+    """
 
     def __init__(self, value: float, **kwargs) -> None:
         super().__init__(fitness=ToyFitnessValue(value), **kwargs)
 
         self.value: float = value
+
+        # When this genome is evaluated, this is set to the time in nanoseconds at the start of the evaluation.
         self.start_time: int = 0
+
+        # Same as above, except for the end of the evaluation.
         self.end_time: int = 0
+
+        # The pid of the process which evaluatd this genome.
         self.evaluator: Any = None
 
     def clone(self) -> Self:
@@ -86,6 +95,10 @@ class ToyDatasetConfig(DatasetConfig):
 
 class ToyFitness(Fitness[ToyGenome, ToyDataset]):
     def compute(self, genome: ToyGenome, dataset: ToyDataset) -> ToyFitnessValue:
+        """
+        "Evaluates" the genome - in reality, this just means sleeping for `self.value` milliseconds.
+        Sets some metadata in the process.
+        """
         genome.start_time = time_ns()
         logger.info(f"Sleeping for {genome.value / 1000}s...")
         sleep(abs(genome.value / 1000))
@@ -109,8 +122,9 @@ class ToyGenomeMutation(MutationOperator[ToyGenome]):
     def __call__(
         self, genome: ToyGenome, rng: np.random.Generator
     ) -> Optional[ToyGenome]:
-        if rng.random() < 0.1:
-            raise Exception("womp")
+        """
+        Moves the genome valie in a random direction, up to `self.range` in either direction.
+        """
         genome.value += rng.random() * self.range * 2 - self.range
         return genome
 
@@ -128,6 +142,9 @@ class ToyGenomeCrossover(CrossoverOperator[ToyGenome]):
     def __call__(
         self, parents: List[ToyGenome], rng: np.random.Generator
     ) -> Optional[ToyGenome]:
+        """
+        Performs a random line search along the two genomes values and uses it to create a new genome.
+        """
         g0, g1 = parents[:2]
 
         gradient = g0.value - g1.value
