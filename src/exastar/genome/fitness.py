@@ -27,7 +27,7 @@ class EXAStarMSE(EXAStarTimeSeriesRegressionFitness[EXAStarGenome]):
         value = MSEValue(
             genome.train_genome(dataset.get_inputs(dataset.input_series_names, 0),
                                 dataset.get_outputs(dataset.output_series_names, 1),
-                                torch.optim.adam.Adam(genome.parameters()), 2)
+                                torch.optim.Adam(genome.parameters()), 2)
         )
         return value
 
