@@ -109,6 +109,8 @@ class ToyGenomeMutation(MutationOperator[ToyGenome]):
     def __call__(
         self, genome: ToyGenome, rng: np.random.Generator
     ) -> Optional[ToyGenome]:
+        if rng.random() < 0.1:
+            raise Exception("womp")
         genome.value += rng.random() * self.range * 2 - self.range
         return genome
 

@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from dataclasses import field
 from enum import Enum
 import sys
@@ -21,10 +22,24 @@ import numpy as np
 
 
 class Tags(Enum):
+    """
+    All of the various MPI tags that are used to send messages between processes.
+    """
+    # Indicates that a message contains a list of tasks for the worker to execute.
     TASK = 0
+
+    # Indicates that a message contains a list of results for the master process. Should only be sent by workers to the
+    # master process.
     RESULT = 1
+
+    # Indicates that the receiving worker process should safely close.
     FINALIZE = 2
+
+    # Sent by a worker to the master process to begin the asynchronous exchange of tasks and results.
     INTIALIZE = 3
+
+    # Sent by a worker process to the master process; signals that an exception occurred and the master should begint
+    # the process of safely shutting down.
     FAILURE = 4
 
 
@@ -80,16 +95,16 @@ class MPIEvolutionaryStrategy[G: Genome, D: Dataset](EvolutionaryStrategy[G, D])
 
         return status, obj
 
-    def abort(self, e: Exception) -> None:
-        """
-        Prints the stacktrace of the supplied exception and aborts MPI - this kills all processes.
-        """
-        error_message = traceback.format_exc()
-        logger.info(f"FAILED with exception '{e}':\n{error_message}")
-        logger.info("Exiting prematurely :(...")
+    @abstractmethod
+    def _run_inner(self) -> None: ...
 
-        # This calls sys.exit internally
-        self.comm.Abort()
+    @overrides(EvolutionaryStrategy)
+    def run(self) -> None:
+        try:
+            self._run_inner()
+        except Exception as e:
+            logger.error("Failed because of exception:")
+            logger.error("".join(traceback.format_exception(None, e, e.__traceback__)))
 
 
 class AsyncMPIMasterStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D]):
@@ -97,12 +112,12 @@ class AsyncMPIMasterStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
     The master process logic for an asynchronous MPI-based evolutionary strategy.
 
     Until `self.nsteps` genoms has been evaluated, this strategy will:
+      1. Wait until a worker process sends a work request.
+      2. If the work request contains prior results, integrate them into the population.
+      3. Generate a new piece of work for the worker.
+      4. Send it to the worker.
+      5. Goto step 1.
 
-    1. Wait until a worker process sends a work request.
-    2. If the work request contains prior results, integrate them into the population.
-    3. Generate a new piece of work for the worker.
-    4. Send it to the worker.
-    5. Goto step 1.
     """
 
     def __init__(self, **kwargs) -> None:
@@ -116,7 +131,7 @@ class AsyncMPIMasterStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
     @overrides(EvolutionaryStrategy)
     def __enter__(self) -> Self:
         self.population.initialize(self.genome_factory, self.dataset, self.rng)
-        return self
+        return super().__enter__()
 
     @overrides(EvolutionaryStrategy)
     def __exit__(
@@ -125,6 +140,11 @@ class AsyncMPIMasterStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
         exc_value: Optional[Exception],
         trace: Optional[types.TracebackType]
     ) -> None:
+        """
+        Cleanly terminates worker processes in the case of normal execution or in the case of an event.
+
+        See `EvolutionaryStrategy::__exit__` for technical details.
+        """
         super().__exit__(exc_type, exc_value, trace)
 
         # Finalize all workers.
@@ -135,6 +155,7 @@ class AsyncMPIMasterStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
 
         logger.info("Sent finalize message to all workers...")
 
+    @overrides(EvolutionaryStrategy)
     def step(self) -> None:
         """
         Received one message from a worker and processes it. Will integrate results into the population if they are
@@ -150,12 +171,9 @@ class AsyncMPIMasterStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
                 logger.error("A worker process failed because of an exception.")
                 raise Exception("Terminating due to a falure on a worker process.")
 
-            # A result of None - the task failed.
-            case Tags.RESULT.value, None:
-                logger.info("Received None from worker result - a task must have failed.")
-
-            # A non-None result - integrate it into the population
+            # Result(s) - integrate into the population
             case Tags.RESULT.value, _:
+                assert obj is not None
                 assert type(obj) is list
 
                 for genome in obj:
@@ -186,8 +204,8 @@ class AsyncMPIMasterStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
     def get_log_path(self) -> str:
         return f"{self.output_directory}/log.csv"
 
-    @overrides(EvolutionaryStrategy)
-    def run(self):
+    @overrides(MPIEvolutionaryStrategy)
+    def _run_inner(self) -> None:
         with self:
             while True:
                 logger.info(f"Starting step {self.n_generations} / {self.nsteps}")
@@ -203,12 +221,11 @@ class AsyncMPIWorkerStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
     The worker process logic for an asynchronous MPI-based evolutionary strategy.
 
     Until this receives the teermination message from the master process, this strategy will:
-
-    1. Send an initialization message to the worker.
-    2. Wait for a task.
-    3. Execute the task.
-    4. Send the results to the master.
-    5. Goto step 2.
+      1. Send an initialization message to the worker.
+      2. Wait for a task.
+      3. Execute the task.
+      4. Send the results to the master.
+      5. Goto step 2.
     """
 
     def __init__(self, **kwargs) -> None:
@@ -220,10 +237,11 @@ class AsyncMPIWorkerStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
     @overrides(EvolutionaryStrategy)
     def __enter__(self) -> Self:
         logger.info("Sending initialization message to master")
+
         self.comm.send(None, dest=0, tag=Tags.RESULT.value)
         self.population = None  # type: ignore
 
-        return self
+        return super().__enter__()
 
     @overrides(EvolutionaryStrategy)
     def __exit__(
@@ -232,11 +250,15 @@ class AsyncMPIWorkerStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
         exc_value: Optional[Exception],
         trace: Optional[types.TracebackType]
     ) -> None:
+        """
+        Closes this process and, if this was caused by an exception, sends a failure signal to the master so it may
+        terminate other workers.
+
+        See `EvolutionaryStrategy::__exit__` for technical details.
+        """
         super().__exit__(exc_type, exc_value, trace)
 
         if exc_value is not None:
-            logger.error("Encountered an uncaught exception.")
-            logger.error("".join(traceback.format_exception(None, exc_value, trace)))
 
             # Notify master of the failure on this process.
             self.comm.send(exc_value, dest=0, tag=Tags.FAILURE.value)
@@ -247,6 +269,7 @@ class AsyncMPIWorkerStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
             # Wait for the finalize signal.
             self.recv(source=0, tag=Tags.FINALIZE.value)
 
+    @overrides(EvolutionaryStrategy)
     def step(self) -> None:
         logger.info("Waiting for a task")
         status, obj = self.recv(source=0)
@@ -283,8 +306,8 @@ class AsyncMPIWorkerStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D
     def get_log_path(self) -> str:
         return f"{self.output_directory}/worker_{self.rank}_log.csv"
 
-    @overrides(EvolutionaryStrategy)
-    def run(self):
+    @overrides(MPIEvolutionaryStrategy)
+    def _run_inner(self) -> None:
         with self:
             while not self.done:
                 logger.info(f"Starting step {self.log_rows}")
@@ -310,31 +333,57 @@ class AsyncMPIStrategyConfig(EvolutionaryStrategyConfig):
 
 
 class SynchronousMPIMasterStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D]):
+    """
+    Logic for the master process in a synchronous, MPI-based evolutionary strategy.
+
+    The basic logic is:
+      1. Create a generation of tasks.
+      2. Partition the tasks and send them to the workers.
+      3. Wait for workers to send results.
+      4. Combine results and integrate into population.
+      5. Goto step 1 if not done.
+
+    There is also a good amount of code in here for handling errors; if it were not there it is pretty easy for the
+    program to freeze and / or to lose log data.
+    """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-
         self.n_workers: int = self.comm.Get_size() - 1
         self.n_generations: int = 0
 
         assert self.n_workers > 0, "MPI was launched with only 1 process, there must be at least 2."
 
+    @overrides(EvolutionaryStrategy)
     def __enter__(self) -> Self:
         self.population.initialize(self.genome_factory, self.dataset, self.rng)
-        return self
+        return super().__enter__()
 
-    def __exit__(self, *_) -> None:
-        workers_closed: int = 0
+    @overrides(EvolutionaryStrategy)
+    def __exit__(
+        self,
+        exc_type: Optional[Type],
+        exc_value: Optional[Exception],
+        trace: Optional[types.TracebackType]
+    ) -> None:
+        """
+        Safely closes all worker processes and synchronizes with a barrier to ensure they are all able to complete any
+        I/O operations.
+
+        See `EvolutionaryStrategy::__exit__` for technical details.
+        """
+        super().__exit__(exc_type, exc_value, trace)
 
         logger.info("Exiting...")
-        while workers_closed < self.n_workers:
-            status, _ = self.recv()
-            self.comm.send(None, status.Get_source(), tag=Tags.FINALIZE.value)
-            logger.info(f"Finalized worker {status.Get_source()}")
 
+        for i in range(1, self.n_workers + 1):
+            self.comm.send(None, dest=i, tag=Tags.FINALIZE.value)
+            logger.info(f"Finalized worker {i}")
+
+        self.comm.Barrier()
         logger.info("All workers have been finalized.")
-        super().__exit__(*_)
 
+    @overrides(EvolutionaryStrategy)
     def step(self) -> None:
         logger.info("About to generate tasks...")
         tasks = self.population.make_generation(self.genome_factory, self.rng)
@@ -342,52 +391,70 @@ class SynchronousMPIMasterStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrateg
         chunks = np.array_split(tasks, self.n_workers)  # type: ignore
 
         for i, chunk in enumerate(chunks):
+            logger.info(f"CHUNK {i} = {chunk}")
             self.comm.send(chunk, dest=i + 1, tag=Tags.TASK.value)
 
         logger.info("Sent tasks")
 
         stats, genomes = [], []
+        # Used to track of we encountered at least one failure.
+        failure = False
 
         for ichunk in range(self.n_workers):
             logger.info(f"Waiting for chunk {ichunk}")
+
             status, obj = self.recv()
+
             logger.info("Done.")
             stats.append(status)
 
-            if obj is not None:
-                assert type(obj) is list
+            match status.Get_tag():
+                case Tags.FAILURE.value:
+                    failure = True
+                case Tags.RESULT.value:
+                    assert obj is not None
+                    assert type(obj) is list
 
-                for g in obj:
-                    assert g is None or isinstance(g, Genome)
+                    for g in obj:
+                        assert g is None or isinstance(g, Genome)
 
-                genomes += obj
+                    genomes += obj
+
+            if failure:
+                raise Exception("A worker signaled failure.")
 
         self.population.integrate_generation(genomes)
         logger.info("Integrated generation")
 
-    def get_log_path(self) -> str:
-        return f"{self.output_directory}/log.csv"
+    @overrides(MPIEvolutionaryStrategy)
+    def _run_inner(self) -> None:
+        with self:
+            while True:
+                logger.info(f"Starting step {self.n_generations} / {self.nsteps}")
+                self.step()
 
-    def run(self):
-        try:
-            with self:
-                while True:
-                    logger.info(f"Starting step {self.n_generations} / {self.nsteps}")
-                    self.step()
+                self.update_log(self.n_generations)
+                self.n_generations += 1
 
-                    self.update_log(self.n_generations)
-                    self.n_generations += 1
-
-                    if self.n_generations >= self.nsteps:
-                        logger.info(f"Ending on step {self.n_generations} / {self.nsteps}")
-                        break
-
-        except Exception as e:
-            self.log.to_csv(self.get_log_path())
-            self.abort(e)
+                if self.n_generations >= self.nsteps:
+                    logger.info(f"Ending on step {self.n_generations} / {self.nsteps}")
+                    break
 
 
 class SynchronousMPIWorkerStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrategy[G, D]):
+    """
+    Logic for a single worker in a synchronous MPI-based evolutionary strategy.
+
+    The logic is roughly as follows:
+      1. Wait for a message from the master process.
+      2. If it has tag FINALIZE, exit.
+      3. Otherwise it should contain tasks: execute them.
+      4. Send results to the master process.
+      5. Goto step 1.
+
+    There is also a good amount of logic related to error handling; this is to ensure no data is lost upon abnormal
+    termination.
+    """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -395,51 +462,78 @@ class SynchronousMPIWorkerStrategy[G: Genome, D: Dataset](MPIEvolutionaryStrateg
         # Number of rows written to the data log
         self.log_rows: int = 0
 
+    @overrides(EvolutionaryStrategy)
     def __enter__(self) -> Self:
         self.population = None  # type: ignore
-        return self
+        return super().__enter__()
 
+    @overrides(EvolutionaryStrategy)
+    def __exit__(
+        self,
+        exc_type: Optional[Type],
+        exc_value: Optional[Exception],
+        trace: Optional[types.TracebackType]
+    ) -> None:
+        """
+        If an exception caused this method to be called, then the master process will be notified of the error at which
+        point it will begin safely closing out other processes.
+
+        Otherwise, this method simply writes its log (done in the super implementation) and waits at the barrier to
+        sychronize with all processes.
+        """
+        super().__exit__(exc_type, exc_value, trace)
+
+        if exc_type is not None:
+            self.comm.isend(None, dest=0, tag=Tags.FAILURE.value)
+            self.recv(source=0, tag=Tags.FINALIZE.value)
+
+        self.comm.Barrier()
+
+    @overrides(EvolutionaryStrategy)
     def step(self) -> None:
         logger.info("Waiting for a task")
         status, obj = self.recv(source=0)
 
         logger.info(f"Received tasks {type(obj)} from {status.Get_source()}")
 
-        if obj is not None:
-            results = []
-            for task in obj:
-                logger.info(f"Evaluating task {task}")
-                genome: Optional[G] = task(self.rng)
+        match status.Get_tag(), obj:
+            # Task(s) from the master; execute and relay the results.
+            case Tags.TASK.value, _:
+                logger.info(f"Received {obj}")
+                assert obj is not None
+                assert type(obj) is np.ndarray
 
-                if genome:
-                    logger.info("Evaluating fitness")
-                    genome.fitness = genome.evaluate(self.fitness, self.dataset)
-                    logger.info("Finished evaluation")
-                results.append(genome)
+                results = []
+                for task in obj:
+                    genome: Optional[G] = task(self.rng)
 
-            logger.info("Sending results to main")
-            self.comm.send(results, dest=status.Get_source())
-            logger.info("Done.")
-        else:
-            self.done = True
+                    if genome:
+                        genome.fitness = genome.evaluate(self.fitness, self.dataset)
+                    results.append(genome)
 
+                self.comm.send(results, dest=status.Get_source())
+
+            # Termination signal from master.
+            case Tags.FINALIZE.value, _:
+                self.done = True
+
+    @overrides(EvolutionaryStrategy)
     def get_log_path(self) -> str:
         return f"{self.output_directory}/worker_{self.rank}_log.csv"
 
-    def run(self):
-        try:
-            with self:
-                while not self.done:
-                    logger.info(f"Starting step {self.log_rows}")
-                    self.step()
+    @overrides(MPIEvolutionaryStrategy)
+    def _run_inner(self) -> None:
+        with self:
+            while not self.done:
+                logger.info(f"Starting step {self.log_rows}")
+                self.step()
 
-                    self.update_log(self.log_rows)
-                    self.log_rows += 1
-                    logger.info(f"Ending step {self.log_rows}")
+                self.update_log(self.log_rows)
+                self.log_rows += 1
 
-            self.log[:self.log_rows].to_csv(self.get_log_path())
-        except Exception as e:
-            logger.info(f"FAILED with exception {e}")
+                logger.info(f"Ending step {self.log_rows}")
+
+        self.log[:self.log_rows].to_csv(self.get_log_path())
 
 
 def sync_mpi_strategy_factory(**kwargs):

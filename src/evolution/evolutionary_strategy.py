@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+import traceback
 from typing import Any, Optional, cast, Dict, Self, Type
 import types
 
@@ -10,6 +11,7 @@ from genome import Fitness, FitnessConfig, Genome, GenomeFactory, GenomeFactoryC
 from population import Population, PopulationConfig
 from util.log import LogDataAggregator, LogDataAggregatorConfig, LogDataProvider
 
+from loguru import logger
 import numpy as np
 from pandas import DataFrame
 from pandas._typing import Axes
@@ -70,7 +72,6 @@ class EvolutionaryStrategy[G: Genome, D: Dataset](ABC, LogDataAggregator):
         """
         ...
 
-    @abstractmethod
     def get_log_path(self) -> str:
         """
         The path of the CSV file log data should be written to.
@@ -114,7 +115,12 @@ class EvolutionaryStrategy[G: Genome, D: Dataset](ABC, LogDataAggregator):
             exc_value: The value of that exception, if there is an exception.
             trace: The traceback of the exception, if there is an exception.
         """
-        self.log.to_csv(self.get_log_path())
+        if exc_type is not None:
+            logger.error("Encountered an uncaught exception.")
+            logger.error("".join(traceback.format_exception(None, exc_value, trace)))
+
+        if getattr(self, "log", None) is not None:
+            self.log.to_csv(self.get_log_path())
 
     def update_log(self, istep: int) -> None:
         """
@@ -131,7 +137,7 @@ class EvolutionaryStrategy[G: Genome, D: Dataset](ABC, LogDataAggregator):
         for k, v in data.items():
             self.log.loc[istep, k] = v
 
-    def run(self):
+    def run(self) -> None:
         """
         Run the EA: run `self.step()` a total of `self.nsteps` times, adding an entry to the log file once per
         generation.
