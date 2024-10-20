@@ -26,7 +26,7 @@ class GraphingModel(nn.Module):
 
     def adjust_output_bias(self, founder_genome_output):
         """
-        Adjust bias so that the founder genome maps to [0, 0]
+        Adjust bias so that the founder genome maps to [0, 0].
         """
         with torch.no_grad():
             # Reshape founder_genome_output to match the shape of the bias
@@ -34,7 +34,7 @@ class GraphingModel(nn.Module):
 
     def apply_rotation(self, final_genome_output):
         """
-        Rotate final genome output to [1, 0] using a rotation matrix
+        Rotate final genome output to [1, 0] using a rotation matrix.
         """
         with torch.no_grad():
             final_genome_output = final_genome_output.squeeze()
@@ -160,20 +160,46 @@ def fit(
     print(f"founder output: {founder_output}")
 
 
-def map_genomes_to_2d(
+def get_neural_net_positions(
         genome_data: np.ndarray, genome_id_to_index: dict, final_best_genes: np.ndarray, hidden_size: int=128):
+    """
+    Use a neural network to perform a mapping of N to 2 dimensions for all genomes,
+    if N is the number of genes.
+
+    Args:
+        genome_data (np.ndarray): The genome data in the form of a real-numbered matrix.
+        genome_id_to_index (dict): A mapping of genome ID (generation number) to the index of the genome in the matrix.
+        final_best_genes (np.ndarray): The final best genes.
+        hidden_size (int): The size of the hidden layer of the neural network.
+
+    Returns:
+        dict: A mapping of genome ID (generation number) to the 2D position.
+    """
+
+    # retrieve the genome size, should be the number of columns in the matrix
     genome_size = genome_data.shape[1]
+
+    # create the model
     model = GraphingModel(genome_size, hidden_size)
 
+    # convert the genomes to a tensor
     genome_data_tensor = torch.tensor(genome_data, dtype=torch.float32)
 
+    # assume the founder genome is a zero vector (probably not accurate actually)
     founder_genome = np.zeros(genome_size, dtype=np.float32)
     founder_genome = torch.tensor(founder_genome, dtype=torch.float32).unsqueeze(0)
+
+    # use this for rotating the neural net outputs
     final_best_genes = torch.tensor(final_best_genes, dtype=torch.float32).unsqueeze(0)
 
+    # fit the model based on the positions, 2D positions should match genome distances
     fit(model, genome_data_tensor, founder_genome, final_best_genes, batch_size=8, epochs=1000, lr=0.001)
 
     model.eval()
     with torch.no_grad():
+
+        # divide by gamma to keep it in a normal range
         reduced_genome = (model(genome_data_tensor) / model.gamma).numpy()
+
+        # return the dict mapping of genome ID to 2D position
         return {genome_id: reduced_genome[i] for genome_id, i in genome_id_to_index.items()}

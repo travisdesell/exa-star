@@ -5,7 +5,7 @@ import os
 import numpy as np
 from loguru import logger
 from population.visualization.visualization import visualize_family_tree, make_dir_if_not_exists
-from population.visualization.graphing_model import map_genomes_to_2d
+from population.visualization.graphing_model import get_neural_net_positions
 from population.visualization.gene_data_processing import convert_genes_to_numerical, get_pca_positions, get_pca_colors
 
 class FamilyTreeTracker:
@@ -161,7 +161,7 @@ class FamilyTreeTracker:
         best_genes = genes_matrix[genome_id_to_index[best_genome_id]]
 
         # get the positions by mapping to 2D
-        positions = map_genomes_to_2d(genes_matrix, genome_id_to_index, best_genes)
+        positions = get_neural_net_positions(genes_matrix, genome_id_to_index, best_genes)
 
         # use PCA to determine colors
         colors = get_pca_colors(genes_matrix, genome_id_to_index)
