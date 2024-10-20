@@ -1,6 +1,7 @@
 defaults:
   - base_synchronous_mp_strategy
   - population: base_simple_population
+  - hook@population.hooks.print_on_insertion: base_print_inserted_genome
   - genome_factory: base_exastar_genome_factory_config
   - genome_factory/seed_genome_factory: base_trivial_recurrent_seed_genome_factory
   - genome_factory/mutation_operators@genome_factory.mutation_operators.add_node: base_add_node_mutation
