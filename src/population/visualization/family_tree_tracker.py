@@ -4,7 +4,7 @@ import networkx as nx
 import os
 import numpy as np
 from loguru import logger
-from population.visualization.visualization import visualize_family_tree, make_dir_if_not_exists
+from population.visualization.visualization import create_and_save_figure, make_dir_if_not_exists
 from population.visualization.graphing_model import get_neural_net_positions
 from population.visualization.gene_data_processing import convert_genes_to_numerical, get_pca_positions, get_pca_colors
 
@@ -168,7 +168,8 @@ class FamilyTreeTracker:
             graph, edge_genes, best_genome_id, "edge_genes_figure", cur_run_directory)
 
     @staticmethod
-    def visualize_genes(graph: nx.DiGraph, genes: dict, best_genome_id: int, base_fname: str, cur_run_directory: str):
+    def visualize_genes(
+            graph: nx.DiGraph, genes: dict, best_genome_id: int, base_fname: str, cur_run_directory: str):
         """
         Take a particular type of genes for the genomes (nodes or edges),
         and visualize positions and colors based on them.
@@ -178,7 +179,7 @@ class FamilyTreeTracker:
             genes (dict): The genes being graphed.
             best_genome_id (int): The ID of the best genome.
             base_fname (str): The base filename of the figure.
-            cur_run_directory (str): The directory that the run
+            cur_run_directory (str): The subdirectory that the figures should be saved in for this run.
         """
 
         # take the list of gene IDs and convert to a (float) vector format
@@ -196,5 +197,5 @@ class FamilyTreeTracker:
         # mark the global best with black (because white background)
         colors[best_genome_id] = (0, 0, 0)
 
-        # perform the visualizations and save
-        visualize_family_tree(graph, positions, colors, base_fname, cur_run_directory)
+        # perform the visualizations and save the resulting figures
+        create_and_save_figure(graph, positions, colors, base_fname, cur_run_directory)

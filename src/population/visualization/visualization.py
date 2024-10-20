@@ -9,7 +9,7 @@ def make_dir_if_not_exists(dir_path: str):
         os.mkdir(dir_path)
 
 
-def visualize_family_tree(
+def create_and_save_figure(
         graph: nx.DiGraph, positions: dict, node_colors: dict, base_fname: str, cur_run_directory: str):
     """
     Display a graph with positions and node colors.
