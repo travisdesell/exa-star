@@ -6,7 +6,6 @@ from dataset import Dataset
 from genome import Genome, GenomeFactory
 from population.population import Population, PopulationConfig
 
-from loguru import logger
 import numpy as np
 
 

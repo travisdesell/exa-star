@@ -6,7 +6,6 @@ from dataset import Dataset
 from genome import Genome, GenomeFactory, GenomeProvider
 from util.log import LogDataAggregator, LogDataAggregatorConfig, LogDataProvider
 
-from loguru import logger
 import numpy as np
 
 
@@ -21,7 +20,8 @@ class Population[G: Genome, D: Dataset](GenomeProvider, LogDataAggregator):
         GenomeProvider.__init__(self)
 
     @abstractmethod
-    def initialize(self, genome_factory: GenomeFactory[G, D], dataset: D, rng: np.random.Generator) -> None: ...
+    def initialize(self, genome_factory: GenomeFactory[G, D], dataset: D, rng: np.random.Generator) -> None:
+        ...
 
     @abstractmethod
     def make_generation(
@@ -47,10 +47,12 @@ class Population[G: Genome, D: Dataset](GenomeProvider, LogDataAggregator):
         ...
 
     @abstractmethod
-    def get_best_genome(self) -> G: ...
+    def get_best_genome(self) -> G:
+        ...
 
     @abstractmethod
-    def get_worst_genome(self) -> G: ...
+    def get_worst_genome(self) -> G:
+        ...
 
 
 @dataclass

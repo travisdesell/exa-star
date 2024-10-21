@@ -6,7 +6,6 @@ from config import configclass
 from exastar.genome import EXAStarGenome
 from exastar.genome.component import Node, Edge, RecurrentEdge
 
-from loguru import logger
 import numpy as np
 
 from exastar.weights import WeightGenerator
@@ -151,7 +150,8 @@ class RecurrentEdgeGeneratorConfig(EdgeGeneratorConfig):
 
 class AltEdgeGenerator[G: EXAStarGenome](ABC):
 
-    def __init__(self) -> None: ...
+    def __init__(self) -> None:
+        ...
 
     @abstractmethod
     def __call__(

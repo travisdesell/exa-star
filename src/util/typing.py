@@ -19,7 +19,7 @@ class ComparableMixin:
     def _cmpkey(self) -> Tuple:
         """
         Returns:
-            The comparison key for this object. All objects of the same type should return a tuple of the same type and 
+            The comparison key for this object. All objects of the same type should return a tuple of the same type and
             length.
         """
         ...

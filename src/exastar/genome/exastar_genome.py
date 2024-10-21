@@ -1,25 +1,16 @@
 from __future__ import annotations
 from abc import abstractmethod
 import bisect
-from collections import deque
 import copy
-import itertools
-from typing import Any, Callable, cast, Dict, List, Optional, Self, Set, Tuple
+from typing import Any, cast, Dict, List, Self, Set, Tuple
 
 from exastar.genome.component import Edge, edge_inon_t, Node, node_inon_t, InputNode, OutputNode
-from exastar.genome.component.component import Component
 from genome import Genome, FitnessValue
 from exastar.time_series import TimeSeries
 from util.typing import ComparableMixin
 from util.typing import constmethod, overrides
 from util.log import LogDataProvider
 
-import graphviz
-from loguru import logger
-import math
-import matplotlib.colors
-import matplotlib.pyplot as plt
-import numpy as np
 import torch
 
 
@@ -134,7 +125,7 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
         self,
         input_series: TimeSeries,
         output_series: TimeSeries,
-        optimizer: torch.optim.Optimizer,
+        optimizer: torch.optim.optimizer.Optimizer,
         iterations: int,
     ) -> float:
         """
@@ -159,7 +150,8 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
 
     @constmethod
     @overrides(LogDataProvider[None])
-    def get_log_data(self, aggregator: None) -> Dict[str, Any]: ...
+    def get_log_data(self, aggregator: None) -> Dict[str, Any]:
+        ...
 
     def add_node(self, node: Node) -> None:
         """

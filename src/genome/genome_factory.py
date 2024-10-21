@@ -31,7 +31,8 @@ class GenomeProvider[G: Genome]:
     This is really just represents the functionality that the `GenomeFactory` needs from a `Population`.
     """
 
-    def __init__(self) -> None: ...
+    def __init__(self) -> None:
+        ...
 
     @abstractmethod
     def get_parents(self, rng: np.random.Generator) -> List[G]:
@@ -113,8 +114,8 @@ class GenomeFactory[G: Genome, D: Dataset](ABC, LogDataProvider):
         self.operators: Tuple[GenomeOperator[G]] = cast(
             Tuple[GenomeOperator[G]],
             tuple(
-                list(mutation_operators.values()) +
-                list(crossover_operators.values())
+                list(mutation_operators.values())
+                + list(crossover_operators.values())
             ),
         )
 

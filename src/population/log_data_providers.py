@@ -7,8 +7,6 @@ from population.population import Population
 from population.steady_state_population import SteadyStatePopulation
 from util.log import LogDataProvider, LogDataProviderConfig
 
-from loguru import logger
-
 
 class LogBestGenome[G: Genome, D: Dataset](LogDataProvider[Population[G, D]]):
 

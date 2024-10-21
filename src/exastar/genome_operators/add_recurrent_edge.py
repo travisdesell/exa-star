@@ -49,7 +49,9 @@ class AddRecurrentEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
 
         output_node = rng.choice(cast(List, candidate_output_nodes))
 
-        edge = self.edge_generator(genome, input_node, output_node, rng, recurrent=True, weight_generator=self.weight_generator)
+        edge = self.edge_generator(
+            genome, input_node, output_node, rng, recurrent=True, weight_generator=self.weight_generator
+        )
 
         if any(map(edge.identical_to, input_node.output_edges)):
             # We already have an identical edge, the mutation fails

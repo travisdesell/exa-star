@@ -1,7 +1,5 @@
-from typing import Dict, Tuple
-
 from config import configclass
-from genome import Fitness, FitnessConfig, FitnessValue, MSEValue
+from genome import Fitness, FitnessConfig, MSEValue
 from exastar.genome.exastar_genome import EXAStarGenome
 from exastar.time_series import TimeSeries
 
@@ -34,6 +32,6 @@ class EXAStarMSE(EXAStarTimeSeriesRegressionFitness[EXAStarGenome]):
         return value
 
 
-@ configclass(name="base_exastar_mse", group="fitness", target=EXAStarMSE)
+@configclass(name="base_exastar_mse", group="fitness", target=EXAStarMSE)
 class EXAStarMSEConfig(EXAStarFitnessConfig):
     ...

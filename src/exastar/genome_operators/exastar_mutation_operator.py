@@ -2,9 +2,9 @@ from dataclasses import dataclass, field
 
 from genome import MutationOperator, MutationOperatorConfig
 from exastar.genome import EXAStarGenome
-from exastar.genome_operators.node_generator import NodeGenerator, NodeGeneratorConfig, EXAStarNodeGeneratorConfig
+from exastar.genome_operators.node_generator import NodeGenerator, NodeGeneratorConfig
 from exastar.genome_operators.edge_generator import (
-    EdgeGenerator, EdgeGeneratorConfig, RecurrentEdgeGeneratorConfig
+    EdgeGenerator, EdgeGeneratorConfig
 )
 
 from exastar.weights import WeightGenerator, WeightGeneratorConfig

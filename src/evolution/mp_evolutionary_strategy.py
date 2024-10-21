@@ -24,7 +24,6 @@ from genome import Genome
 import dill
 from loguru import logger
 import numpy as np
-import torch
 
 
 class InitTask[E: EvolutionaryStrategy]:
