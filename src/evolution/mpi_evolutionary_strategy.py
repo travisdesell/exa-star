@@ -67,8 +67,10 @@ class MPIEvolutionaryStrategy[G: Genome, D: Dataset](EvolutionaryStrategy[G, D])
         loguru.logger.remove()
         loguru.logger.add(
             sys.stderr,
-            format="| <level>{level: <6}</level>| RANK " + str(self.rank) +
-            " | <cyan>{name}.{function}</cyan>:<yellow>{line}</yellow> | {message}"
+            format=(
+                "| <level>{level: <6}</level>| RANK " + str(self.rank)
+                + " | <cyan>{name}.{function}</cyan>:<yellow>{line}</yellow> | {message}"
+            )
         )
 
         # Run initialization tasks locally.
