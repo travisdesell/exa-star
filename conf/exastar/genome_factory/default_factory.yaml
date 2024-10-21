@@ -1,0 +1,33 @@
+defaults:
+  - base_exastar_genome_factory
+  - seed_genome_factory: base_trivial_recurrent_seed_genome_factory
+  - mutation_operators@mutation_operators.add_node: base_add_node_mutation
+  - mutation_operators@mutation_operators.add_edge: base_add_edge_mutation
+  # - mutation_operators@mutation_operators.add_rec_edge: base_add_recurrent_edge_mutation
+  # - mutation_operators@mutation_operators.clone: base_clone_mutation
+  # - mutation_operators@mutation_operators.merge_node: base_merge_node_mutation
+  # - mutation_operators@mutation_operators.split_edge: base_split_edge_mutation
+  # - mutation_operators@mutation_operators.split_node: base_split_node_mutation
+  # - crossover_operators@crossover_operators.crossover: base_exastar_crossover
+
+# Note that 1.0 is the default weight anways,
+# but this is typed out just to demostrate how the default values can be tweaked
+mutation_operators:
+  add_node:
+    weight: 1.0
+  add_edge:
+    weight: 1.0
+#   add_rec_edge:
+#     weight: 1.0
+#   clone:
+#     weight: 1.0
+#   merge_node:
+#     weight: 1.0
+#   split_edge:
+#     weight: 1.0
+#   split_node:
+#     weight: 1.0
+# 
+# crossover_operators:
+#   crossover:
+#     weight: 1.0

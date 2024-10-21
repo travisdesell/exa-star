@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from itertools import cycle
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Self
 
+
 # Type checking for the `multiprocess` module is broken, but that packing perfectly shadows the built-in multiprocessing
 # package. So, import the `multiprocessing` package only for type checking and use `multiprocess` for the actual
 # behavior.
@@ -20,8 +21,8 @@ from config import configclass
 from dataset import Dataset
 from evolution.evolutionary_strategy import EvolutionaryStrategy, EvolutionaryStrategyConfig
 from genome import Genome
+from util.typing import overrides
 
-import dill
 from loguru import logger
 import numpy as np
 
@@ -167,19 +168,16 @@ class SynchronousMPStrategy[G: Genome, D: Dataset](ParallelMPStrategy[G, D]):
                                   initargs=(self.init_tasks, self.init_task_values, ))
         self.counter: int = 0
 
-    def __enter__(self) -> Self:
-        return self
-
+    @overrides(EvolutionaryStrategy)
     def __exit__(self, *args) -> None:
+        super().__exit__(*args)
+
         self.pool.close()
         self.pool.terminate()
 
     @staticmethod
-    def f(fitness, task, i, output_dir) -> None:
+    def f(fitness, task) -> None:
         genome = task(ParallelMPStrategy.get_rng())
-
-        with open(f"{output_dir}/{i}.genome", "wb") as file:
-            dill.dump(genome, file)
 
         if genome:
             genome.evaluate(fitness, EvolutionaryStrategy.get_dataset())
@@ -194,8 +192,7 @@ class SynchronousMPStrategy[G: Genome, D: Dataset](ParallelMPStrategy[G, D]):
 
         genomes: List[Optional[G]] = self.pool.starmap(
             SynchronousMPStrategy.f,
-            list(zip(cycle([self.fitness]), tasks, range(self.counter,
-                     self.counter + len(tasks)), cycle([self.output_directory])))
+            list(zip(cycle([self.fitness]), tasks))
         )
         self.population.integrate_generation(genomes)
         self.counter += len(genomes)
@@ -230,6 +227,7 @@ class AsyncMPStrategy[G: Genome, D: Dataset](ParallelMPStrategy[G, D]):
         self.pool: Pool = mp.Pool(self.parallelism, initializer=AsyncMPStrategy.init_async,
                                   initargs=(AsyncMPStrategy.queue, self.init_tasks, self.init_task_values, ))
 
+    @overrides(EvolutionaryStrategy)
     def __enter__(self) -> Self:
         fitness = self.fitness
         for _ in range(self.parallelism):
@@ -239,12 +237,17 @@ class AsyncMPStrategy[G: Genome, D: Dataset](ParallelMPStrategy[G, D]):
 
         return self
 
+    @overrides(EvolutionaryStrategy)
     def __exit__(self, *args) -> None:
+        super().__exit__(*args)
+
         self.pool.close()
         self.pool.terminate()
 
     @staticmethod
     def f(fitness, tasks) -> None:
+        if len(tasks) > 1:
+            raise Exception("Generation size greather than 1 is not supported for async MP strategy")
         try:
             genomes = []
             for task in tasks:
@@ -269,8 +272,9 @@ class AsyncMPStrategy[G: Genome, D: Dataset](ParallelMPStrategy[G, D]):
 
         tasks = self.population.make_generation(self.genome_factory, self.rng)
 
-        fitness = self.fitness
-        self.pool.apply_async(AsyncMPStrategy.f, (fitness, tasks))
+        self.pool.apply_async(
+            AsyncMPStrategy.f, (self.fitness, tasks)
+        )
 
         logger.trace(f"end step {self.i}")
         self.i += 1

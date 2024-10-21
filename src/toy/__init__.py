@@ -1,4 +1,3 @@
-from dataclasses import field
 import os
 from time import sleep, time_ns
 from typing import Any, Dict, List, Optional, Self, Tuple
@@ -26,13 +25,22 @@ from loguru import logger
 
 
 class ToyGenome(Genome):
+    """
+    This toy genome simply represents a number that also happens to be its fitness.
+    """
 
     def __init__(self, value: float, **kwargs) -> None:
-        super().__init__(**kwargs)
+        super().__init__(fitness=ToyFitnessValue(value), **kwargs)
 
         self.value: float = value
+
+        # When this genome is evaluated, this is set to the time in nanoseconds at the start of the evaluation.
         self.start_time: int = 0
+
+        # Same as above, except for the end of the evaluation.
         self.end_time: int = 0
+
+        # The pid of the process which evaluatd this genome.
         self.evaluator: Any = None
 
     def clone(self) -> Self:
@@ -88,8 +96,14 @@ class ToyDatasetConfig(DatasetConfig):
 
 class ToyFitness(Fitness[ToyGenome, ToyDataset]):
     def compute(self, genome: ToyGenome, dataset: ToyDataset) -> ToyFitnessValue:
+        """
+        "Evaluates" the genome - in reality, this just means sleeping for `self.value` milliseconds.
+        Sets some metadata in the process.
+        """
         genome.start_time = time_ns()
+        logger.info(f"Sleeping for {genome.value / 1000}s...")
         sleep(abs(genome.value / 1000))
+        logger.info("Done.")
         genome.end_time = time_ns()
         genome.evaluator = os.getpid()
         return ToyFitnessValue(genome.value)
@@ -109,6 +123,9 @@ class ToyGenomeMutation(MutationOperator[ToyGenome]):
     def __call__(
         self, genome: ToyGenome, rng: np.random.Generator
     ) -> Optional[ToyGenome]:
+        """
+        Moves the genome valie in a random direction, up to `self.range` in either direction.
+        """
         genome.value += rng.random() * self.range * 2 - self.range
         return genome
 
@@ -126,9 +143,14 @@ class ToyGenomeCrossover(CrossoverOperator[ToyGenome]):
     def __call__(
         self, parents: List[ToyGenome], rng: np.random.Generator
     ) -> Optional[ToyGenome]:
+        """
+        Performs a random line search along the two genomes values and uses it to create a new genome.
+        """
         g0, g1 = parents[:2]
 
-        return ToyGenome((g0.value + g1.value) / 2)
+        gradient = g0.value - g1.value
+
+        return ToyGenome(g0.value + gradient * rng.uniform(-0.5, 0.5))
 
 
 @configclass(name="base_toy_genome_crossover", group="genome_factory/crossover_operators", target=ToyGenomeCrossover)
@@ -143,7 +165,6 @@ class ToyGenomeFactory(GenomeFactory[ToyGenome, ToyDataset]):
 
     def get_seed_genome(self, dataset: ToyDataset, rng: np.random.Generator) -> ToyGenome:
         g = ToyGenome(0)
-        g.fitness = ToyFitnessValue(0)
         return g
 
     def get_log_data(self, aggregator: Any) -> Dict[str, Any]:

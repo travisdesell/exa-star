@@ -12,8 +12,8 @@ from typing import (
 
 from dataset import Dataset
 from config import configclass
-from genome.genome import Genome
-from genome.genome_operator import (
+from .genome import Genome
+from .genome_operator import (
     CrossoverOperator,
     CrossoverOperatorConfig,
     GenomeOperator,

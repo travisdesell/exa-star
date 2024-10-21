@@ -8,7 +8,7 @@ from exastar.genome.component import Edge, edge_inon_t, Node, node_inon_t, Input
 from genome import Genome, FitnessValue
 from exastar.time_series import TimeSeries
 from util.typing import ComparableMixin
-from util.typing import constmethod, overrides
+from util.typing import overrides
 from util.log import LogDataProvider
 
 import torch
@@ -148,10 +148,9 @@ class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):
         """
         return copy.deepcopy(self)
 
-    @constmethod
     @overrides(LogDataProvider[None])
     def get_log_data(self, aggregator: None) -> Dict[str, Any]:
-        ...
+        return {}
 
     def add_node(self, node: Node) -> None:
         """
