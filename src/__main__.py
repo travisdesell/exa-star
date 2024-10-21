@@ -1,9 +1,10 @@
 import sys
 
-# Some of these modules are not used, but they must be in order for hydra to appropriately instantiate the class hierarchy.
+# Some of these modules are not used, but they must be in order for hydra to appropriately instantiate the class
+# hierarchy.
 from evolution import EvolutionaryStrategyConfig
-import toy
-import exastar
+import toy  # noqa: F401
+import exastar  # noqa: F401
 
 from hydra.utils import instantiate
 import hydra

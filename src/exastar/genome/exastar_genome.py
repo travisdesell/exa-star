@@ -1,18 +1,21 @@
 from __future__ import annotations
+import torch
+from util.log import LogDataProvider
+from util.typing import overrides
+from util.typing import ComparableMixin
+from exastar.time_series import TimeSeries
+from genome import Genome, FitnessValue
+from genome.genome import Genome
+from genome.fitness import FitnessValue
 from abc import abstractmethod
 import bisect
 import copy
 from typing import Any, cast, Dict, List, Self, Set, Tuple
 
 from exastar.genome.component import Edge, edge_inon_t, Node, node_inon_t, InputNode, OutputNode
-from genome.fitness import FitnessValue
-from genome.genome import Genome
-from exastar.time_series import TimeSeries
-from util.typing import ComparableMixin
-from util.typing import overrides
-from util.log import LogDataProvider
-
-import torch
+<< << << < HEAD
+== == == =
+>>>>>> > main
 
 
 class EXAStarGenome[E: Edge](ComparableMixin, Genome, torch.nn.Module):

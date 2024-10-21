@@ -85,7 +85,8 @@ class ToyFitnessValue(FitnessValue[ToyGenome]):
 
 class ToyDataset(Dataset):
 
-    def __init__(self) -> None: ...
+    def __init__(self) -> None:
+        ...
 
 
 @configclass(name="base_toy_dataset", group="dataset", target=ToyDataset)

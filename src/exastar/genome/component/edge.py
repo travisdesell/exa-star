@@ -8,7 +8,6 @@ from exastar.genome.component.component import Component
 from exastar.genome.component.node import Node
 from util.typing import ComparableMixin, overrides
 
-from loguru import logger
 import torch
 
 
@@ -151,8 +150,8 @@ class Edge(ComparableMixin, Component):
         connections. Identical edges have the same input and output nodes as well as timeskip.
         """
         return (
-            (self.input_node.inon, self.output_node.inon, self.time_skip) ==
-            (other.input_node.inon, other.output_node.inon, other.time_skip)
+            (self.input_node.inon, self.output_node.inon, self.time_skip)
+            == (other.input_node.inon, other.output_node.inon, other.time_skip)
         )
 
     @abstractmethod

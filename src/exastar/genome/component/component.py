@@ -38,10 +38,12 @@ class Component(torch.nn.Module):
         self._weights_initialized = weights_initialized
 
     @abstractmethod
-    def __hash__(self) -> int: ...
+    def __hash__(self) -> int:
+        ...
 
     @abstractmethod
-    def __eq__(self, other: object) -> bool: ...
+    def __eq__(self, other: object) -> bool:
+        ...
 
     def weights_initialized(self) -> bool:
         return self._weights_initialized

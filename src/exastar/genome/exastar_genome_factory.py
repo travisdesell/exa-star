@@ -8,7 +8,14 @@ from exastar.genome_operators.edge_generator import EdgeGenerator, EdgeGenerator
 from exastar.genome_operators.node_generator import EXAStarNodeGeneratorConfig, NodeGenerator, NodeGeneratorConfig
 from exastar.time_series import TimeSeries
 from exastar.weights import LamarckianWeightGeneratorConfig, WeightGenerator, WeightGeneratorConfig
-from genome import GenomeFactory, GenomeFactoryConfig, GenomeProvider, MutationOperator, CrossoverOperator, OperatorSelector
+from genome import (
+    GenomeFactory,
+    GenomeFactoryConfig,
+    GenomeProvider,
+    MutationOperator,
+    CrossoverOperator,
+    OperatorSelector
+)
 
 import numpy as np
 

@@ -7,11 +7,9 @@ from config import configclass
 from dataset import Dataset
 from genome import Genome, GenomeFactory, GenomeProvider
 from population.population import Population, PopulationConfig
-
-from loguru import logger
-import numpy as np
-
 from util.typing import overrides
+
+import numpy as np
 
 
 class SteadyStatePopulation[G: Genome, D: Dataset](Population[G, D]):

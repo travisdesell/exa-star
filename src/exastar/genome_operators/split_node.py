@@ -119,6 +119,6 @@ class SplitNode[G: EXAStarGenome](EXAStarMutationOperator[G]):
         return genome
 
 
-@ configclass(name="base_split_node_mutation", group="genome_factory/mutation_operators", target=SplitNode)
+@configclass(name="base_split_node_mutation", group="genome_factory/mutation_operators", target=SplitNode)
 class SplitNodeConfig(EXAStarMutationOperatorConfig):
     ...
