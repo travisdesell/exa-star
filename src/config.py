@@ -13,6 +13,7 @@ cs = ConfigStore.instance()
 _config_groups = {
     "log_data_providers",
     "population",
+    "hook",
     "genome_factory",
     "genome_factory/edge_generator",
     "genome_factory/node_generator",
