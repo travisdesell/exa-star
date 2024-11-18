@@ -16,6 +16,7 @@ class ReproductionMethod(ABC):
         node_generator: NodeGenerator,
         edge_generator: EdgeGenerator,
         weight_generator: WeightGenerator,
+        autoencoder: bool = False,
     ):
         """Initialies a new reproduction method.
         Args:
@@ -26,6 +27,7 @@ class ReproductionMethod(ABC):
         self.node_generator = node_generator
         self.edge_generator = edge_generator
         self.weight_generator = weight_generator
+        self.autoencoder = autoencoder
 
     @abstractmethod
     def number_parents(self) -> int:

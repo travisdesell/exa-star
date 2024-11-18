@@ -7,6 +7,8 @@ from evolution.node_generator import NodeGenerator
 from genomes.genome import Genome
 from genomes.input_node import InputNode
 from genomes.output_node import OutputNode
+from genomes.autoencoder_input_node import AutoencoderInputNode
+from genomes.autoencoder_encoding_node import AutoencoderEncodingNode
 
 from reproduction.add_node import AddNode
 from reproduction.reproduction_method import ReproductionMethod
@@ -22,6 +24,7 @@ class Crossover(ReproductionMethod):
         node_generator: NodeGenerator,
         edge_generator: EdgeGenerator,
         weight_generator: WeightGenerator,
+        autoencoder: bool,
         number_parents: int = 2,
         best_parent_selection_rate: float = 1.0,
         other_parent_selection_rate: float = 0.5,
@@ -36,6 +39,7 @@ class Crossover(ReproductionMethod):
             node_generator=node_generator,
             edge_generator=edge_generator,
             weight_generator=weight_generator,
+            autoencoder=autoencoder,
         )
 
         self._number_parents = number_parents
@@ -71,7 +75,8 @@ class Crossover(ReproductionMethod):
         child_genome = copy.deepcopy(sorted_parents[0])
 
         for node in child_genome.nodes:
-            if isinstance(node, InputNode) or isinstance(node, OutputNode):
+            if (isinstance(node, InputNode) or isinstance(node, OutputNode)
+                    or isinstance(node, AutoencoderInputNode) or isinstance(node, AutoencoderEncodingNode)):
                 # keep the inputs and outputs enabled
                 continue
 
@@ -126,7 +131,8 @@ class Crossover(ReproductionMethod):
         # the nodes added and can do lookup to reattach things)
 
         for node in child_genome.nodes:
-            if isinstance(node, InputNode) or isinstance(node, OutputNode):
+            if (isinstance(node, InputNode) or isinstance(node, OutputNode)
+                    or isinstance(node, AutoencoderInputNode) or isinstance(node, AutoencoderEncodingNode)):
                 # inputs and outputs don't need to be connected
                 continue
 
@@ -155,7 +161,8 @@ class Crossover(ReproductionMethod):
         child_genome.connect_edges_during_crossover()
 
         for node in child_genome.nodes:
-            if isinstance(node, InputNode) or isinstance(node, OutputNode):
+            if (isinstance(node, InputNode) or isinstance(node, OutputNode)
+                    or isinstance(node, AutoencoderInputNode) or isinstance(node, AutoencoderEncodingNode)):
                 # inputs and outputs don't need to be connected
                 continue
 
@@ -173,7 +180,8 @@ class Crossover(ReproductionMethod):
         # input and one output edge, which we can connect up the same way as
         # done in the AddNode mutation.
         for node in child_genome.nodes:
-            if isinstance(node, InputNode) or isinstance(node, OutputNode):
+            if (isinstance(node, InputNode) or isinstance(node, OutputNode)
+                    or isinstance(node, AutoencoderInputNode) or isinstance(node, AutoencoderEncodingNode)):
                 # inputs and outputs don't need to be connected
                 continue
 
@@ -190,6 +198,7 @@ class Crossover(ReproductionMethod):
                         recurrent=recurrent,
                         require_recurrent=require_recurrent,
                         edge_generator=self.edge_generator,
+                        autoencoder=self.autoencoder,
                     )
 
                 print(f"ADDING INPUT EDGES, len now: {len(node.output_edges)}!")
@@ -207,12 +216,14 @@ class Crossover(ReproductionMethod):
                         recurrent=recurrent,
                         require_recurrent=require_recurrent,
                         edge_generator=self.edge_generator,
+                        autoencoder=self.autoencoder,
                     )
 
                 print(f"ADDING OUTPUT EDGES, len now: {len(node.output_edges)}!")
 
         for node in child_genome.nodes:
-            if isinstance(node, InputNode) or isinstance(node, OutputNode):
+            if (isinstance(node, InputNode) or isinstance(node, OutputNode)
+                    or isinstance(node, AutoencoderInputNode) or isinstance(node, AutoencoderEncodingNode)):
                 # inputs and outputs don't need to be connected
                 continue
 

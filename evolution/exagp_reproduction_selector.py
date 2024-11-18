@@ -34,6 +34,7 @@ class EXAGPReproductionSelector(ReproductionSelector):
         node_generator: NodeGenerator,
         edge_generator: EdgeGenerator,
         weight_generator: WeightGenerator,
+        autoencoder: bool,
     ):
         """Initialies a new reproduction method.
         Args:
@@ -48,19 +49,19 @@ class EXAGPReproductionSelector(ReproductionSelector):
         )
 
         self.reproduction_methods = [
-            AddEdge(node_generator, edge_generator, weight_generator),
+            AddEdge(node_generator, edge_generator, weight_generator, autoencoder),
             DisableEdge(node_generator, edge_generator, weight_generator),
             EnableEdge(node_generator, edge_generator, weight_generator),
-            AddRecurrentEdge(node_generator, edge_generator, weight_generator),
+            AddRecurrentEdge(node_generator, edge_generator, weight_generator, autoencoder),
             SplitEdge(node_generator, edge_generator, weight_generator),
-            AddNode(node_generator, edge_generator, weight_generator),
+            AddNode(node_generator, edge_generator, weight_generator, autoencoder),
             EnableNode(node_generator, edge_generator, weight_generator),
-            DisableNode(node_generator, edge_generator, weight_generator),
-            MergeNode(node_generator, edge_generator, weight_generator),
-            SplitNode(node_generator, edge_generator, weight_generator),
+            DisableNode(node_generator, edge_generator, weight_generator, autoencoder),
+            MergeNode(node_generator, edge_generator, weight_generator, autoencoder),
+            SplitNode(node_generator, edge_generator, weight_generator, autoencoder),
             Clone(node_generator, edge_generator, weight_generator),
             Crossover(
-                node_generator, edge_generator, weight_generator, number_parents=10
+                node_generator, edge_generator, weight_generator, autoencoder, number_parents=10
             ),
         ]
 

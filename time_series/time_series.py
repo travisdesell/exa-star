@@ -23,7 +23,6 @@ class TimeSeries:
         self.series_length = None
         for series_name, series in self.series_dictionary.items():
             shape = series.shape
-            print(f"'{series_name}' shape {shape}")
 
             # each series should be a 1D tensor
             assert len(shape) == 1
@@ -38,6 +37,19 @@ class TimeSeries:
                     for series_name, series in self.series_dictionary.items():
                         logger.error(f"\t'{series_name}': {series.shape}")
                     exit(1)
+
+    def __len__(self):
+        """Returns the number of rows in the dataset."""
+        return self.series_length
+
+    def __getitem__(self, idx):
+        """Fetch a single item for a given index."""
+        slice_series_dictionary = {}
+
+        for series_name, values in self.series_dictionary.items():
+            slice_series_dictionary[series_name] = values[idx].clone()
+
+        return slice_series_dictionary, slice_series_dictionary
 
     @staticmethod
     def create_from_csv(filename: str) -> TimeSeries:
@@ -87,7 +99,7 @@ class TimeSeries:
         input_series = {}
 
         for series_name in input_series_names:
-            input_series[series_name] = self.series_dictionary[series_name][offset:]
+            input_series[series_name] = self.series_dictionary[series_name][:-offset or None]
 
         return TimeSeries(series_dictionary=input_series)
 
@@ -102,7 +114,7 @@ class TimeSeries:
         output_series = {}
 
         for series_name in output_series_names:
-            output_series[series_name] = self.series_dictionary[series_name][:-offset]
+            output_series[series_name] = self.series_dictionary[series_name][offset:]
 
         return TimeSeries(series_dictionary=output_series)
 
@@ -120,5 +132,15 @@ class TimeSeries:
 
         for series_name, values in self.series_dictionary.items():
             slice_series_dictionary[series_name] = values[start_row:end_row].clone()
+
+        return TimeSeries(slice_series_dictionary)
+
+    def shuffle(self, permutation=None) -> TimeSeries:
+        if permutation is None:
+            permutation = torch.randperm(self.series_length)
+        slice_series_dictionary = {}
+
+        for series_name, values in self.series_dictionary.items():
+            slice_series_dictionary[series_name] = values[permutation].clone()
 
         return TimeSeries(slice_series_dictionary)

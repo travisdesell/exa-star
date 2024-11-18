@@ -19,8 +19,9 @@ class AddRecurrentEdge(ReproductionMethod):
         node_generator: NodeGenerator,
         edge_generator: EdgeGenerator,
         weight_generator: WeightGenerator,
+        autoencoder: bool,
     ):
-        """Initialies a new AddEdge reproduction method.
+        """Initializes a new AddEdge reproduction method.
         Args:
             node_generator: is used to generate a new node (perform the node type selection).
             edge_generator: is used to generate a new edge (perform the edge type selection).
@@ -30,6 +31,7 @@ class AddRecurrentEdge(ReproductionMethod):
             node_generator=node_generator,
             edge_generator=edge_generator,
             weight_generator=weight_generator,
+            autoencoder=autoencoder,
         )
 
     def number_parents(self):
@@ -50,7 +52,18 @@ class AddRecurrentEdge(ReproductionMethod):
         """
         child_genome = copy.deepcopy(parent_genomes[0])
 
-        potential_nodes = child_genome.nodes
+        potential_nodes = None
+        if self.autoencoder:
+            range_options = [(0.0, 0.5), (0.5, 1.0)]
+            random.shuffle(range_options)
+            autoencoder_range = range_options[0]
+            potential_nodes = [
+                    node for node in child_genome.nodes if autoencoder_range[0] < node.depth <= autoencoder_range[1]
+                ]
+        else:
+            potential_nodes = [
+                node for node in child_genome.nodes if node.depth > 0 # do not want recurrent edges going back to the input layer
+            ]
         # recurrent connections can go from any node to any other node (including
         # between the same node, so we can just shuffle with replacement)
         random.shuffle(potential_nodes)

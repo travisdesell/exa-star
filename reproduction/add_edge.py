@@ -7,6 +7,8 @@ from evolution.node_generator import NodeGenerator
 from genomes.genome import Genome
 from genomes.input_node import InputNode
 from genomes.output_node import OutputNode
+from genomes.autoencoder_input_node import AutoencoderInputNode
+from genomes.autoencoder_encoding_node import AutoencoderEncodingNode
 
 from reproduction.reproduction_method import ReproductionMethod
 
@@ -17,10 +19,11 @@ class AddEdge(ReproductionMethod):
     """Creates an Add Edge mutation as a reproduction method."""
 
     def __init__(
-        self,
-        node_generator: NodeGenerator,
-        edge_generator: EdgeGenerator,
-        weight_generator: WeightGenerator,
+            self,
+            node_generator: NodeGenerator,
+            edge_generator: EdgeGenerator,
+            weight_generator: WeightGenerator,
+            autoencoder: bool,
     ):
         """Initialies a new AddEdge reproduction method.
         Args:
@@ -32,6 +35,7 @@ class AddEdge(ReproductionMethod):
             node_generator=node_generator,
             edge_generator=edge_generator,
             weight_generator=weight_generator,
+            autoencoder=autoencoder,
         )
 
     def number_parents(self):
@@ -51,20 +55,43 @@ class AddEdge(ReproductionMethod):
             A new genome to evaluate.
         """
         child_genome = copy.deepcopy(parent_genomes[0])
+        input_node = None
+        potential_outputs = None
+        if self.autoencoder:
+            range_options = [(0.0, 0.5), (0.5, 1.0)]
+            random.shuffle(range_options)
+            autoencoder_range = range_options[0]
 
-        potential_inputs = [
-            node for node in child_genome.nodes if not isinstance(node, OutputNode)
-        ]
-        print(f"potential inputs: {potential_inputs}")
-        random.shuffle(potential_inputs)
-        input_node = potential_inputs[0]
-
-        # potential output nodes need to be deeper than the input node
-        potential_outputs = [
-            node
-            for node in child_genome.nodes
-            if not isinstance(node, InputNode) and node.depth > input_node.depth
-        ]
+            potential_inputs = [
+                node for node in child_genome.nodes if not isinstance(node, OutputNode)
+                and not isinstance(node, AutoencoderEncodingNode)
+                and autoencoder_range[0] <= node.depth < autoencoder_range[1]
+            ]
+            print(f"potential inputs: {potential_inputs}")
+            random.shuffle(potential_inputs)
+            input_node = potential_inputs[0]
+            # potential output nodes need to be deeper than the input node
+            potential_outputs = [
+                node
+                for node in child_genome.nodes
+                if not isinstance(node, InputNode)
+                and not isinstance(node, AutoencoderInputNode) and input_node.depth < node.depth <= autoencoder_range[1]
+            ]
+        else:
+            potential_inputs = [
+                node for node in child_genome.nodes if not isinstance(node, OutputNode)
+                                                       and not isinstance(node, AutoencoderEncodingNode)
+            ]
+            print(f"potential inputs: {potential_inputs}")
+            random.shuffle(potential_inputs)
+            input_node = potential_inputs[0]
+            # potential output nodes need to be deeper than the input node
+            potential_outputs = [
+                node
+                for node in child_genome.nodes
+                if not isinstance(node, InputNode)
+                   and not isinstance(node, AutoencoderInputNode) and node.depth > input_node.depth
+            ]
         print(f"potential outputs: {potential_outputs}")
         random.shuffle(potential_outputs)
         output_node = potential_outputs[0]

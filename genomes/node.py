@@ -8,7 +8,7 @@ from loguru import logger
 
 
 class Node(ABC):
-    def __init__(self, innovation_number: int, depth: float, max_sequence_length: int):
+    def __init__(self, innovation_number: int, depth: float, max_sequence_length: int, parameter_name: str = ""):
         """
         Initializes an abstract Node object with base functionality for building
         computational graphs.
@@ -23,6 +23,7 @@ class Node(ABC):
         self.innovation_number = innovation_number
         self.depth = depth
         self.max_sequence_length = max_sequence_length
+        self.parameter_name = parameter_name if parameter_name != "" else str(innovation_number)
 
         self.input_edges = []
         self.output_edges = []
@@ -46,7 +47,7 @@ class Node(ABC):
     def __lt__(self, other: Node) -> bool:
         """Returns True if this node is closer to the input nodes than
         the other node. Used to sort nodes before doing the forward pass
-        so all connections fire in the correct oder.
+        so all connections fire in the correct order.
 
         Args:
             other: is the other node (of any type) to compare to.
@@ -94,6 +95,7 @@ class Node(ABC):
             time_step: is the time step the input is being fired from.
             value: is the tensor being passed forward from the input edge.
         """
+        # print(f"DEBUG: input fired {self.innovation_number}, timestep: {time_step}")
 
         if time_step < self.max_sequence_length:
             self.inputs_fired[time_step] += 1
@@ -144,7 +146,7 @@ class Node(ABC):
             time_step: is the time step the input is being fired from.
             value: is the tensor being passed forward from the input edge.
         """
-
+        # print("node.accumulate:", len(self.value), time_step)
         self.value[time_step] = self.value[time_step] + value
 
     def forward(self, time_step: int):
@@ -155,6 +157,8 @@ class Node(ABC):
         Args:
             time_step: is the time step the input is being fired from.
         """
+        # print(f"DEBUG: forward {self.innovation_number}")
+        # print(self.inputs_fired)
 
         if self.inputs_fired[time_step] != self.required_inputs:
             # check to make sure in the case of input nodes which

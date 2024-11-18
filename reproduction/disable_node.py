@@ -7,6 +7,8 @@ from evolution.node_generator import NodeGenerator
 from genomes.genome import Genome
 from genomes.input_node import InputNode
 from genomes.output_node import OutputNode
+from genomes.autoencoder_input_node import AutoencoderInputNode
+from genomes.autoencoder_encoding_node import AutoencoderEncodingNode
 
 from reproduction.reproduction_method import ReproductionMethod
 
@@ -21,6 +23,7 @@ class DisableNode(ReproductionMethod):
         node_generator: NodeGenerator,
         edge_generator: EdgeGenerator,
         weight_generator: WeightGenerator,
+        autoencoder: bool,
     ):
         """Initialies a new DisableNode reproduction method.
         Args:
@@ -32,6 +35,7 @@ class DisableNode(ReproductionMethod):
             node_generator=node_generator,
             edge_generator=edge_generator,
             weight_generator=weight_generator,
+            autoencoder=autoencoder,
         )
 
     def number_parents(self):
@@ -63,6 +67,9 @@ class DisableNode(ReproductionMethod):
             for node in child_genome.nodes
             if not isinstance(node, InputNode)
             and not isinstance(node, OutputNode)
+            and not isinstance(node, AutoencoderInputNode)
+            and not isinstance(node, AutoencoderEncodingNode)
+            and not (self.autoencoder and node.depth == 0.5)
             and not node.disabled
         ]
 

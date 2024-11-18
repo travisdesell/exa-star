@@ -7,6 +7,8 @@ from evolution.node_generator import NodeGenerator
 from genomes.genome import Genome
 from genomes.input_node import InputNode
 from genomes.output_node import OutputNode
+from genomes.autoencoder_input_node import AutoencoderInputNode
+from genomes.autoencoder_encoding_node import AutoencoderEncodingNode
 
 from reproduction.reproduction_method import ReproductionMethod
 
@@ -21,6 +23,7 @@ class MergeNode(ReproductionMethod):
         node_generator: NodeGenerator,
         edge_generator: EdgeGenerator,
         weight_generator: WeightGenerator,
+        autoencoder: bool,
     ):
         """Initialies a new MergeNode reproduction method.
         Args:
@@ -32,6 +35,7 @@ class MergeNode(ReproductionMethod):
             node_generator=node_generator,
             edge_generator=edge_generator,
             weight_generator=weight_generator,
+            autoencoder=autoencoder,
         )
 
     def number_parents(self):
@@ -56,12 +60,26 @@ class MergeNode(ReproductionMethod):
         # is not at the same depth as the input or output nodes.
 
         child_genome = copy.deepcopy(parent_genomes[0])
+        possible_nodes = None
+        if self.autoencoder:
+            range_options = [(0.0, 0.5), (0.5, 1.0)]
+            random.shuffle(range_options)
+            autoencoder_range = range_options[0]
 
-        possible_nodes = [
-            node
-            for node in child_genome.nodes
-            if not isinstance(node, InputNode) and not isinstance(node, OutputNode)
-        ]
+            possible_nodes = [
+                node
+                for node in child_genome.nodes
+                if not isinstance(node, InputNode) and not isinstance(node, OutputNode)
+                and not isinstance(node, AutoencoderInputNode) and not isinstance(node, AutoencoderEncodingNode)
+                and autoencoder_range[0] < node.depth < autoencoder_range[1]
+            ]
+        else:
+            possible_nodes = [
+                node
+                for node in child_genome.nodes
+                if not isinstance(node, InputNode) and not isinstance(node, OutputNode)
+                and not isinstance(node, AutoencoderInputNode) and not isinstance(node, AutoencoderEncodingNode)
+            ]
 
         if len(possible_nodes) < 2:
             return None

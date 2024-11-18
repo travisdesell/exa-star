@@ -21,8 +21,9 @@ class AddNode(ReproductionMethod):
         node_generator: NodeGenerator,
         edge_generator: EdgeGenerator,
         weight_generator: WeightGenerator,
+        autoencoder: bool,
     ):
-        """Initialies a new AddNode reproduction method.
+        """Initialize a new AddNode reproduction method.
         Args:
             node_generator: is used to generate a new node (perform the node type selection).
             edge_generator: is used to generate a new edge (perform the edge type selection).
@@ -32,6 +33,7 @@ class AddNode(ReproductionMethod):
             node_generator=node_generator,
             edge_generator=edge_generator,
             weight_generator=weight_generator,
+            autoencoder=autoencoder,
         )
 
     def number_parents(self):
@@ -52,11 +54,12 @@ class AddNode(ReproductionMethod):
             A new genome to evaluate.
         """
         # calculate the depth of the new node (exclusive of 0.0 and 1.0 so it
-        # is not at the same depth as the input or output nodes.
+        # is not at the same depth as the input or output nodes. Also exclude
+        # depth of 0.5 (encoding layer) if the network is an autoencoder
 
         child_genome = copy.deepcopy(parent_genomes[0])
         child_depth = 0.0
-        while child_depth == 0.0 or child_depth == 1.0:
+        while child_depth == 0.0 or child_depth == 1.0 or (self.autoencoder and child_depth == 0.5):
             child_depth = random.uniform(0.0, 1.0)
 
         print(f"adding node at child_depth: {child_depth}")
@@ -76,6 +79,7 @@ class AddNode(ReproductionMethod):
                 recurrent=recurrent,
                 require_recurrent=require_recurrent,
                 edge_generator=self.edge_generator,
+                autoencoder=self.autoencoder,
             )
             AddNode.add_output_edges(
                 target_node=new_node,
@@ -83,6 +87,7 @@ class AddNode(ReproductionMethod):
                 recurrent=recurrent,
                 require_recurrent=require_recurrent,
                 edge_generator=self.edge_generator,
+                autoencoder=self.autoencoder,
             )
 
         self.weight_generator(child_genome)
@@ -105,6 +110,7 @@ class AddNode(ReproductionMethod):
         recurrent: bool,
         require_recurrent: bool,
         edge_generator: EdgeGenerator,
+        autoencoder: bool = False,
     ):
         """Adds a random number of input edges to the given target node.
 
@@ -115,6 +121,7 @@ class AddNode(ReproductionMethod):
             require_recurrent: require at least 1 recurrent edge if adding
                 recurrent edges
             edge_generator: the edge generator to create the new edge(s)
+            autoencoder: make mutations for autoencoder architecture
         """
 
         avg_count, std_count = genome.get_edge_distributions(
@@ -134,12 +141,23 @@ class AddNode(ReproductionMethod):
         print(f"adding {n_inputs} input edges to the new node.")
 
         potential_inputs = None
-        if recurrent:
-            potential_inputs = genome.nodes
+        if autoencoder:
+            autoencoder_range = (0.0, 0.5) if target_node.depth < 0.5 else (0.5, 1.0)
+            if recurrent:
+                potential_inputs = [
+                    node for node in genome.nodes if autoencoder_range[0] <= node.depth <= autoencoder_range[1]
+                ]
+            else:
+                potential_inputs = [
+                    node for node in genome.nodes if autoencoder_range[0] <= node.depth < target_node.depth
+                ]
         else:
-            potential_inputs = [
-                node for node in genome.nodes if node.depth < target_node.depth
-            ]
+            if recurrent:
+                potential_inputs = genome.nodes
+            else:
+                potential_inputs = [
+                    node for node in genome.nodes if node.depth < target_node.depth
+                ]
 
         print(f"potential inputs: {potential_inputs}")
 
@@ -162,6 +180,7 @@ class AddNode(ReproductionMethod):
         recurrent: bool,
         require_recurrent: bool,
         edge_generator: EdgeGenerator,
+        autoencoder: bool = False,
     ):
         """Adds a random number of output edges to the given target node.
         Args:
@@ -171,6 +190,7 @@ class AddNode(ReproductionMethod):
             require_recurrent: require at least 1 recurrent edge if adding
                 recurrent edges
             edge_generator: the edge generator to create the new edge(s)
+            autoencoder: make mutations for autoencoder architecture
         """
 
         avg_count, std_count = genome.get_edge_distributions(
@@ -178,7 +198,7 @@ class AddNode(ReproductionMethod):
         )
 
         print(
-            f"addding output edges to node, n_output_avg: {avg_count}, stddev: {std_count}"
+            f"adding output edges to node, n_output_avg: {avg_count}, stddev: {std_count}"
         )
 
         n_outputs = int(np.random.normal(avg_count, std_count))
@@ -190,12 +210,23 @@ class AddNode(ReproductionMethod):
         print(f"adding {n_outputs} output edges to the new node.")
 
         potential_outputs = None
-        if recurrent:
-            potential_outputs = genome.nodes
+        if autoencoder:
+            autoencoder_range = (0.0, 0.5) if target_node.depth < 0.5 else (0.5, 1.0)
+            if recurrent:
+                potential_outputs = [
+                    node for node in genome.nodes if autoencoder_range[0] <= node.depth <= autoencoder_range[1]
+                ]
+            else:
+                potential_outputs = [
+                    node for node in genome.nodes if target_node.depth < node.depth <= autoencoder_range[1]
+                ]
         else:
-            potential_outputs = [
-                node for node in genome.nodes if node.depth > target_node.depth
-            ]
+            if recurrent:
+                potential_outputs = genome.nodes
+            else:
+                potential_outputs = [
+                    node for node in genome.nodes if node.depth > target_node.depth
+                ]
 
         print(f"potential outputs: {potential_outputs}")
 

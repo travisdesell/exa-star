@@ -4,7 +4,9 @@ import math
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import re
 import graphviz
+import pygraphviz as pgv
 import torch
 
 from abc import ABC, abstractmethod
@@ -12,6 +14,10 @@ from genomes.edge import Edge
 from genomes.node import Node
 from genomes.input_node import InputNode
 from genomes.output_node import OutputNode
+from genomes.autoencoder_input_node import AutoencoderInputNode
+from genomes.autoencoder_encoding_node import AutoencoderEncodingNode
+from genomes.recurrent_edge import RecurrentEdge
+from innovation.innovation_generator import InnovationGenerator
 
 
 class Genome(ABC):
@@ -56,6 +62,75 @@ class Genome(ABC):
         else:
             return self.fitness < other.fitness
 
+    # @staticmethod
+    # def create_from_gv(genome_file: str, max_sequence_length: int):
+    #     """
+    #     Helper method to parse the .gv genome file and populate nodes and edges accordingly.
+    #
+    #     Args:
+    #         genome_file: The name of the .gv file to initialize from.
+    #         max_sequence_length: is the maximum length of any time series
+    #             to be processed by the neural network this node is part of
+    #     """
+    #     match = re.search(r'genome_(\d+)\.gv', genome_file)
+    #     if not match:
+    #         raise ValueError("Genome _init_ Error: genome_file must be in the format 'genome_$number.gv'")
+    #
+    #     generation_number = int(match.group(1))
+    #     genome_instance = Genome(generation_number)
+    #
+    #     # Load the .gv file as a pygraphviz graph
+    #     graph = pgv.AGraph(genome_file)
+    #
+    #     # Parse nodes
+    #     for node in graph.nodes():
+    #         node_id = int(re.search(r'\d+', node.name).group(0))  # Assumes node name includes ID
+    #         parameter_name = node.attr.get('label', f"node {node_id}")
+    #
+    #         # Check rank and create appropriate node instance
+    #         if node.attr.get('rank') == 'source':
+    #             input_node = InputNode(
+    #                 innovation_number=node_id,
+    #                 parameter_name=parameter_name,
+    #                 depth=0.0,
+    #                 max_sequence_length=max_sequence_length,
+    #             )
+    #             genome_instance.add_input_node(input_node)
+    #         elif node.attr.get('rank') == 'sink':
+    #             output_node = OutputNode(
+    #                 innovation_number=node_id,
+    #                 parameter_name=parameter_name,
+    #                 depth=1.0,
+    #                 max_sequence_length=max_sequence_length,
+    #             )
+    #             genome_instance.add_output_node(output_node)
+    #         else:
+    #             general_node = Node(
+    #                 innovation_number=node_id,
+    #                 parameter_name=parameter_name,
+    #                 depth=0.5,
+    #                 max_sequence_length=max_sequence_length,
+    #             )
+    #             genome_instance.add_node(general_node)
+    #
+    #     # Parse edges
+    #     for edge in graph.edges():
+    #         input_node_id = int(re.search(r'\d+', edge[0]).group(0))
+    #         output_node_id = int(re.search(r'\d+', edge[1]).group(0))
+    #         time_skip = int(edge.attr.get('label', 'skip 0').split()[1])  # Extracts time_skip from label
+    #
+    #         # Create and add a RecurrentEdge
+    #         edge_instance = RecurrentEdge(
+    #             innovation_number=InnovationGenerator.get_innovation_number(),
+    #             input_node=genome_instance.node_map[input_node_id],
+    #             output_node=genome_instance.node_map[output_node_id],
+    #             max_sequence_length=max_sequence_length,
+    #             time_skip=time_skip,
+    #         )
+    #         genome_instance.add_edge(edge_instance)
+    #
+    #     return genome_instance
+
     def add_input_node(self, input_node: Node):
         """Adds an input node when creating this genome
         Args:
@@ -86,6 +161,8 @@ class Genome(ABC):
         assert node.innovation_number not in self.node_map.keys()
         assert not isinstance(node, InputNode)
         assert not isinstance(node, OutputNode)
+        assert not isinstance(node, AutoencoderInputNode)
+        assert not isinstance(node, AutoencoderEncodingNode)
         assert len(node.input_edges) == 0
         assert len(node.output_edges) == 0
 
@@ -172,6 +249,17 @@ class Genome(ABC):
         for edge in self.edges:
             edge.reset()
 
+    def set_max_sequence_length(self, max_sequence_length):
+        """Resets all the node and edge values for another
+        forward pass.
+        """
+        for node in self.nodes:
+            node.max_sequence_length = max_sequence_length
+
+        for edge in self.edges:
+            edge.max_sequence_length = max_sequence_length
+
+
     def parameters(self) -> list[torch.Tensor]:
         """Gets a list of each parameter tensor in the model.
 
@@ -191,7 +279,7 @@ class Genome(ABC):
     def plot(self, genome_name: str = None):
         """Display this graph using graphviz.
         Args:
-            genome_name: specifices what genome name (and filename) for the
+            genome_name: specifies what genome name (and filename) for the
                 graphviz file.
         """
         figure, axes = plt.subplots()
@@ -221,8 +309,9 @@ class Genome(ABC):
                 )
 
         for node in self.nodes:
-            if not isinstance(node, InputNode) and not isinstance(node, OutputNode):
-                dot.node(f"node {node.innovation_number}")
+            if (not isinstance(node, InputNode) and not isinstance(node, OutputNode)
+                    and not isinstance(node, AutoencoderInputNode) and not isinstance(node, AutoencoderEncodingNode)):
+                dot.node(f"node {node.innovation_number}", label=f"{node.parameter_name}")
 
         min_weight = math.inf
         max_weight = -math.inf
@@ -276,7 +365,8 @@ class Genome(ABC):
         """
 
         for node in self.nodes:
-            if not isinstance(node, InputNode) and not isinstance(node, OutputNode):
+            if (not isinstance(node, InputNode) and not isinstance(node, OutputNode)
+                    and not isinstance(node, AutoencoderInputNode) and not isinstance(node, AutoencoderEncodingNode)):
                 if len(node.input_edges) == 0:
                     print("INVALID GENOME:")
                     print(self)
@@ -361,17 +451,20 @@ class Genome(ABC):
             node.active = node.forward_reachable and node.backward_reachable
             # set the required inputs for each node
             node.required_inputs = 0
+            node.decoder_required_inputs = 0
 
         for edge in self.edges:
             edge.active = edge.forward_reachable and edge.backward_reachable
             if edge.active:
                 edge.output_node.required_inputs += 1
+                edge.input_node.decoder_required_inputs += 1
 
         # determine if the network is viable
         self.viable = True
         for node in self.output_nodes:
             if not node.forward_reachable:
                 self.viable = False
+                print("Network is not viable!")
                 break
 
     def get_weight_distribution(

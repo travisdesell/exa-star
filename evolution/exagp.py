@@ -27,6 +27,7 @@ class EXAGP:
         edge_generator: EdgeGenerator = EXAGPEdgeGenerator(max_time_skip=10),
         weight_generator: WeightGenerator = LamarckianWeightGenerator(),
         # weight_generator: WeightGenerator = KaimingWeightGenerator(),
+        autoencoder: bool = False,
     ):
         """Initializes an EXA-GP graph based genetic programming algorithm.
         Will use defaults unless otherwise specified.
@@ -47,10 +48,9 @@ class EXAGP:
                 node_generator=node_generator,
                 edge_generator=edge_generator,
                 weight_generator=weight_generator,
+                autoencoder=autoencoder,
             ),
         )
-
-        pass
 
     def generate_genome(self) -> Genome:
         """Generates a genome from the population strategy used by

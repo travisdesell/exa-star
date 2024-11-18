@@ -1,15 +1,12 @@
 from evolution.node_generator import NodeGenerator
 
 from genomes.genome import Genome
-from genomes.node import Node
-from genomes.lstm_node import LSTMNode
+from genomes.autoencoder_node import AutoencoderNode
 
 from innovation.innovation_generator import InnovationGenerator
 
-import random
 
-
-class EXAGPNodeGenerator(NodeGenerator):
+class AutoencoderNodeGenerator(NodeGenerator):
     """This is a node generator for the EXA-GP algorithm. It will
     create nodes from a selection of genetic programming operation
     nodes.
@@ -19,7 +16,7 @@ class EXAGPNodeGenerator(NodeGenerator):
         """Initializes a node generator for EXA-GP."""
         pass
 
-    def __call__(self, depth: float, target_genome: Genome) -> Node:
+    def __call__(self, depth: float, target_genome: Genome) -> AutoencoderNode:
         """Creates a new recurrent node for an EXA-GP computational
         graph genome. It will select from all possible node types
         uniformly at random.
@@ -32,17 +29,12 @@ class EXAGPNodeGenerator(NodeGenerator):
             A new node for an EXA-GP computational graph.
         """
 
-        if random.uniform(0, 1.0) < 0.5:
-            new_node = Node(
-                innovation_number=InnovationGenerator.get_innovation_number(),
-                depth=depth,
-                max_sequence_length=target_genome.max_sequence_length,
-            )
-        else:
-            new_node = LSTMNode(
-                innovation_number=InnovationGenerator.get_innovation_number(),
-                depth=depth,
-                max_sequence_length=target_genome.max_sequence_length,
-            )
+        new_node = AutoencoderNode(
+            innovation_number=InnovationGenerator.get_innovation_number(),
+            depth=depth,
+            max_sequence_length=target_genome.max_sequence_length,
+        )
+
+        print("New AE node generated!", new_node.innovation_number)
 
         return new_node
