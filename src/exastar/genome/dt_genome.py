@@ -42,12 +42,11 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
         output_nodes = {}
         guide = guide
         for output_name in output_series_names:
-            output_nodes["B_" + output_name] = DTOutputNode("B_" + output_name, 1.0)
-            output_nodes["S_" + output_name] = DTOutputNode("S_" + output_name, 1.0)
-            output_nodes["H_" + output_name] = DTOutputNode("H_" + output_name, 1.0)
+            output_nodes[output_name] = DTOutputNode(output_name, 1.0)
+            output_nodes["Hold"] = DTOutputNode("Hold", 1.0)
 
         edges: List[DTBaseEdge] = [
-            DTBaseEdge(input_nodes["Start"], output_nodes["B_" + output_series_names[0]], True)
+            DTBaseEdge(input_nodes["Start"], output_nodes[output_series_names[0]], True)
         ]
 
         nodes: List[DTNode] = list(chain(input_nodes.values(), output_nodes.values()))
@@ -99,6 +98,9 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
         self.guide = guide
 
     def sanity_check(self):
+        """
+        TODO: Update for DT
+        """
         # Ensure all edges referenced by nodes are in self.edges
         # and vica versa
         edges_from_nodes: Set[DTBaseEdge] = set()
@@ -142,14 +144,26 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
 
     @overrides(EXAStarGenome)
     def forward(self, input_series: TimeSeries, time_step: int) -> Dict[str, torch.Tensor]:
-
+        """
+        Performs a forward pass of the network for a given input and timestep
+        Arguments:
+            input_series: List of inputs
+            time_step: Selected instance of the input series
+        Output:
+            outputs: List of output nodes and values
+        """
+        self.reset()
         assert sorted(self.nodes) == self.nodes
 
         self.input_nodes[0].forward()
 
         for node in filter(is_not_any_type({DTInputNode, DTOutputNode}), self.nodes):
-            x = input_series.series_dictionary[node.get_parameter()[0]][time_step]
-            node.forward(x)
+            if node.enabled:
+                if node.inputs_fired == 1:
+                    val = node.get_parameter()[0]
+                    x = input_series.series_dictionary[val.astype(str)][time_step]
+                    node.forward(x)
+
         outputs = {}
         for output_node in self.output_nodes:
             outputs[output_node.node_name] = output_node.value
@@ -179,7 +193,7 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
             input_series = dataset.get_inputs(dataset.input_series_names, 0)
             output_series = dataset.get_outputs_no_offset(dataset.output_series_names)
             for iteration in range(iterations + 1):
-                loss = self.eval_iter_daily(input_series, output_series)
+                loss = self.eval_iter(1000.0, input_series, output_series)
                 if iteration < iterations:
                     loss.backward()
                     optimizer.step()
@@ -190,27 +204,23 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
             return loss
         else:
             avg = 0
-            for i in range(5):
-                for iteration in range(iterations + 1):
-                    if not full:
-                        rand = np.random.randint(0, len(dataset) - batch_size)
-                        input_series = dataset.get_batch_inputs(dataset.input_series_names, rand, batch_size)
-                        output_series = dataset.get_batch_outputs(dataset.output_series_names, rand, batch_size)
-                    else:
-                        input_series = dataset.get_inputs(dataset.input_series_names, 0)
-                        output_series = dataset.get_outputs_no_offset(dataset.output_series_names)
+            for iteration in range(iterations + 1):
+                if not full:
+                    rand = np.random.randint(0, len(dataset) - batch_size)
+                    input_series = dataset.get_batch_inputs(dataset.input_series_names, rand, batch_size)
+                    output_series = dataset.get_batch_outputs(dataset.output_series_names, rand, batch_size)
+                else:
+                    input_series = dataset.get_inputs(dataset.input_series_names, 0)
+                    output_series = dataset.get_outputs_no_offset(dataset.output_series_names)
 
-                    loss = self.eval_iter_daily(input_series, output_series)
-                    if iteration < iterations:
-                        loss.backward()
-                        optimizer.step()
-                        optimizer.zero_grad()
-                    else:
-                        loss = float(loss)
-                        avg += loss
-            avg = avg / 5
-            logger.info(f"final fitness (loss): {avg}, type: {type(avg)}, gen:{self.generation_number}")
-            return avg
+                loss = self.eval_iter(1000.0, input_series, output_series)
+                if iteration < iterations:
+                    loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad()
+                avg += float(loss)
+            logger.info(f"final fitness (loss): {float(avg/iteration)}, type: {type(float(avg/iteration))}, gen:{self.generation_number}")
+            return avg/iteration
 
     def test_genome(
             self,
@@ -235,6 +245,30 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
 
         return loss
 
+    def test_genome_hist(
+            self,
+            dataset: TimeSeries,
+            full: bool = False,
+    ) -> float:
+        """
+        A version of test_genome that records history of trading.
+        One round of buying and selling to determine success. Will buy and sell a given percentage of values in stocks.
+
+        Args:
+            dataset: Dataset for training
+            full: should the whole time be evaluated or a section
+        """
+        if full:
+            input_series = dataset.get_batch_inputs(dataset.input_series_names, 0, 10)
+            output_series = dataset.get_batch_outputs(dataset.output_series_names,0, 10)
+        else:
+            input_series = dataset.get_inputs(dataset.input_series_names, 0)
+            output_series = dataset.get_outputs_no_offset(dataset.output_series_names)
+
+        loss, hist = self.eval_iter_hist(input_series, output_series)
+
+        return loss, hist
+
     def test_genome_daily(
             self,
             dataset: TimeSeries,
@@ -243,7 +277,7 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
         Evaluate Genomes based on a day to day change, buying then selling the next day, or selling and buying the next day
 
         Args:
-            dataset: Dataset for training
+            dataset: Dataset for testing
         """
 
         input_series = dataset.get_inputs(dataset.input_series_names, 0)
@@ -252,31 +286,37 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
         val = 0
         b_error = 0
         s_error = 0
+        b_right = 0
+        s_right = 0
         print(len(input_series))
         for i in range(len(input_series)-1):
             self.reset()
             outputs = self.forward(input_series, i)
             for parameter_name, value in outputs.items():
-                if value < 0:
-                    print("What")
-                price = output_series.series_dictionary[parameter_name[2:]][i]
-                next_p = output_series.series_dictionary[parameter_name[2:]][i + 1]
-                shift = (next_p - price)
-                if parameter_name[0] == "B" and value > 0:
-                    # val += (shift * value)
-                    val += shift
-                    if shift < 0 and value != 0:
-                        b_error += 1
-                elif parameter_name[0] == "S" and value > 0:
-                    # val -= (shift * value)
-                    val -= shift
-                    if shift > 0 and value != 0:
-                        s_error += 1
-        return val, b_error, s_error
+                if parameter_name != "Hold":
+                    price = output_series.series_dictionary[parameter_name][i]
+                    next_p = output_series.series_dictionary[parameter_name][i + 1]
+                    shift = (next_p - price)
+                    if value > 0:
+                        val += (shift * value)
+                        if shift < 0 and value != 0:
+                            b_error += 1
+
+                    elif value < 0:
+                        val += (shift * value)
+                        if shift > 0 and value != 0:
+                            s_error += 1
+                    if shift > 0:
+                        b_right += 1
+                    else:
+                        s_right += 1
+        return val, b_error/(b_right), s_error/(s_right)
 
     def eval_iter_daily(self, input_series: TimeSeries, output_series: TimeSeries):
         """
-            One round of buying and selling to determine success. Will buy and sell a given percentage of values in stocks.
+            One round of buying and selling to determine success.
+            Will buy and sell a given percentage of values in stocks.
+            Based on a day to day change, buying then selling the next day, or selling and buying the next day
 
             Args:
                 input_series: Input series used to pass forward in nodes
@@ -287,14 +327,17 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
             self.reset()
             outputs = self.forward(input_series, i)
             for parameter_name, value in outputs.items():
-                price = output_series.series_dictionary[parameter_name[2:]][i]
-                next_p = output_series.series_dictionary[parameter_name[2:]][i + 1]
-                if parameter_name[0] == "B" and value > 0:
-                    # val = val + ((next_p - price) * value)
-                    val = val + (next_p - price)
-                elif parameter_name[0] == "S" and value > 0:
-                    # val = val - ((next_p - price) * value)
-                    val = val - (next_p - price)
+                if parameter_name != "Hold" and value != 0:
+                    price = output_series.series_dictionary[parameter_name][i]
+                    next_p = output_series.series_dictionary[parameter_name][i + 1]
+                    cap = price * value
+                    if cap > 1000:
+                        # val = val + ((next_p - price) * value)
+                        value = 1000/price
+                    elif cap < -1000:
+                        value = -1000 / price
+                        # val = val - ((next_p - price) * value)
+                    val = val + (next_p * value) - cap
 
 
         if val <= 1:
@@ -304,52 +347,150 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
 
         return loss
 
-    def eval_iter(self, input_series: TimeSeries, output_series: TimeSeries):
+
+    def eval_iter_single_daily(self, input_series: TimeSeries, output_series: TimeSeries):
+        """
+            One round of buying and selling to determine success. Will buy and sell a given percentage of values in stocks.
+            Based on a day to day change, buying then selling the next day, or selling and buying the next day, only
+            able to choose one share of one stock each step.
+
+            Args:
+                input_series: Input series used to pass forward in nodes
+                output_series: Output series used to provide parameter information
+        """
+        money = torch.tensor(0.0, requires_grad=True)
+        for i in range(len(input_series) - 1):
+            self.reset()
+            outputs = self.forward(input_series, i)
+            for parameter_name, value in outputs.items():
+                if parameter_name != "Hold":
+                    price = output_series.series_dictionary[parameter_name][i]
+                    next_p = output_series.series_dictionary[parameter_name][i + 1]
+                    shift = (next_p - price)
+                    if value > 0:
+                        # money += (shift * value)
+                        money = money + shift * value
+                    elif value < 0:
+                        # money += (shift * value)
+                        money = money - shift * value
+
+        if money <= 1:
+            loss = -1 * money + 100
+        else:
+            loss = 100 / money
+
+        return loss
+
+    def eval_iter(self, budget: float, input_series: TimeSeries, output_series: TimeSeries):
         """
                 One round of buying and selling to determine success. Will buy and sell a given percentage of values in stocks.
-
+                Selling is one day delay only, but bought stocks carry forward.
                 Args:
+                    budget: set amount of starting money
                     input_series: Input series used to pass forward in nodes
                     output_series: Output series used to provide parameter information
                 """
-        val = torch.tensor(1000.0, requires_grad=True)  # Set requires_grad=True
-        held_shares = torch.tensor(0.0, requires_grad=True)
-        for i in range(len(input_series)):
-            self.reset()
+        money = torch.tensor(budget, requires_grad=True)
+        held_shares = {key: torch.tensor(0.0) for key in output_series.series_dictionary}
+        for i in range(len(input_series)-1):
             outputs = self.forward(input_series, i)
-
             for parameter_name, value in outputs.items():
-                if value > 0:
-                    if held_shares < 0:
-                        price = output_series.series_dictionary[parameter_name[2:]][i]
-                        val = val - (held_shares * price)
-                        held_shares = 0
-                    if parameter_name[0] == "B":
-                        if val > 0:
-                            if value > 1:
-                                value = value / value
-                            money_to_purchase = value * val
-                            price = output_series.series_dictionary[parameter_name[2:]][i]
+                if parameter_name != "Hold":
+                    if value > 0:
+                        if money > 0:
+                            money_to_purchase = value * money
+                            price = output_series.series_dictionary[parameter_name][i]
                             bought = money_to_purchase / price
-                            val = val - money_to_purchase
-                            held_shares = held_shares + bought
+                            money = money - money_to_purchase
+                            held_shares[parameter_name] = held_shares[parameter_name] + bought
+                    elif value < 0:
+                        price = output_series.series_dictionary[parameter_name][i]
+                        money_to_sell = (-1 * value) * (money + price * held_shares[parameter_name])
+                        sold_shares = money_to_sell / price
+                        if held_shares[parameter_name] > sold_shares:
+                            money = money + money_to_sell
+                            held_shares[parameter_name] = held_shares[parameter_name] - sold_shares
+                        else:
+                            money = money + held_shares[parameter_name]*price
+                            sold_shares = sold_shares - held_shares[parameter_name]
+                            held_shares[parameter_name] = 0
+                            money = money + -1 * (output_series.series_dictionary[parameter_name][i+1] - price) * sold_shares
 
-                    elif parameter_name[0] == "S":
-                        if value > 1:
-                            value = value / value
-                        money_to_sell = value * val
-                        price = output_series.series_dictionary[parameter_name[2:]][i]
-                        sold = money_to_sell / price
-                        val = val + money_to_sell
-                        held_shares = held_shares - sold
-
-        profit_func = val + held_shares * output_series.series_dictionary[parameter_name[2:]][len(input_series) - 1]
+        share_val = torch.tensor(0)
+        for key in held_shares:
+            share_val = share_val + held_shares[key] * output_series.series_dictionary[key][len(input_series) - 1]
+        profit_func = money + share_val
         if profit_func <= 1:
             loss = -1 * profit_func + 100
         else:
             loss = 100 / profit_func
 
         return loss
+
+    def eval_iter_hist(self, input_series: TimeSeries, output_series: TimeSeries):
+        """
+        A version of test_genome that records history of trading.
+        One round of buying and selling to determine success. Will buy and sell a given percentage of values in stocks.
+
+        Args:
+            input_series: Input series used to pass forward in nodes
+            output_series: Output series used to provide parameter information
+        """
+        val = torch.tensor(1000.0, requires_grad=True)
+        held_shares_hist = {key: [] for key in output_series.series_dictionary}
+        held_shares_hist["Value"] = []
+        held_shares = {key: torch.tensor(0.0) for key in output_series.series_dictionary}
+        for i in range(len(input_series)-1):
+            outputs = self.forward(input_series, i)
+            for parameter_name, value in outputs.items():
+
+                if parameter_name != "Hold":
+                    if value > 0:
+                        if val > 0:
+                            # print(val)
+                            # print(held_shares)
+                            money_to_purchase = value * val
+                            price = output_series.series_dictionary[parameter_name][i]
+                            bought = money_to_purchase / price
+                            val = val - money_to_purchase
+                            held_shares[parameter_name] = held_shares[parameter_name] + bought
+                    elif value < 0:
+                        price = output_series.series_dictionary[parameter_name][i]
+                        money_to_sell = (-1 * value) * (money + price * held_shares[parameter_name])
+                        sold_shares = money_to_sell / price
+                        if held_shares[parameter_name] > sold_shares:
+                            money = money + money_to_sell
+                            held_shares[parameter_name] = held_shares[parameter_name] - sold_shares
+                        else:
+                            money = money + held_shares[parameter_name] * price
+                            sold_shares = sold_shares - held_shares[parameter_name]
+                            held_shares[parameter_name] = 0
+                            money = money + -1 * (output_series.series_dictionary[parameter_name][i + 1] - price) * sold_shares
+
+            # print(val, held_shares)
+            share_val = 0
+            for key in held_shares:
+                if isinstance(held_shares[key], int):
+                    held_shares_hist[key].append(held_shares[key])
+                else:
+                    held_shares_hist[key].append(held_shares[key].detach())
+                if held_shares[key] < 0:
+                    held_shares[key] = 0
+                else:
+                    share_val = share_val + held_shares[key] * output_series.series_dictionary[key][i]
+
+
+            held_shares_hist["Value"].append(val+share_val)
+        share_val = torch.tensor(0)
+        for key in held_shares:
+            share_val = share_val + held_shares[key] * output_series.series_dictionary[key][len(input_series) - 1]
+        profit_func = val + share_val
+        if profit_func <= 1:
+            loss = -1 * profit_func + 100
+        else:
+            loss = 100 / profit_func
+
+        return loss, held_shares_hist
 
     @overrides(EXAStarGenome)
     def add_edge(self, edge: DTBaseEdge) -> None:
@@ -422,3 +563,15 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
             y = (edge.weight.item() * std) + mean
             return y
         return edge.weight.item()
+
+    def unnormalize_para(self, parameter: str, val: float):
+        """
+        Denormalizes the weight found in the edge
+            Args:
+                edge: is the edge to denormalize
+        """
+        if str(parameter) in self.guide.keys():
+            mean, std = self.guide[str(parameter)]
+            y = (val * std) + mean
+            return y
+        return None

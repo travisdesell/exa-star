@@ -6,6 +6,8 @@ from config import configclass
 from exastar.genome import EXAStarGenome
 from exastar.genome.component import Node, Edge, RecurrentEdge
 from exastar.genome.component.dt_edge import DTEdge
+from exastar.genome.component.dt_input_node import DTInputNode
+from exastar.genome.component.dt_output_node import DTOutputNode
 from exastar.genome.component.dt_node import DTNode
 from exastar.genome.component.dt_set_edge import DTBaseEdge
 
@@ -174,6 +176,7 @@ class DTEdgeGenerator[G: EXAStarGenome](EdgeGenerator[G]):
         rng: np.random.Generator,
         weight_generator: Optional[WeightGenerator] = None,
     ) -> DTBaseEdge:
+
 
         edge = DTBaseEdge(input_node, output_node, isLeft)
 

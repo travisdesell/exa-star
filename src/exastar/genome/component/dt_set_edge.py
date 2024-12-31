@@ -130,8 +130,11 @@ class DTBaseEdge(Edge):
         """
 
         if isinstance(self.output_node, DTOutputNode):
-            if self.weight < 0:
-                self.weight = torch.nn.Parameter(self.weight * -1)
+            #Caps output weights inside bounds
+            if self.weight < -1:
+                self.weight = torch.nn.Parameter(-1 * self.weight/self.weight)
+            elif self.weight > 1:
+                self.weight = torch.nn.Parameter(self.weight/self.weight)
         assert self.is_active()
         output_value = value * self.weight
         self.output_node.input_fired(

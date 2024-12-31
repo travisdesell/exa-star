@@ -64,9 +64,6 @@ class SimplePopulation[G: Genome, D: Dataset](Population[G, D]):
                 if elites[index].fitness < g.fitness:
                     elites.pop(index)
                     new_genomes.append(g)
-                    #Saves best to file
-                    with open(f"{output_dir}/best/{g.generation_number}.genome", "wb") as file:
-                        dill.dump(g, file, recurse=True)
 
 
             except ValueError:

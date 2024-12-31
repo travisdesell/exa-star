@@ -89,8 +89,8 @@ class GraphVizVisitorDT[G: EXAStarGenome](Visitor[G, graphviz.Digraph]):
 
         if edge.enabled:
             e_weight = edge.weight.item()
-            if e_weight < 0:
-                e_weight = 0
+            # if e_weight < 0:
+            #     e_weight = 0
 
             if isinstance(edge.input_node, DTInputNode):
                 if isinstance(edge.output_node, DTOutputNode):

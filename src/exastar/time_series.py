@@ -302,8 +302,18 @@ class AAPLTimeSeriesConfig(TimeSeriesConfig):
 @configclass(name="base_test_dt_dataset", group="dataset", target=TimeSeries.create_norm_from_csv)
 class TestDataset(TimeSeriesConfig):
     filenames: Tuple[str, ...] = (
-        "C:/Users/matts/Documents/RIT/exa-star-dt/src/temp_run.csv",
+        "C:/Users/matts/Documents/RIT/exa-star-dt/src/short_data/train.csv",
     )
-    output_series: List[str] = ("AKAM",)
+    # output_series: List[str] = ("STLD",)
+    output_series: List[str] = ("CPT", "STLD", "RHI", "KMX", "UHS",)
     # input_series: List[str] = ("Predicted_AKAM",)
-    normalize_series : List[str] = ("VOl_CHANGE", "TURNOVER", "Predicted_AKAM")
+    # normalize_series: List[str] = (
+    #     "Predicted_STLD", "STLD_VOl_CHANGE", "STLD_TURNOVER",)
+    normalize_series: List[str] = (
+    "Predicted_CPT", "Predicted_KMX","Predicted_RHI", "Predicted_STLD",  "Predicted_UHS")
+    # normalize_series : List[str] = ("Predicted_CPT", "CPT_VOl_CHANGE", "CPT_TURNOVER", "CPT_BA_SPREAD", "CPT_ILLIQUIDITY",
+    #                                 "CPT_MARKET_CAP", "Predicted_KMX", "KMX_VOl_CHANGE", "KMX_TURNOVER", "KMX_BA_SPREAD",
+    #                                 "KMX_ILLIQUIDITY", "KMX_MARKET_CAP", "Predicted_RHI", "RHI_VOl_CHANGE", "RHI_TURNOVER",
+    #                                 "RHI_BA_SPREAD", "RHI_ILLIQUIDITY", "RHI_MARKET_CAP", "Predicted_STLD", "STLD_VOl_CHANGE",
+    #                                 "STLD_TURNOVER", "STLD_BA_SPREAD", "STLD_ILLIQUIDITY", "STLD_MARKET_CAP", "Predicted_UHS",
+    #                                 "UHS_VOl_CHANGE", "UHS_TURNOVER", "UHS_BA_SPREAD", "UHS_ILLIQUIDITY", "UHS_MARKET_CAP")

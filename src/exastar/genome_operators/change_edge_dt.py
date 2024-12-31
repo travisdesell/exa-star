@@ -28,9 +28,9 @@ class DTChangeEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         out_edges: List[DTBaseEdge] = []
 
         for edge in genome.edges:
-            if isinstance(edge.output_node, DTOutputNode):
+            if isinstance(edge.output_node, DTOutputNode) and edge.enabled:
                 out_edges.append(edge)
-            elif not isinstance(edge.input_node, DTInputNode):
+            elif not isinstance(edge.input_node, DTInputNode) and edge.enabled:
                 all__non_output_edges.append(edge)
 
         if rng.random() > 0.0:
@@ -41,8 +41,13 @@ class DTChangeEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
             target_edge.disable()
             new_edge = self.edge_generator(genome, target_edge.input_node, new_node, target_edge.isLeft, rng)
             genome.add_edge(new_edge)
-
             self.weight_generator(genome, rng, targets=[new_edge])
+
+            if target_edge.isLeft:
+                target_edge.input_node.add_right_edge(new_edge)
+            else:
+                target_edge.input_node.add_left_edge(new_edge)
+
 
         return genome
 

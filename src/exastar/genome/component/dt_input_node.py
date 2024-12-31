@@ -59,10 +59,11 @@ class DTInputNode(InputNode):
 
         assert edge.input_node.inon == self.inon
         assert not edge.inon == self.right_output_edge
-        super().add_output_edge(edge)
         if self.left_output_edge:
             self.remove_output_edge(self.left_output_edge)
+        super().add_output_edge(edge)
         self.left_output_edge = edge
+
 
     def remove_output_edge(self, edge: DTBaseEdge):
         for e in self.output_edges:
