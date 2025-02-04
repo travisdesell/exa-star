@@ -10,10 +10,10 @@ from innovation.innovation_generator import InnovationGenerator
 from loguru import logger
 
 
-class AutoencoderNode(Node):
+class BidirectionalAENode(Node):
     def __init__(self, innovation_number: int, depth: float, max_sequence_length: int):
         """
-        Initializes a AutoencoderNode object that supports both forward and backward
+        Initializes a BidirectionalAENode object that supports both forward and backward
         propagation for use in autoencoders.
 
         Args:

@@ -7,8 +7,8 @@ from evolution.node_generator import NodeGenerator
 from genomes.genome import Genome
 from genomes.input_node import InputNode
 from genomes.output_node import OutputNode
-from genomes.autoencoder_input_node import AutoencoderInputNode
-from genomes.autoencoder_encoding_node import AutoencoderEncodingNode
+from genomes.bidirectionalAE_input_node import BidirectionalAEInputNode
+from genomes.bidirectionalAE_encoding_node import BidirectionalAEEncodingNode
 
 from reproduction.reproduction_method import ReproductionMethod
 
@@ -70,7 +70,7 @@ class MergeNode(ReproductionMethod):
                 node
                 for node in child_genome.nodes
                 if not isinstance(node, InputNode) and not isinstance(node, OutputNode)
-                and not isinstance(node, AutoencoderInputNode) and not isinstance(node, AutoencoderEncodingNode)
+                and not isinstance(node, BidirectionalAEInputNode) and not isinstance(node, BidirectionalAEEncodingNode)
                 and autoencoder_range[0] < node.depth < autoencoder_range[1]
             ]
         else:
@@ -78,7 +78,7 @@ class MergeNode(ReproductionMethod):
                 node
                 for node in child_genome.nodes
                 if not isinstance(node, InputNode) and not isinstance(node, OutputNode)
-                and not isinstance(node, AutoencoderInputNode) and not isinstance(node, AutoencoderEncodingNode)
+                and not isinstance(node, BidirectionalAEInputNode) and not isinstance(node, BidirectionalAEEncodingNode)
             ]
 
         if len(possible_nodes) < 2:

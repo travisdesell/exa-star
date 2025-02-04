@@ -1,7 +1,7 @@
-from genomes.autoencoder_node import AutoencoderNode
+from genomes.bidirectionalAE_node import BidirectionalAENode
 
 
-class AutoencoderEncodingNode(AutoencoderNode):
+class BidirectionalAEEncodingNode(BidirectionalAENode):
     def __init__(
         self,
         innovation_number: int,

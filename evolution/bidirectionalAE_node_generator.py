@@ -1,12 +1,12 @@
 from evolution.node_generator import NodeGenerator
 
 from genomes.genome import Genome
-from genomes.autoencoder_node import AutoencoderNode
+from genomes.bidirectionalAE_node import BidirectionalAENode
 
 from innovation.innovation_generator import InnovationGenerator
 
 
-class AutoencoderNodeGenerator(NodeGenerator):
+class BidirectionalAENodeGenerator(NodeGenerator):
     """This is a node generator for the EXA-GP algorithm. It will
     create nodes from a selection of genetic programming operation
     nodes.
@@ -16,7 +16,7 @@ class AutoencoderNodeGenerator(NodeGenerator):
         """Initializes a node generator for EXA-GP."""
         pass
 
-    def __call__(self, depth: float, target_genome: Genome) -> AutoencoderNode:
+    def __call__(self, depth: float, target_genome: Genome) -> BidirectionalAENode:
         """Creates a new recurrent node for an EXA-GP computational
         graph genome. It will select from all possible node types
         uniformly at random.
@@ -29,7 +29,7 @@ class AutoencoderNodeGenerator(NodeGenerator):
             A new node for an EXA-GP computational graph.
         """
 
-        new_node = AutoencoderNode(
+        new_node = BidirectionalAENode(
             innovation_number=InnovationGenerator.get_innovation_number(),
             depth=depth,
             max_sequence_length=target_genome.max_sequence_length,

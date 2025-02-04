@@ -1,11 +1,6 @@
 from __future__ import annotations
 
-import random
-
 import torch
-from torch.utils.data import DataLoader, TensorDataset
-
-from numpy.random import permutation
 
 from genomes.genome import Genome
 
@@ -65,7 +60,7 @@ class RecurrentGenome(Genome):
         iterations: int,
         batch_size: int = 256,
     ):
-        """Trains the genome for a given number of iterations.
+        """Trains the genome for a given number of iterations using minibatch GD.
 
         Args:
             input_series: The input time series to train on.
@@ -81,8 +76,8 @@ class RecurrentGenome(Genome):
             shuffled_input = input_series.shuffle(permutation_seed)
             shuffled_output = output_series.shuffle(permutation_seed)
 
-            for batch_start in range(0, input_series.series_length, batch_size):
-                batch_end = min(batch_start + batch_size, input_series.series_length)
+            for batch_start in range(0, shuffled_input.series_length, batch_size):
+                batch_end = min(batch_start + batch_size, shuffled_input.series_length)
                 input_batch = shuffled_input.slice(batch_start, batch_end)
                 output_batch = shuffled_output.slice(batch_start, batch_end)
 
@@ -109,69 +104,10 @@ class RecurrentGenome(Genome):
                     loss.backward()
                     optimizer.step()
                     optimizer.zero_grad()
+            print(f"iteration {iteration} loss: {loss}")
 
         self.fitness = loss.detach().item()
 
         # reset all the gradients so we can deepcopy the genome and its tensors
         self.reset()
         print(f"final fitness (loss): {self.fitness}, type: {type(self.fitness)}")
-
-    # def train(
-    #         self,
-    #         input_series: TimeSeries,
-    #         output_series: TimeSeries,
-    #         optimizer: torch.optim.Optimizer,
-    #         iterations: int,
-    #         batch_size: int = 256,
-    # ):
-    #     """Trains the genome for a given number of iterations.
-    #
-    #     Args:
-    #         input_series: The input time series to train on.
-    #         output_series: The output (expected) time series to learn from.
-    #         optimizer: The PyTorch optimizer to use to adapt weights.
-    #         iterations: How many iterations to train for.
-    #         batch_size: The batch size to use for training.
-    #     """
-    #
-    #     dataloader = DataLoader(input_series, batch_size=batch_size, shuffle=True, num_workers=4)
-    #
-    #     # Move model to GPU if available
-    #     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    #     # self.to(device)
-    #
-    #     loss = None
-    #     for iteration in range(iterations + 1):
-    #         # Training loop
-    #         for input_batch in dataloader:
-    #             # Move the data to the appropriate device
-    #             input_batch = {key: value.to(device) for key, value in input_batch.items()}
-    #             output_batch = {key: value.to(device) for key, value in input_batch.items()}
-    #
-    #             self.reset()
-    #             outputs = self.forward(input_batch)  # Assuming forward accepts TimeSeries or dict-like data
-    #
-    #             loss = torch.tensor(0.0, device=device)
-    #             for parameter_name, values in outputs.items():
-    #                 expected = output_batch[parameter_name]
-    #
-    #                 # Compute the loss
-    #                 diff = expected - values
-    #                 loss += (diff * diff).sum()  # Sum over the batch
-    #
-    #             loss = torch.sqrt(loss)  # Final loss computation
-    #
-    #             if iteration < iterations:
-    #                 # Logging loss during training
-    #                 print(f"iteration {iteration} loss: {loss.item()}")
-    #
-    #                 # Backpropagation
-    #                 optimizer.zero_grad()
-    #                 loss.backward()
-    #                 optimizer.step()
-    #
-    #     self.fitness = loss.detach().item()  # Store the final fitness
-    #
-    #     # Reset model state after training
-    #     self.reset()
-    #     print(f"final fitness (loss): {self.fitness}, type: {type(self.fitness)}")

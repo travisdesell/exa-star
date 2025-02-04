@@ -79,12 +79,9 @@ def kqe(train_df, anomaly_df):
     h = grid.best_estimator_.bandwidth
     tau = FindThreshold(mse_train, h, 0.42)
 
-    y_test1 = np.loadtxt("datasets/smap-msl/msl/p11_anomaly_y.csv", delimiter=",", skiprows=1)
-    # y_test1 = y_test1[3:]
+    y_test1 = np.loadtxt("/Users/aryanjha/Documents/exact/datasets/smap-msl/msl", delimiter=",", skiprows=1)
     y_test1[y_test1 == 1] = -1
     y_test1[y_test1 == 0] = 1
-    # y_test1=np.ones(X_test.shape[0])
-    # y_test1[999:1499]=-1
     y_scores=np.ones(y_test1.shape[0])
     y_scores[(mse-tau)>0]=-1
     precision = precision_score(y_test1, y_scores)
@@ -97,13 +94,10 @@ def kqe(train_df, anomaly_df):
     print ('Accuracy : ', accuracy)
     print ('F1_score: ', f1)
 
-
 def ocsvm(train_df, anomaly_df):
     # Filter the columns to create datasets of expected and predicted values
-    print(train_df.shape, anomaly_df.shape)
     train_true = train_df.filter(regex='^expected').values
     train_pred = train_df.filter(regex='^predicted').values
-    print(train_true.shape, train_pred.shape)
     # Calculate deviations for each feature
     # TODO switch to MSE
     train_residuals = np.abs(train_true - train_pred)
@@ -115,18 +109,16 @@ def ocsvm(train_df, anomaly_df):
     anomaly_residuals = np.abs(anomaly_true - anomaly_pred)
     anomaly_residuals = pd.DataFrame(anomaly_residuals)
 
-    # train_residuals = train_residuals.ewm(span=50).mean()
-    train_residuals = sliding_window_rms(train_residuals, 50)
     print("train_residuals shape: ", train_residuals.shape)
-    # anomaly_residuals = anomaly_residuals.ewm(span=50).mean()
-    anomaly_residuals = sliding_window_rms(anomaly_residuals, 50)
-    # Train the OneClassSVM
-    ocsvm = OneClassSVM(nu=0.045, gamma=0.004)
+    # cats - nu=0.008,0.016,0.008,0.06,0.012,0.005,0.0075,0.002,0.003,0.006; gamma='auto' (375,562,639,714,768,783,825,841,853,940)
+    # spam - nu=0.81,0.91,0.95,0.84,0.295,0.473,0.945,0.663,0.149,0.71 (441,557,605,804,883,903,920,937,972,990)
+    # msl - nu=0.02
+    ocsvm = OneClassSVM(nu=0.05)
     ocsvm.fit(train_residuals)
     # -1 for anomalies, 1 for normal points
     predictions = ocsvm.predict(anomaly_residuals)
 
-    np.savetxt("ocsvm.csv", predictions, fmt='%i', delimiter=",")
+    np.savetxt("ocsvm_predictions.csv", predictions, fmt='%i', delimiter=",")
 
     true_labels = pd.read_csv("/Users/aryanjha/Documents/exact/datasets/cats/anomaly_y.csv")
     true_labels = true_labels.replace({0: 1, 1: -1})

@@ -1,13 +1,13 @@
 import sys
 
 from evolution.exagp import EXAGP
-from evolution.autoencoder_node_generator import AutoencoderNodeGenerator
-from evolution.autoencoder_edge_generator import AutoencoderEdgeGenerator
+from evolution.bidirectionalAE_node_generator import BidirectionalAENodeGenerator
+from evolution.bidirectionalAE_edge_generator import BidirectionalAEEdgeGenerator
 
 from genomes.minimal_recurrent_genome import MinimalRecurrentGenome
 from genomes.trivial_recurrent_genome import TrivialRecurrentGenome
+from genomes.bidirectionalAE_genome import BidirectionalAEGenome
 from genomes.autoencoder_genome import AutoencoderGenome
-from genomes.autoencoder_genome2 import AutoencoderGenome2
 
 from loguru import logger
 
@@ -23,7 +23,7 @@ if __name__ == "__main__":
     logger.add(sys.stdout, level="INFO", backtrace=True, diagnose=True)
 
     csv_filename = (
-        "/Users/aryanjha/Documents/exact/datasets/cats/cats_sample_30k.csv"
+        "/Users/aryanjha/Documents/exact/datasets/smap-msl/smap/p_smap.csv"
     )
 
     initial_series = TimeSeries.create_from_csv(filename=csv_filename)
@@ -31,10 +31,10 @@ if __name__ == "__main__":
     print(initial_series.series_dictionary)
 
     input_series_names = [
-        "bed1", "bed2", "bfo1", "bfo2", "bso1", "bso2", "bso3", "ced1", "cfo1", "cso1",
+        "telemetry_1","telemetry_2","telemetry_3","telemetry_4","telemetry_5","telemetry_6","telemetry_7","telemetry_8","telemetry_9","telemetry_10","telemetry_12","telemetry_13","telemetry_14","telemetry_15","telemetry_18","telemetry_19","telemetry_20","telemetry_22","telemetry_23"
     ]
     output_series_names = [
-        "bed1", "bed2", "bfo1", "bfo2", "bso1", "bso2", "bso3", "ced1", "cfo1", "cso1",
+        "telemetry_1","telemetry_2","telemetry_3","telemetry_4","telemetry_5","telemetry_6","telemetry_7","telemetry_8","telemetry_9","telemetry_10","telemetry_12","telemetry_13","telemetry_14","telemetry_15","telemetry_18","telemetry_19","telemetry_20","telemetry_22","telemetry_23"
     ]
 
     input_series = initial_series.get_inputs(
@@ -44,8 +44,8 @@ if __name__ == "__main__":
         output_series_names=output_series_names, offset=0
     )
 
-    input_series = input_series.slice(0, 3000)
-    output_series = output_series.slice(0, 3000)
+    # input_series = input_series.slice(0, 3000)
+    # output_series = output_series.slice(0, 3000)
 
     print(f"input_series -- n series: {len(input_series.series_dictionary)}")
     print(input_series.series_dictionary)
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     )
     exagp = EXAGP(seed_genome=seed_genome)
 
-    seed_genome = AutoencoderGenome2(
+    seed_genome = AutoencoderGenome(
         generation_number=0,
         input_series_names=input_series_names,
         output_series_names=output_series_names,
@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
     exagp = EXAGP(seed_genome=seed_genome, autoencoder=True)
 
-    # seed_genome = AutoencoderGenome(
+    # seed_genome = BidirectionalAEGenome(
     #     generation_number=0,
     #     input_series_names=input_series_names,
     #     output_series_names=output_series_names,
@@ -88,11 +88,11 @@ if __name__ == "__main__":
     #
     # exagp = EXAGP(
     #     seed_genome=seed_genome,
-    #     node_generator=AutoencoderNodeGenerator(),
-    #     edge_generator=AutoencoderEdgeGenerator(max_time_skip=10)
+    #     node_generator=BidirectionalAENodeGenerator(),
+    #     edge_generator=BidirectionalAEEdgeGenerator(max_time_skip=10)
     # )
 
-    for genome_number in range(2000):
+    for genome_number in range(1000):
         new_genome = exagp.generate_genome()
         print(f"evaluating genome: {new_genome.generation_number}")
         optimizer = optim.Adam(new_genome.parameters(), lr=0.001)

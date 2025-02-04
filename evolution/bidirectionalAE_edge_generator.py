@@ -4,12 +4,12 @@ from evolution.edge_generator import EdgeGenerator
 
 from genomes.genome import Genome
 from genomes.node import Node
-from genomes.autoencoder_edge import AutoencoderEdge
+from genomes.bidirectionalAE_edge import BidirectionalAEEdge
 
 from innovation.innovation_generator import InnovationGenerator
 
 
-class AutoencoderEdgeGenerator(EdgeGenerator):
+class BidirectionalAEEdgeGenerator(EdgeGenerator):
     """This is an edge generator for the EXA-GP algorithm. It will
     generate feed forward or recurrent edges randomly within the
     specified depths.
@@ -30,7 +30,7 @@ class AutoencoderEdgeGenerator(EdgeGenerator):
         input_node: Node,
         output_node: Node,
         recurrent: bool,
-    ) -> AutoencoderEdge:
+    ) -> BidirectionalAEEdge:
         """Creates a new feed forward or recurrent edge for the computational graph.
         For the basic version this will select either a feed forward (time skip = 0)
         or recurrent edge (time skip >= 1) at a 50% chance each. If it is a recurrent
@@ -51,7 +51,7 @@ class AutoencoderEdgeGenerator(EdgeGenerator):
             # this will be a recurrent edge
             time_skip = int(random.uniform(1, self.max_time_skip))
 
-        new_edge = AutoencoderEdge(
+        new_edge = BidirectionalAEEdge(
             innovation_number=InnovationGenerator.get_innovation_number(),
             input_node=input_node,
             output_node=output_node,

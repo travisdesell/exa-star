@@ -5,7 +5,7 @@ import torch
 from genomes.edge import Edge
 
 
-class AutoencoderEdge(Edge):
+class BidirectionalAEEdge(Edge):
     def __init__(
             self,
             innovation_number: int,
@@ -15,7 +15,7 @@ class AutoencoderEdge(Edge):
             time_skip: int,
     ):
         """
-        Initializes a AutoencoderEdge object that supports both forward and backward
+        Initializes a BidirectionalAEEdge object that supports both forward and backward
         propagation between the encoder and decoder stages.
 
         Args:
@@ -40,7 +40,7 @@ class AutoencoderEdge(Edge):
             An easily readable string representation of this object.
         """
         return (
-            f"AutoencoderEdge {self.innovation_number} from Node {self.input_innovation_number} "
+            f"BidirectionalAEEdge {self.innovation_number} from Node {self.input_innovation_number} "
             f"to Node {self.output_innovation_number}, time skip: {self.time_skip}, "
             f"weights: {self.weights}"
         )

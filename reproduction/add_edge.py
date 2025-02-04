@@ -7,8 +7,8 @@ from evolution.node_generator import NodeGenerator
 from genomes.genome import Genome
 from genomes.input_node import InputNode
 from genomes.output_node import OutputNode
-from genomes.autoencoder_input_node import AutoencoderInputNode
-from genomes.autoencoder_encoding_node import AutoencoderEncodingNode
+from genomes.bidirectionalAE_input_node import BidirectionalAEInputNode
+from genomes.bidirectionalAE_encoding_node import BidirectionalAEEncodingNode
 
 from reproduction.reproduction_method import ReproductionMethod
 
@@ -64,7 +64,7 @@ class AddEdge(ReproductionMethod):
 
             potential_inputs = [
                 node for node in child_genome.nodes if not isinstance(node, OutputNode)
-                and not isinstance(node, AutoencoderEncodingNode)
+                and not isinstance(node, BidirectionalAEEncodingNode)
                 and autoencoder_range[0] <= node.depth < autoencoder_range[1]
             ]
             print(f"potential inputs: {potential_inputs}")
@@ -75,12 +75,12 @@ class AddEdge(ReproductionMethod):
                 node
                 for node in child_genome.nodes
                 if not isinstance(node, InputNode)
-                and not isinstance(node, AutoencoderInputNode) and input_node.depth < node.depth <= autoencoder_range[1]
+                and not isinstance(node, BidirectionalAEInputNode) and input_node.depth < node.depth <= autoencoder_range[1]
             ]
         else:
             potential_inputs = [
                 node for node in child_genome.nodes if not isinstance(node, OutputNode)
-                                                       and not isinstance(node, AutoencoderEncodingNode)
+                                                       and not isinstance(node, BidirectionalAEEncodingNode)
             ]
             print(f"potential inputs: {potential_inputs}")
             random.shuffle(potential_inputs)
@@ -90,7 +90,7 @@ class AddEdge(ReproductionMethod):
                 node
                 for node in child_genome.nodes
                 if not isinstance(node, InputNode)
-                   and not isinstance(node, AutoencoderInputNode) and node.depth > input_node.depth
+                   and not isinstance(node, BidirectionalAEInputNode) and node.depth > input_node.depth
             ]
         print(f"potential outputs: {potential_outputs}")
         random.shuffle(potential_outputs)

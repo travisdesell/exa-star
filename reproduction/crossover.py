@@ -7,8 +7,8 @@ from evolution.node_generator import NodeGenerator
 from genomes.genome import Genome
 from genomes.input_node import InputNode
 from genomes.output_node import OutputNode
-from genomes.autoencoder_input_node import AutoencoderInputNode
-from genomes.autoencoder_encoding_node import AutoencoderEncodingNode
+from genomes.bidirectionalAE_input_node import BidirectionalAEInputNode
+from genomes.bidirectionalAE_encoding_node import BidirectionalAEEncodingNode
 
 from reproduction.add_node import AddNode
 from reproduction.reproduction_method import ReproductionMethod
@@ -76,7 +76,7 @@ class Crossover(ReproductionMethod):
 
         for node in child_genome.nodes:
             if (isinstance(node, InputNode) or isinstance(node, OutputNode)
-                    or isinstance(node, AutoencoderInputNode) or isinstance(node, AutoencoderEncodingNode)):
+                    or isinstance(node, BidirectionalAEInputNode) or isinstance(node, BidirectionalAEEncodingNode)):
                 # keep the inputs and outputs enabled
                 continue
 
@@ -132,7 +132,7 @@ class Crossover(ReproductionMethod):
 
         for node in child_genome.nodes:
             if (isinstance(node, InputNode) or isinstance(node, OutputNode)
-                    or isinstance(node, AutoencoderInputNode) or isinstance(node, AutoencoderEncodingNode)):
+                    or isinstance(node, BidirectionalAEInputNode) or isinstance(node, BidirectionalAEEncodingNode)):
                 # inputs and outputs don't need to be connected
                 continue
 
@@ -162,7 +162,7 @@ class Crossover(ReproductionMethod):
 
         for node in child_genome.nodes:
             if (isinstance(node, InputNode) or isinstance(node, OutputNode)
-                    or isinstance(node, AutoencoderInputNode) or isinstance(node, AutoencoderEncodingNode)):
+                    or isinstance(node, BidirectionalAEInputNode) or isinstance(node, BidirectionalAEEncodingNode)):
                 # inputs and outputs don't need to be connected
                 continue
 
@@ -181,7 +181,7 @@ class Crossover(ReproductionMethod):
         # done in the AddNode mutation.
         for node in child_genome.nodes:
             if (isinstance(node, InputNode) or isinstance(node, OutputNode)
-                    or isinstance(node, AutoencoderInputNode) or isinstance(node, AutoencoderEncodingNode)):
+                    or isinstance(node, BidirectionalAEInputNode) or isinstance(node, BidirectionalAEEncodingNode)):
                 # inputs and outputs don't need to be connected
                 continue
 
@@ -223,7 +223,7 @@ class Crossover(ReproductionMethod):
 
         for node in child_genome.nodes:
             if (isinstance(node, InputNode) or isinstance(node, OutputNode)
-                    or isinstance(node, AutoencoderInputNode) or isinstance(node, AutoencoderEncodingNode)):
+                    or isinstance(node, BidirectionalAEInputNode) or isinstance(node, BidirectionalAEEncodingNode)):
                 # inputs and outputs don't need to be connected
                 continue
 
