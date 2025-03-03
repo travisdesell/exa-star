@@ -69,9 +69,11 @@ class RecurrentGenome(Genome):
             iterations: How many iterations to train for.
             batch_size: The batch size to use for training.
         """
-
         loss = None
-        for iteration in range(iterations + 1):
+        # TODO temporary solution: epoch is not the same as iteration
+        #  (A) Either use batch_size or iterations
+        #  (B) Implement epochs for all train methods
+        for epoch in range(iterations + 1):
             permutation_seed = torch.randperm(input_series.series_length)
             shuffled_input = input_series.shuffle(permutation_seed)
             shuffled_output = output_series.shuffle(permutation_seed)
@@ -95,16 +97,16 @@ class RecurrentGenome(Genome):
 
                 loss = torch.sqrt(loss)
 
-                if iteration < iterations:
+                if epoch < iterations:
                     # don't need to do backpropagate on the last iteration, but also this lets
                     # us calculate the loss without doing backprop at all if iterations == 0
 
-                    # print(f"iteration {iteration} batch {batch_start/batch_size} loss: {loss}")
+                    # print(f"epoch {epoch} batch {batch_start/batch_size} loss: {loss}")
 
                     loss.backward()
                     optimizer.step()
                     optimizer.zero_grad()
-            print(f"iteration {iteration} loss: {loss}")
+            print(f"epoch {epoch} loss: {loss}")
 
         self.fitness = loss.detach().item()
 

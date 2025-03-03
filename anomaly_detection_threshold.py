@@ -1,16 +1,12 @@
-import math
+import sys
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.patches as patches
 from scipy import integrate
-from sklearn.decomposition import PCA
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import OneClassSVM
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.ensemble import IsolationForest
-from sklearn.neighbors import LocalOutlierFactor, KernelDensity
+from sklearn.neighbors import KernelDensity
 
 
 def import_dataset(filename):
@@ -57,7 +53,7 @@ def FindThreshold(x,h,p):
         tau=tau+int_K[0]*x[i]
     return tau
 
-def kqe(train_df, anomaly_df):
+def kqe(train_df, anomaly_df, true_labels):
     # Filter the columns to create datasets of expected and predicted values
     train_true = train_df.filter(regex='^expected').values
     train_pred = train_df.filter(regex='^predicted').values
@@ -70,36 +66,33 @@ def kqe(train_df, anomaly_df):
     params = {'bandwidth': np.linspace(0, 0.5, 10)}
     grid = GridSearchCV(KernelDensity(), params, cv = 20)
     # mse = sliding_window_rms(pd.DataFrame(mse), 40).values.flatten()
-    print(mse.shape)
     mse_train = sliding_window_rms(pd.DataFrame(mse_train), 40).values.flatten()
-    print(mse_train.shape)
     grid.fit(mse_train[:, None])
 
     print("best bandwidth: {0}".format(grid.best_estimator_.bandwidth))
     h = grid.best_estimator_.bandwidth
     tau = FindThreshold(mse_train, h, 0.42)
 
-    y_test1 = np.loadtxt("/Users/aryanjha/Documents/exact/datasets/smap-msl/msl", delimiter=",", skiprows=1)
-    y_test1[y_test1 == 1] = -1
-    y_test1[y_test1 == 0] = 1
-    y_scores=np.ones(y_test1.shape[0])
+    true_labels = pd.read_csv("/Users/aryanjha/Documents/exact/datasets/cats/anomaly_y.csv")
+    true_labels = true_labels.replace({0: 1, 1: -1})
+    true_labels = true_labels.values.flatten()
+    y_scores=np.ones(true_labels.shape[0])
     y_scores[(mse-tau)>0]=-1
-    precision = precision_score(y_test1, y_scores)
-    recall    = recall_score(y_test1, y_scores)
-    accuracy = accuracy_score(y_test1, y_scores)
-    f1 = f1_score(y_test1, y_scores)
+    precision = precision_score(true_labels, y_scores)
+    recall    = recall_score(true_labels, y_scores)
+    accuracy = accuracy_score(true_labels, y_scores)
+    f1 = f1_score(true_labels, y_scores)
     print ('Tau : ', tau)
     print ('Precision : ', precision)
     print ('Recall: ', recall)
     print ('Accuracy : ', accuracy)
     print ('F1_score: ', f1)
 
-def ocsvm(train_df, anomaly_df):
+def ocsvm(train_df, anomaly_df, true_labels):
     # Filter the columns to create datasets of expected and predicted values
     train_true = train_df.filter(regex='^expected').values
     train_pred = train_df.filter(regex='^predicted').values
     # Calculate deviations for each feature
-    # TODO switch to MSE
     train_residuals = np.abs(train_true - train_pred)
     train_residuals = pd.DataFrame(train_residuals)
 
@@ -109,20 +102,14 @@ def ocsvm(train_df, anomaly_df):
     anomaly_residuals = np.abs(anomaly_true - anomaly_pred)
     anomaly_residuals = pd.DataFrame(anomaly_residuals)
 
-    print("train_residuals shape: ", train_residuals.shape)
-    # cats - nu=0.008,0.016,0.008,0.06,0.012,0.005,0.0075,0.002,0.003,0.006; gamma='auto' (375,562,639,714,768,783,825,841,853,940)
-    # spam - nu=0.81,0.91,0.95,0.84,0.295,0.473,0.945,0.663,0.149,0.71 (441,557,605,804,883,903,920,937,972,990)
-    # msl - nu=0.02
     ocsvm = OneClassSVM(nu=0.05)
     ocsvm.fit(train_residuals)
+
     # -1 for anomalies, 1 for normal points
     predictions = ocsvm.predict(anomaly_residuals)
 
     np.savetxt("ocsvm_predictions.csv", predictions, fmt='%i', delimiter=",")
 
-    true_labels = pd.read_csv("/Users/aryanjha/Documents/exact/datasets/cats/anomaly_y.csv")
-    true_labels = true_labels.replace({0: 1, 1: -1})
-    true_labels = true_labels.values.flatten()
     accuracy = accuracy_score(true_labels, predictions)
     precision = precision_score(true_labels, predictions)
     recall = recall_score(true_labels, predictions)
@@ -146,10 +133,22 @@ def ocsvm(train_df, anomaly_df):
 
 
 def main():
-    train_df = import_dataset("test_genomes/train_predictions.csv")
-    anomaly_df = import_dataset("test_genomes/predictions.csv")
-    ocsvm(train_df, anomaly_df)
-    # kqe(train_df, anomaly_df)
+    if len(sys.argv) < 4:
+        print("Usage: python anomaly_detection_threshold.py <train_predictions> <test_predictions> <anomaly_labels>")
+        return
+    train_file = sys.argv[1]
+    test_file = sys.argv[2]
+    label_file = sys.argv[3]
+
+    train_df = import_dataset(train_file)
+    anomaly_df = import_dataset(test_file)
+
+    true_labels = pd.read_csv(label_file)
+    true_labels = true_labels.replace({0: 1, 1: -1})
+    true_labels = true_labels.values.flatten()
+
+    ocsvm(train_df, anomaly_df, true_labels)
+    # kqe(train_df, anomaly_df, true_labels)
 
 
 if __name__ == '__main__':

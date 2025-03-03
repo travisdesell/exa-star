@@ -1,3 +1,4 @@
+import sys
 import csv
 import math
 import pickle
@@ -11,17 +12,8 @@ import torch
 from genomes.lstm_node import LSTMNode
 from time_series.time_series import TimeSeries
 
-genome_filename = ("../test_genomes/genome_object/smap/pkl/genome_990.pkl")
-testing_filename = "/Users/aryanjha/Documents/exact/datasets/smap-msl/smap/p_smap.csv"
-time_offset = 0
 
-with open(genome_filename, 'rb') as file:
-    loaded_genome = pickle.load(file)
-
-# print("fitness:", loaded_genome.fitness)
-
-
-def make_dot_gv(loaded_genome, genome_name: str = None):
+def make_diagram(loaded_genome, genome_name: str = None):
     figure, axes = plt.subplots()
 
     if genome_name is None:
@@ -62,7 +54,6 @@ def make_dot_gv(loaded_genome, genome_name: str = None):
         if rank_group not in depth_groups:
             depth_groups[rank_group] = []
         depth_groups[rank_group].append(node)
-    print(len(depth_groups))
 
     for rank_group, nodes in depth_groups.items():
         with dot.subgraph() as encoder_graph:
@@ -111,7 +102,6 @@ def make_dot_gv(loaded_genome, genome_name: str = None):
         if rank_group not in depth_groups:
             depth_groups[rank_group] = []
         depth_groups[rank_group].append(node)
-    print(len(depth_groups))
 
     for rank_group, nodes in depth_groups.items():
         with dot.subgraph() as decoder_graph:
@@ -149,9 +139,9 @@ def make_dot_gv(loaded_genome, genome_name: str = None):
     for edge in loaded_genome.edges:
         if edge.disabled or edge.input_node.disabled or edge.output_node.disabled:
             continue
-        if (edge.input_node.depth < 0.5 and edge.output_node.depth > 0.5) or (
-                edge.input_node.depth > 0.5 and edge.output_node.depth < 0.5):
-            print(f"WARNING: edge {edge} goes across the encoding layer")
+        # if (edge.input_node.depth < 0.5 and edge.output_node.depth > 0.5) or (
+        #         edge.input_node.depth > 0.5 and edge.output_node.depth < 0.5):
+        #     print(f"WARNING: edge {edge} goes across the encoding layer")
         weight = edge.weights[0].detach().item()
         if weight > 0:
             color_val = ((weight / (max_weight + eps)) / 2.0) + 0.5
@@ -179,7 +169,6 @@ def make_dot_gv(loaded_genome, genome_name: str = None):
 
     # View the graph
     dot.view()
-
 
 def get_genome_info(loaded_genome):
     total_node_count = 0
@@ -338,15 +327,14 @@ def get_genome_info(loaded_genome):
     print("encoder trainable parameters:", encoder_edge_count + (16 * encoder_lstm_count))
     print("decoder trainable parameters:", decoder_edge_count + (16 * decoder_lstm_count))
 
-def get_predictions(loaded_genome, output_filename):
-    input_series_names = [input_node.parameter_name for input_node in loaded_genome.input_nodes]
+def get_predictions(genome, testing_filename, output_filename, time_offset=0):
+    input_series_names = [input_node.parameter_name for input_node in genome.input_nodes]
 
     input_series = TimeSeries.create_from_csv(filename=testing_filename).get_inputs(
             input_series_names=input_series_names, offset=time_offset
         )
-    print("series length:", input_series.series_length)
 
-    for node in loaded_genome.nodes:
+    for node in genome.nodes:
         node.max_sequence_length = input_series.series_length
         node.inputs_fired = [0] * node.max_sequence_length
         node.value = [torch.tensor(0.0)] * node.max_sequence_length
@@ -354,17 +342,15 @@ def get_predictions(loaded_genome, output_filename):
             node.hidden_state = [torch.zeros(1, 1)] * node.max_sequence_length
             node.cell_state = [torch.zeros(1, 1)] * node.max_sequence_length
 
-    for edge in loaded_genome.edges:
+    for edge in genome.edges:
         edge.max_sequence_length = input_series.series_length
 
-    outputs = loaded_genome.forward(input_series)
+    outputs = genome.forward(input_series)
 
-    # Change dataset name after genome_object/ as appropriate
-    filename = "../test_genomes/genome_object/smap/predictions/" + output_filename + "_predictions.csv"
+    filename = output_filename + ".csv"
     with open(filename, mode='w', newline='') as file:
         writer = csv.writer(file)
 
-        # Write the header row (prefix each column name with 'expected_' and 'predicted_')
         header = []
         for input_feature in input_series.series_dictionary.keys():
             header.append(f"expected_{input_feature}")
@@ -372,18 +358,32 @@ def get_predictions(loaded_genome, output_filename):
         writer.writerow(header)
 
         # Write the data rows
-        num_timesteps = len(next(iter(input_series.series_dictionary.values())))  # Assuming all inputs have the same length
+        num_timesteps = len(next(iter(input_series.series_dictionary.values())))
         for i in range(num_timesteps):
             row = []
             for input_feature in input_series.series_dictionary.keys():
                 # Append the actual (input) and predicted (output) values for each timestep
-                row.append(input_series.series_dictionary[input_feature][i].item())  # .item() to convert tensor to scalar
+                row.append(input_series.series_dictionary[input_feature][i].item())
                 row.append(outputs[input_feature][i].item())
             writer.writerow(row)
 
     print(f"Predictions saved to {filename}")
 
 
-# get_genome_info(loaded_genome)
-# get_predictions(loaded_genome, "genome_557_train")
-# make_dot_gv(loaded_genome)
+def main():
+    if len(sys.argv) < 4:
+        print("Usage: python evaluate_genome.py <genome_pkl> <testing_data> <output_filename>")
+        return
+    genome_filename = sys.argv[1]
+    testing_filename = sys.argv[2]
+    output_filename = sys.argv[3]
+
+    with open(genome_filename, 'rb') as file:
+        loaded_genome = pickle.load(file)
+
+    get_genome_info(loaded_genome)
+    get_predictions(loaded_genome, testing_filename, output_filename)
+    make_diagram(loaded_genome)
+
+if __name__ == "__main__":
+    main()
