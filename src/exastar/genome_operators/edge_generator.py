@@ -165,7 +165,7 @@ class DTEdgeGenerator[G: EXAStarGenome](EdgeGenerator[G]):
         """
         Initializes an edge generator for EXA-GP.
         """
-
+        pass
 
     def __call__(
         self,

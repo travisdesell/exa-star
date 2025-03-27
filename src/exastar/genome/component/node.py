@@ -83,9 +83,9 @@ class Node(ComparableMixin, Component):
         """
         state: dict = dict(self.__dict__)
 
-        # state["input_edges"] = []
-        # state["output_edges"] = []
-        # state["value"] = []
+        state["input_edges"] = []
+        state["output_edges"] = []
+        state["value"] = []
 
         return state
 

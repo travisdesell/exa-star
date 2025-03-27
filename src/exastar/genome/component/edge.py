@@ -6,6 +6,7 @@ from typing import cast, Dict, Optional, Tuple
 from exastar.inon import inon_t
 from exastar.genome.component.component import Component
 from exastar.genome.component.node import Node
+from exastar.genome.component.dt_node import DTNode
 from util.typing import ComparableMixin, overrides
 
 from loguru import logger
@@ -87,7 +88,9 @@ class Edge(ComparableMixin, Component):
         effectively flattens the pickled representation.
         """
         super().__setstate__(state)
-        # self._connect()
+        # print(self.input_node)
+        # print(self.output_node)
+        self._connect()
 
     def __getstate__(self):
         """
@@ -102,6 +105,10 @@ class Edge(ComparableMixin, Component):
             state dictionary sans the input and output edges
         """
         state: dict = dict(self.__dict__)
+
+        state["input_node"] = self.input_node
+        state["output_node"] = self.output_node
+
 
         return state
 

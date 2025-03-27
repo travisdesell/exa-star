@@ -41,16 +41,6 @@ class DTBaseEdge(Edge):
         self.weight: torch.nn.Parameter = cast(torch.nn.Parameter, torch.nn.Parameter(torch.ones(1)))
 
     @overrides(Edge)
-    def __setstate__(self, state):
-        """
-        To avoid ultra-deep recurrent pickling (which causes stack overflow issues), we require edges to add themselves
-        to nodes when they're being un-pickled or otherwise loaded and nodes will not clone their edges. This
-        effectively flattens the pickled representation.
-        """
-
-        super().__setstate__(state)
-
-    @overrides(Edge)
     def __deepcopy__(self, memo):
         """
         Same story as __setstate__: deepcopy of recurrent objects causes stack overflow issues, so edges
@@ -65,9 +55,27 @@ class DTBaseEdge(Edge):
         for k, v in state.items():
             setattr(clone, k, copy.deepcopy(v, memo))
 
-        # clone._connect()
+        clone._connect()
 
         return clone
+
+    def _connect(self):
+        """
+        Connects this node with the input and output nodes. Calling this twice will cause catastrophoe (i.e. it will
+        cause assertion error(s)). You most likely do not need to call this manually.
+        """
+        self.input_node.add_output_edge(self)
+        self.output_node.add_input_edge(self)
+
+    @overrides(Edge)
+    def __setstate__(self, state):
+        """
+        To avoid ultra-deep recurrent pickling (which causes stack overflow issues), we require edges to add themselves
+        to nodes when they're being un-pickled or otherwise loaded and nodes will not clone their edges. This
+        effectively flattens the pickled representation.
+        """
+        super().__setstate__(state)
+        # self._connect()
 
     @overrides(Edge)
     def __getstate__(self):
@@ -113,12 +121,13 @@ class DTBaseEdge(Edge):
         Connects this node with the input and output nodes. Calling this twice will cause catastrophoe (i.e. it will
         cause assertion error(s)). You most likely do not need to call this manually.
         """
-        if self.isLeft:
-            self.input_node.add_left_edge(self)
-        else:
-            self.input_node.add_right_edge(self)
+        if self.enabled:
+            if self.isLeft:
+                self.input_node.add_left_edge(self)
+            else:
+                self.input_node.add_right_edge(self)
 
-        self.output_node.add_input_edge(self)
+            self.output_node.add_input_edge(self)
 
     def forward(self, value: torch.Tensor):
         """
@@ -126,7 +135,7 @@ class DTBaseEdge(Edge):
         Only does so if input node approves, as an output it can only be positive
 
         Args:
-            value: the output value of the input nodem.
+            value: the output value of the input node.
         """
 
         if isinstance(self.output_node, DTOutputNode):
@@ -135,7 +144,7 @@ class DTBaseEdge(Edge):
                 self.weight = torch.nn.Parameter(-1 * self.weight/self.weight)
             elif self.weight > 1:
                 self.weight = torch.nn.Parameter(self.weight/self.weight)
-        assert self.is_active()
+        assert self.is_enabled()
         output_value = value * self.weight
         self.output_node.input_fired(
             value=output_value

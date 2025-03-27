@@ -126,10 +126,10 @@ class TimeSeries(Dataset):
             if feature_name in norm_list:
                 mean = df[feature_name].mean()
                 std = df[feature_name].std()
+                max_value = (df[feature_name].max() - mean) / std
+                min_value = (df[feature_name].min() - mean) / std
                 result[feature_name] = (df[feature_name] - mean) / std
-                guide[feature_name] = (mean, std)
-                # max_value = df[feature_name].max()
-                # min_value = df[feature_name].min()
+                guide[feature_name] = (mean, std, min_value, max_value)
                 # result[feature_name] = (2*((df[feature_name] - min_value) / (max_value - min_value)))-1
                 # guide[feature_name] = (max_value-min_value, min_value)
         return result, guide
@@ -302,15 +302,20 @@ class AAPLTimeSeriesConfig(TimeSeriesConfig):
 @configclass(name="base_test_dt_dataset", group="dataset", target=TimeSeries.create_norm_from_csv)
 class TestDataset(TimeSeriesConfig):
     filenames: Tuple[str, ...] = (
-        "C:/Users/matts/Documents/RIT/exa-star-dt/src/short_data/train.csv",
+        "C:/Users/matts/Documents/RIT/exa-star-dt/src/exastar/input/dt_train.csv",
     )
     # output_series: List[str] = ("STLD",)
-    output_series: List[str] = ("CPT", "STLD", "RHI", "KMX", "UHS",)
+    output_series: List[str] = ("ED", "HSIC", "IVZ", "JBHT", "KMB", "NDSN", "NVR", "PKG", "REG", "TFX",)
+    # ("ED", "HSIC", "IVZ", "JBHT", "KMB",)
+    # ("ED", "HSIC", "IVZ", "JBHT", "KMB", "NDSN", "NVR", "PKG", "REG", "TFX",)
     # input_series: List[str] = ("Predicted_AKAM",)
     # normalize_series: List[str] = (
     #     "Predicted_STLD", "STLD_VOl_CHANGE", "STLD_TURNOVER",)
     normalize_series: List[str] = (
-    "Predicted_CPT", "Predicted_KMX","Predicted_RHI", "Predicted_STLD",  "Predicted_UHS")
+    # "Predicted_ED", "Predicted_HSIC","Predicted_IVZ", "Predicted_JBHT",  "Predicted_KMB",)
+    # (
+        "Predicted_ED", "Predicted_HSIC", "Predicted_IVZ", "Predicted_JBHT", "Predicted_KMB",
+        "Predicted_NDSN", "Predicted_NVR", "Predicted_PKG", "Predicted_REG", "Predicted_TFX")
     # normalize_series : List[str] = ("Predicted_CPT", "CPT_VOl_CHANGE", "CPT_TURNOVER", "CPT_BA_SPREAD", "CPT_ILLIQUIDITY",
     #                                 "CPT_MARKET_CAP", "Predicted_KMX", "KMX_VOl_CHANGE", "KMX_TURNOVER", "KMX_BA_SPREAD",
     #                                 "KMX_ILLIQUIDITY", "KMX_MARKET_CAP", "Predicted_RHI", "RHI_VOl_CHANGE", "RHI_TURNOVER",

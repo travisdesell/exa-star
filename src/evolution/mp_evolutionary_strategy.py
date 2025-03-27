@@ -183,9 +183,10 @@ class SynchronousMPStrategy[G: Genome, D: Dataset](ParallelMPStrategy[G, D]):
             genome.evaluate(fitness, EvolutionaryStrategy.get_dataset())
 
         with open(f"{output_dir}/{i+1}.genome", "wb") as file:
-            dill.dump(genome, file, recurse=True)
+            dill.dump(genome, file)
         file.close()
-
+        # if genome is not None:
+        genome.remove_redundancies()
         return genome
 
     def step(self) -> None:

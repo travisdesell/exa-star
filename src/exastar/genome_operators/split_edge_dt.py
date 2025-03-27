@@ -68,25 +68,24 @@ class DTSplitEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
         target_out = None
         while target_out is None:
             target_out = rng.choice(genome.nodes)
-            if target_out == output_node:
+
+            if not target_out.enabled:
                 target_out = None
-            elif isinstance(target_out, DTInputNode):
+            elif not isinstance(target_out, DTOutputNode):
                 target_out = None
-            elif new_node == target_out:
-                target_out = None
-            elif target_out.input_edge is not None and not isinstance(target_out, DTOutputNode):
-                target_out = None
+
+
 
         r_output_edge = self.edge_generator(genome, new_node, target_out, False, rng)
 
         genome.add_edge(r_output_edge)
 
-        self.weight_generator(genome, rng, targets=[new_node, input_edge, l_output_edge, r_output_edge])
-        # self.weight_generator(genome, rng, targets=[new_node, target_edge, l_output_edge, r_output_edge])
+        # self.weight_generator(genome, rng, targets=[new_node, input_edge, l_output_edge])
+        self.weight_generator(genome, rng, targets=[new_node, target_edge, l_output_edge, r_output_edge])
 
         return genome
 
 
-@ configclass(name="base_split_dt_edge_mutation", group="genome_factory/mutation_operators", target=DTSplitEdge)
+@configclass(name="base_split_dt_edge_mutation", group="genome_factory/mutation_operators", target=DTSplitEdge)
 class SplitEdgeConfig(EXAStarMutationOperatorConfig):
     ...

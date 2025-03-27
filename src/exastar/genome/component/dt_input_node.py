@@ -2,6 +2,7 @@ from typing import Optional
 import bisect
 from util.typing import ComparableMixin, overrides
 from exastar.genome.component.input_node import InputNode
+from exastar.genome.component.node import Node, node_inon_t
 from exastar.genome.component.dt_node import DTNode, node_inon_t
 from exastar.genome.component.dt_set_edge import DTBaseEdge
 from util.typing import overrides, ComparableMixin
@@ -37,17 +38,45 @@ class DTInputNode(InputNode):
         self.node_name: str = node_name
 
     @overrides(InputNode)
+    def __getstate__(self):
+        """
+        Overrides the default implementation of object.__getstate__ because we are unable to pickle
+        large networks if we include input and outptut edges. Instead, we will rely on the construction of
+        new edges to add the appropriate input and output edges. See exastar.genome.component.Edge.__setstate__
+        to see how this is done.
+
+        `self.value` is not copied, meaining resumable training will not work.
+
+        Returns:
+            state dictionary sans the input and output edges
+        """
+        state: dict = dict(self.__dict__)
+        state["_modules"] = {}
+        state["input_edge"] = None
+        state["left_output_edge"] = None
+        state["right_output_edge"] = None
+        state["input_edges"] = []
+        state["output_edges"] = []
+        state["value"] = []
+
+        return state
+
+    @overrides(InputNode)
     def __repr__(self) -> str:
         """
         Provides a unique string representation for this input node.
         """
         return (
-            "InputNode("
+            "DTInputNode("
             f"parameter='{self.node_name}', "
             f"depth={self.depth}, "
             f"inon={self.inon}, "
             f"enabled={self.enabled})"
         )
+
+    @overrides(Node)
+    def add_output_edge(self, edge: DTBaseEdge):
+        self.add_left_edge(edge)
 
     def add_left_edge(self, edge: DTBaseEdge):
         """

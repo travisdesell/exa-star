@@ -81,9 +81,51 @@ class DTNode(Node):
         """
         super().add_input_edge(edge)
         assert edge.output_node.inon == self.inon
+
+        if self.input_edge is None:
+            self.input_edge = edge
+
         if self.input_edge:
             self.input_edges = []
         self.input_edge = edge
+
+    @overrides(Node)
+    def __getstate__(self):
+        """
+        Overrides the default implementation of object.__getstate__ because we are unable to pickle
+        large networks if we include input and outptut edges. Instead, we will rely on the construction of
+        new edges to add the appropriate input and output edges. See exastar.genome.component.Edge.__setstate__
+        to see how this is done.
+
+        `self.value` is not copied, meaining resumable training will not work.
+
+        Returns:
+            state dictionary sans the input and output edges
+        """
+        state: dict = dict(self.__dict__)
+        state["_modules"] = {}
+        state["input_edge"] = None
+        state["left_output_edge"] = None
+        state["right_output_edge"] = None
+        state["input_edges"] = []
+        state["output_edges"] = []
+        state["value"] = []
+
+        return state
+
+    def __setstate__(self, state):
+        """
+        Note that this __setstate__ will mess up training after a clone since it re-creates `self.value`.
+        """
+        super().__setstate__(state)
+        self.value = self._create_value()
+
+    @overrides(Node)
+    def add_output_edge(self, edge: DTBaseEdge):
+        if edge.isLeft:
+            self.add_left_edge(edge)
+        else:
+            self.add_right_edge(edge)
 
     def add_right_edge(self, edge: DTBaseEdge):
         """
@@ -94,6 +136,9 @@ class DTNode(Node):
         """
         assert edge.input_node.inon == self.inon
         assert not edge.inon == self.left_output_edge
+
+        if self.right_output_edge is None:
+            self.right_output_edge = edge
 
         if self.right_output_edge:
             self.remove_output_edge(self.right_output_edge)
@@ -110,6 +155,9 @@ class DTNode(Node):
 
         assert edge.input_node.inon == self.inon
         assert not edge.inon == self.right_output_edge
+
+        if self.left_output_edge is None:
+            self.left_output_edge = edge
 
         if self.left_output_edge:
             self.remove_output_edge(self.left_output_edge)
@@ -132,37 +180,33 @@ class DTNode(Node):
         self.value = value
         self.inputs_fired = 1
 
+    # def __setstate__(self, state):
+    #     """
+    #     Note that this __setstate__ will mess up training after a clone since it re-creates `self.value`.
+    #     """
+    #     if "inon" not in state:
+    #         raise AttributeError("Missing attribute 'inon' in restored state.")
+    #
+    #     super().__setstate__(state)
+    #     self.value = self._create_value()
+
     @overrides(Node)
-    def __getstate__(self):
+    def __repr__(self) -> str:
         """
-        DOES NOT DO BELOW, FUTURE TODO
-        Overrides the default implementation of object.__getstate__ because we are unable to pickle
-        large networks if we include input and outptut edges. Instead, we will rely on the construction of
-        new edges to add the appropriate input and output edges. See exastar.genome.component.Edge.__setstate__
-        to see how this is done.
-
-        `self.value` is not copied, meaining resumable training will not work.
-
-        Returns:
-            state dictionary sans the input and output edges
+        Overrides the torch.nn.Module __repr__, which prints a ton of torch information.
+        This can still be accessed by calling
+        ```
+        node: Node = ...
+        torch_repr: str = torch.nn.Module.__repr__(node)
+        ```
         """
-        state: dict = dict(self.__dict__)
-
-        # state["input_edge"] = []
-        # state["right_output_edge"] = []
-        # state["left_output_edge"] = []
-        # state["input_edges"] = []
-        # state["output_edges"] = []
-        # state["value"] = []
-
-        return state
-
-    def __setstate__(self, state):
-        """
-        Note that this __setstate__ will mess up training after a clone since it re-creates `self.value`.
-        """
-        super().__setstate__(state)
-        self.value = self._create_value()
+        return (
+            "DT_Node("
+            f"parameter_name={self.parameter_name[0]}, "
+            f"sign={self.sign}, "
+            f"inon={self.inon}, "
+            f"enabled={self.enabled})"
+        )
 
     @overrides(Node)
     def reset(self):
@@ -186,17 +230,13 @@ class DTNode(Node):
                 if self.value < parameter_val:
                     if self.left_output_edge.enable:
                         self.left_output_edge.forward(value=torch.ones_like(self.value))
-                        # self.right_output_edge.active = False
                 else:
-                    if self.right_output_edge.enable:
+                    if self.right_output_edge is not None and self.right_output_edge.enable:
                         self.right_output_edge.forward(value=torch.ones_like(self.value))
-                        # self.left_output_edge.active = False
             else:  # v > parameter
                 if self.value > parameter_val:
                     if self.left_output_edge.enable:
                         self.left_output_edge.forward(value=torch.ones_like(self.value))
-                        # self.right_output_edge.active = False
                 else:
-                    if self.right_output_edge.enable:
+                    if self.right_output_edge is not None and self.right_output_edge.enable:
                         self.right_output_edge.forward(value=torch.ones_like(self.value))
-                        # self.left_output_edge.active = False

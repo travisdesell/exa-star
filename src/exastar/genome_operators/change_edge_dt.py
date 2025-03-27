@@ -44,18 +44,13 @@ class DTChangeEdge[G: EXAStarGenome](EXAStarMutationOperator[G]):
             self.weight_generator(genome, rng, targets=[new_edge])
 
             if target_edge.isLeft:
-                target_edge.input_node.add_right_edge(new_edge)
-            else:
                 target_edge.input_node.add_left_edge(new_edge)
-
+            else:
+                target_edge.input_node.add_right_edge(new_edge)
 
         return genome
 
 
-
-
-
-
-@ configclass(name="base_change_dt_edge_mutation", group="genome_factory/mutation_operators", target=DTChangeEdge)
+@configclass(name="base_change_dt_edge_mutation", group="genome_factory/mutation_operators", target=DTChangeEdge)
 class SplitEdgeConfig(EXAStarMutationOperatorConfig):
     ...

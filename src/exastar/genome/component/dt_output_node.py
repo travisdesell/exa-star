@@ -33,6 +33,27 @@ class DTOutputNode(OutputNode):
         self.node_name: str = node_name
 
     @overrides(OutputNode)
+    def __getstate__(self):
+        """
+        Overrides the default implementation of object.__getstate__ because we are unable to pickle
+        large networks if we include input and outptut edges. Instead, we will rely on the construction of
+        new edges to add the appropriate input and output edges. See exastar.genome.component.Edge.__setstate__
+        to see how this is done.
+
+        `self.value` is not copied, meaining resumable training will not work.
+
+        Returns:
+            state dictionary sans the input and output edges
+        """
+        state: dict = dict(self.__dict__)
+        state["_modules"] = {}
+        state["input_edge"] = None
+        state["input_edges"] = []
+        state["value"] = []
+
+        return state
+
+    @overrides(OutputNode)
     def input_fired(self, value: torch.Tensor):
         self.value = value
         self.inputs_fired = 1
@@ -65,3 +86,16 @@ class DTOutputNode(OutputNode):
         """
         self.inputs_fired = 0
         self.value = torch.zeros(1)
+
+    @overrides(OutputNode)
+    def __repr__(self) -> str:
+        """
+        Provides a unique string representation for this input node.
+        """
+        return (
+            "DTOutputNode("
+            f"parameter='{self.node_name}', "
+            f"depth={self.depth}, "
+            f"inon={self.inon}, "
+            f"enabled={self.enabled})"
+        )

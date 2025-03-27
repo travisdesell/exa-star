@@ -5,7 +5,7 @@ defaults:
   - genome_factory/seed_genome_factory: base_trivial_dt_seed_genome_factory
   - genome_factory/crossover_operators@genome_factory.crossover_operators.crossover: base_exastar_dt_crossover
   - genome_factory/mutation_operators@genome_factory.mutation_operators.clone: base_clone_mutation
-  - genome_factory/mutation_operators@genome_factory.mutation_operators.merge_node: base_merge_dt_node_mutation
+#  - genome_factory/mutation_operators@genome_factory.mutation_operators.merge_node: base_merge_dt_node_mutation
   - genome_factory/mutation_operators@genome_factory.mutation_operators.split_edge: base_split_dt_edge_mutation
   - genome_factory/mutation_operators@genome_factory.mutation_operators.change_edge: base_change_dt_edge_mutation
   - genome_factory/mutation_operators@genome_factory.mutation_operators.change_node: base_change_dt_node_mutation
@@ -34,9 +34,9 @@ defaults:
 environment:
   HYDRA_FULL_ERROR: "1"
 
-output_directory: "output/test/short_20000_10"
-nsteps: 7000
-parallelism: 3
+output_directory: "output/10_runs/1_10_stocks_test6"
+nsteps: 300000
+parallelism: 8
 population:
-  size: 15
-  n_elites: 3
+  size: 20
+  n_elites: 4

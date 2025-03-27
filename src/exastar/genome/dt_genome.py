@@ -45,11 +45,11 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
             output_nodes[output_name] = DTOutputNode(output_name, 1.0)
             output_nodes["Hold"] = DTOutputNode("Hold", 1.0)
 
+        nodes: List[DTNode] = list(chain(input_nodes.values(), output_nodes.values()))
+
         edges: List[DTBaseEdge] = [
             DTBaseEdge(input_nodes["Start"], output_nodes[output_series_names[0]], True)
         ]
-
-        nodes: List[DTNode] = list(chain(input_nodes.values(), output_nodes.values()))
         logger.info(f"output series: {output_series_names}")
 
         g = DTGenome(
@@ -156,19 +156,156 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
         assert sorted(self.nodes) == self.nodes
 
         self.input_nodes[0].forward()
-
-        for node in filter(is_not_any_type({DTInputNode, DTOutputNode}), self.nodes):
-            if node.enabled:
-                if node.inputs_fired == 1:
-                    val = node.get_parameter()[0]
-                    x = input_series.series_dictionary[val.astype(str)][time_step]
-                    node.forward(x)
+        #
+        # Commented out for testing
+        firing = True
+        while firing:
+            firing = False
+            for node in filter(is_not_any_type({DTInputNode, DTOutputNode}), self.nodes):
+                if node.enabled:
+                    if node.inputs_fired == 1:
+                        val = node.get_parameter()[0]
+                        x = input_series.series_dictionary[val.astype(str)][time_step]
+                        node.forward(x)
+                        node.reset()
+                        firing = True
 
         outputs = {}
         for output_node in self.output_nodes:
             outputs[output_node.node_name] = output_node.value
 
         return outputs
+
+    def recursive_removal(self, node):
+        if isinstance(node, DTOutputNode) :
+            # print("D_out: " + node.node_name)
+            return
+        # print("D: " + node.get_parameter()[0] + str(node.inon))
+        # print(node)
+        node.disable()
+        # node.input_edge.disable()
+        node.right_output_edge.disable()
+        node.left_output_edge.disable()
+        self.recursive_removal(node.left_output_edge.output_node)
+        self.recursive_removal(node.right_output_edge.output_node)
+
+
+    def recursive_redundancies(self, new_node, limits, param, val, isMax):
+
+        if isinstance(new_node, DTOutputNode):
+            # print("Out :" + new_node.node_name)
+            return
+        # print("REC")
+        # print(new_node)
+        # print(new_node.right_output_edge)
+        # if new_node.right_output_edge is None or new_node.left_output_edge is None:
+        #     print("HERE")
+        # print(new_node.right_output_edge.output_node)
+        # print(new_node.left_output_edge)
+        # print(new_node.left_output_edge.output_node)
+        previous_change = None
+        if isMax is not None:
+            previous_change = list(limits[str(param)])
+            if isMax:
+                limits[str(param)][1] = val
+            else:
+                limits[str(param)][0] = val
+        param_key = new_node.get_parameter()[0]
+        param_sign = new_node.sign
+        param_val = new_node.input_edge.weight
+        remove_node = None #True means keep left #False means keep right
+        l_min, l_max = limits[str(param_key)]
+
+        if param_sign == 0:
+            # Edge < X, Left is true, right is false
+            if l_min is None:
+                #Edge becomes min
+                # print("L " + new_node.get_parameter()[0] + str(new_node.inon))
+                self.recursive_redundancies(new_node.left_output_edge.output_node, limits, param_key, param_val, False)
+            else:
+                # Check if min
+                if param_val <= l_min:
+                    self.recursive_removal(new_node.right_output_edge.output_node)
+                    remove_node = True
+                else:
+                    # print("L " + new_node.get_parameter()[0] + str(new_node.inon))
+                    self.recursive_redundancies(new_node.left_output_edge.output_node, limits, param_key,
+                                                param_val, False)
+            if l_max is None:
+                # print("R " + new_node.get_parameter()[0] + str(new_node.inon))
+                self.recursive_redundancies(new_node.right_output_edge.output_node, limits, param_key, param_val,
+                                            True)
+            else:
+                if param_val >= l_max:
+                    self.recursive_removal(new_node.left_output_edge.output_node)
+                    remove_node = False
+
+                else:
+                    # print("R " + new_node.get_parameter()[0] + str(new_node.inon))
+                    self.recursive_redundancies(new_node.right_output_edge.output_node, limits, param_key,
+                                                param_val, True)
+        else:
+            # Edge > X, Left is true, right is false
+            if l_max is None:
+                # print("L " + new_node.get_parameter()[0] + str(new_node.inon))
+                self.recursive_redundancies(new_node.left_output_edge.output_node, limits, param_key, param_val,
+                                            True)
+            else:
+                if param_val > l_max:
+                    self.recursive_removal(new_node.right_output_edge.output_node)
+                    remove_node = True
+                else:
+                    # print("L " + new_node.get_parameter()[0] + str(new_node.inon))
+                    self.recursive_redundancies(new_node.left_output_edge.output_node, limits, param_key,
+                                                param_val, True)
+
+            if l_min is None:
+                #If false, Edge is min
+                # print("R " + new_node.get_parameter()[0] + str(new_node.inon))
+                self.recursive_redundancies(new_node.right_output_edge.output_node, limits, param_key, param_val, False)
+            else:
+                if param_val <= l_min:
+                    self.recursive_removal(new_node.left_output_edge.output_node)
+                    remove_node = False
+
+                else:
+                    # print("R " + new_node.get_parameter()[0] + str(new_node.inon))
+                    self.recursive_redundancies(new_node.right_output_edge.output_node, limits, param_key,
+                                                param_val, False)
+        if remove_node is not None:
+            new_node.disable()
+            new_node.input_edge.disable()
+            if remove_node:
+
+                in_edge = DTBaseEdge(new_node.input_edge.input_node, new_node.left_output_edge.output_node, new_node.input_edge.isLeft)
+                in_edge.weight = new_node.left_output_edge.weight
+                self.add_edge(in_edge)
+                new_node.right_output_edge.disable()
+                new_node.left_output_edge.disable()
+            else:
+                in_edge = DTBaseEdge(new_node.input_edge.input_node, new_node.right_output_edge.output_node,
+                                     new_node.input_edge.isLeft)
+                in_edge.weight = new_node.right_output_edge.weight
+                self.add_edge(in_edge)
+                new_node.left_output_edge.disable()
+                new_node.right_output_edge.disable()
+
+        if previous_change is not None:
+            limits[str(param)] = previous_change
+
+
+
+    def remove_redundancies(self):
+        """
+        This function goes through all available nodes and determines if they are impacted or not
+        """
+        limits = {}
+        for opt in self.options:
+            limits[opt] = [None, None]
+
+        start_node = self.input_nodes[0]
+        # print(start_node.inon)
+        self.recursive_redundancies(start_node.left_output_edge.output_node, limits, None, None, None)
 
     @overrides(EXAStarGenome)
     def train_genome(
@@ -189,6 +326,8 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
             iterations: How many run through to improve the current batch.
             full: Decide to ignore batch size and train on full set
         """
+        # self.remove_redundancies()
+
         if full:
             input_series = dataset.get_inputs(dataset.input_series_names, 0)
             output_series = dataset.get_outputs_no_offset(dataset.output_series_names)
@@ -219,8 +358,9 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
                     optimizer.step()
                     optimizer.zero_grad()
                 avg += float(loss)
-            logger.info(f"final fitness (loss): {float(avg/iteration)}, type: {type(float(avg/iteration))}, gen:{self.generation_number}")
-            return avg/iteration
+            logger.info(
+                f"final fitness (loss): {float(avg / iteration)}, type: {type(float(avg / iteration))}, gen:{self.generation_number}")
+            return avg / iteration
 
     def test_genome(
             self,
@@ -236,12 +376,12 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
         """
         if full:
             input_series = dataset.get_batch_inputs(dataset.input_series_names, 0, 10)
-            output_series = dataset.get_batch_outputs(dataset.output_series_names,0, 10)
+            output_series = dataset.get_batch_outputs(dataset.output_series_names, 0, 10)
         else:
             input_series = dataset.get_inputs(dataset.input_series_names, 0)
             output_series = dataset.get_outputs_no_offset(dataset.output_series_names)
 
-        loss = self.eval_iter(input_series, output_series)
+        loss = self.eval_iter(1000.0, input_series, output_series)
 
         return loss
 
@@ -260,14 +400,14 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
         """
         if full:
             input_series = dataset.get_batch_inputs(dataset.input_series_names, 0, 10)
-            output_series = dataset.get_batch_outputs(dataset.output_series_names,0, 10)
+            output_series = dataset.get_batch_outputs(dataset.output_series_names, 0, 10)
         else:
             input_series = dataset.get_inputs(dataset.input_series_names, 0)
             output_series = dataset.get_outputs_no_offset(dataset.output_series_names)
 
-        loss, hist = self.eval_iter_hist(input_series, output_series)
+        loss, hist, rows = self.eval_iter_hist(input_series, output_series)
 
-        return loss, hist
+        return loss, hist, rows
 
     def test_genome_daily(
             self,
@@ -289,7 +429,7 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
         b_right = 0
         s_right = 0
         print(len(input_series))
-        for i in range(len(input_series)-1):
+        for i in range(len(input_series) - 1):
             self.reset()
             outputs = self.forward(input_series, i)
             for parameter_name, value in outputs.items():
@@ -310,7 +450,7 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
                         b_right += 1
                     else:
                         s_right += 1
-        return val, b_error/(b_right), s_error/(s_right)
+        return val, b_error / (b_right), s_error / (s_right)
 
     def eval_iter_daily(self, input_series: TimeSeries, output_series: TimeSeries):
         """
@@ -333,12 +473,11 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
                     cap = price * value
                     if cap > 1000:
                         # val = val + ((next_p - price) * value)
-                        value = 1000/price
+                        value = 1000 / price
                     elif cap < -1000:
                         value = -1000 / price
                         # val = val - ((next_p - price) * value)
                     val = val + (next_p * value) - cap
-
 
         if val <= 1:
             loss = -1 * val + 100
@@ -346,7 +485,6 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
             loss = 100 / val
 
         return loss
-
 
     def eval_iter_single_daily(self, input_series: TimeSeries, output_series: TimeSeries):
         """
@@ -392,7 +530,7 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
                 """
         money = torch.tensor(budget, requires_grad=True)
         held_shares = {key: torch.tensor(0.0) for key in output_series.series_dictionary}
-        for i in range(len(input_series)-1):
+        for i in range(len(input_series) - 1):
             outputs = self.forward(input_series, i)
             for parameter_name, value in outputs.items():
                 if parameter_name != "Hold":
@@ -411,10 +549,11 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
                             money = money + money_to_sell
                             held_shares[parameter_name] = held_shares[parameter_name] - sold_shares
                         else:
-                            money = money + held_shares[parameter_name]*price
+                            money = money + held_shares[parameter_name] * price
                             sold_shares = sold_shares - held_shares[parameter_name]
                             held_shares[parameter_name] = 0
-                            money = money + -1 * (output_series.series_dictionary[parameter_name][i+1] - price) * sold_shares
+                            money = money + -1 * (
+                                        output_series.series_dictionary[parameter_name][i + 1] - price) * sold_shares
 
         share_val = torch.tensor(0)
         for key in held_shares:
@@ -436,23 +575,24 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
             input_series: Input series used to pass forward in nodes
             output_series: Output series used to provide parameter information
         """
-        val = torch.tensor(1000.0, requires_grad=True)
+        money = torch.tensor(1000.0, requires_grad=True)
         held_shares_hist = {key: [] for key in output_series.series_dictionary}
         held_shares_hist["Value"] = []
         held_shares = {key: torch.tensor(0.0) for key in output_series.series_dictionary}
-        for i in range(len(input_series)-1):
+        held_shares_rows = []
+        for i in range(len(input_series) - 1):
             outputs = self.forward(input_series, i)
             for parameter_name, value in outputs.items():
 
                 if parameter_name != "Hold":
                     if value > 0:
-                        if val > 0:
+                        if money > 0:
                             # print(val)
                             # print(held_shares)
-                            money_to_purchase = value * val
+                            money_to_purchase = value * money
                             price = output_series.series_dictionary[parameter_name][i]
                             bought = money_to_purchase / price
-                            val = val - money_to_purchase
+                            money = money - money_to_purchase
                             held_shares[parameter_name] = held_shares[parameter_name] + bought
                     elif value < 0:
                         price = output_series.series_dictionary[parameter_name][i]
@@ -464,67 +604,72 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
                         else:
                             money = money + held_shares[parameter_name] * price
                             sold_shares = sold_shares - held_shares[parameter_name]
-                            held_shares[parameter_name] = 0
-                            money = money + -1 * (output_series.series_dictionary[parameter_name][i + 1] - price) * sold_shares
+                            held_shares[parameter_name] = -1 * sold_shares
+                            money = money + -1 * (
+                                        output_series.series_dictionary[parameter_name][i + 1] - price) * sold_shares
 
             # print(val, held_shares)
+            row = []
             share_val = 0
             for key in held_shares:
                 if isinstance(held_shares[key], int):
                     held_shares_hist[key].append(held_shares[key])
+                    row.append(held_shares[key])
                 else:
                     held_shares_hist[key].append(held_shares[key].detach())
+                    row.append(held_shares[key].detach())
                 if held_shares[key] < 0:
                     held_shares[key] = 0
                 else:
                     share_val = share_val + held_shares[key] * output_series.series_dictionary[key][i]
+            held_shares_rows.append(row)
+            print(row)
 
-
-            held_shares_hist["Value"].append(val+share_val)
+            held_shares_hist["Value"].append(money + share_val)
         share_val = torch.tensor(0)
         for key in held_shares:
             share_val = share_val + held_shares[key] * output_series.series_dictionary[key][len(input_series) - 1]
-        profit_func = val + share_val
+        profit_func = money + share_val
         if profit_func <= 1:
             loss = -1 * profit_func + 100
         else:
             loss = 100 / profit_func
 
-        return loss, held_shares_hist
+        return loss, held_shares_hist, held_shares_rows
 
-    @overrides(EXAStarGenome)
-    def add_edge(self, edge: DTBaseEdge) -> None:
-        """
-        Adds an edge when creating this gnome.
-
-        Args:
-            edge: is the edge to add
-        """
-        assert edge.inon not in self.inon_to_edge
-
-        bisect.insort(self.edges, edge)
-        self.inon_to_edge[edge.inon] = edge
-        self.torch_modules.append(edge)
-
-    @overrides(EXAStarGenome)
-    def add_node(self, node: DTNode) -> None:
-        """
-        Adds an non-input and non-output node when creating this genome
-        Args:
-            node: is the node to add to the computational graph
-        """
-        assert node.inon not in self.inon_to_node
-
-        bisect.insort(self.nodes, node)
-        self.inon_to_node[node.inon] = node
-        self.torch_modules.append(node)
-
-        if isinstance(node, DTInputNode):
-            bisect.insort(self.input_nodes, node)
-            self.inon_to_input_node[node.inon] = node
-        elif isinstance(node, DTOutputNode):
-            bisect.insort(self.output_nodes, node)
-            self.inon_to_output_node[node.inon] = node
+    # @overrides(EXAStarGenome)
+    # def add_edge(self, edge: DTBaseEdge) -> None:
+    #     """
+    #     Adds an edge when creating this gnome.
+    #
+    #     Args:
+    #         edge: is the edge to add
+    #     """
+    #     assert edge.inon not in self.inon_to_edge
+    #
+    #     bisect.insort(self.edges, edge)
+    #     self.inon_to_edge[edge.inon] = edge
+    #     self.torch_modules.append(edge)
+    #
+    # @overrides(EXAStarGenome)
+    # def add_node(self, node: DTNode) -> None:
+    #     """
+    #     Adds an non-input and non-output node when creating this genome
+    #     Args:
+    #         node: is the node to add to the computational graph
+    #     """
+    #     assert node.inon not in self.inon_to_node
+    #
+    #     bisect.insort(self.nodes, node)
+    #     self.inon_to_node[node.inon] = node
+    #     self.torch_modules.append(node)
+    #
+    #     if isinstance(node, DTInputNode):
+    #         bisect.insort(self.input_nodes, node)
+    #         self.inon_to_input_node[node.inon] = node
+    #     elif isinstance(node, DTOutputNode):
+    #         bisect.insort(self.output_nodes, node)
+    #         self.inon_to_output_node[node.inon] = node
 
     def unnormalize_node(self, node: DTNode):
         """
@@ -533,7 +678,7 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
             node: is the node to denormalize
         """
         if str(node.parameter_name[0]) in self.guide.keys():
-            mean, std = self.guide[str(node.parameter_name[0])]
+            mean, std, min, max = self.guide[str(node.parameter_name[0])]
             y = (node.input_edge.weight.item() * std) + mean
 
             return y
@@ -546,7 +691,7 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
                 edge: is the edge to denormalize
         """
         if str(edge.input_node.parameter_name[0]) in self.guide.keys():
-            mean, std = self.guide[str(edge.input_node.parameter_name[0])]
+            mean, std, min, max = self.guide[str(edge.input_node.parameter_name[0])]
             y = (edge.input_node.input_edge.weight.item() * std) + mean
 
             return y
@@ -559,7 +704,7 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
                 edge: is the edge to denormalize
         """
         if str(edge.output_node.parameter_name[0]) in self.guide.keys():
-            mean, std = self.guide[str(edge.output_node.parameter_name[0])]
+            mean, std, min, max = self.guide[str(edge.output_node.parameter_name[0])]
             y = (edge.weight.item() * std) + mean
             return y
         return edge.weight.item()
@@ -571,7 +716,7 @@ class DTGenome(EXAStarGenome[DTBaseEdge]):
                 edge: is the edge to denormalize
         """
         if str(parameter) in self.guide.keys():
-            mean, std = self.guide[str(parameter)]
+            mean, std, min, max = self.guide[str(parameter)]
             y = (val * std) + mean
             return y
         return None

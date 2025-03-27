@@ -50,10 +50,10 @@ class EXAStarDT(EXAStarTimeSeriesRegressionFitness[EXAStarGenome]):
         super().__init__()
 
     def compute(self, genome: EXAStarGenome, dataset: TimeSeries) -> MSEValue[EXAStarGenome]:
-        days = 183 # How many days
-        iter = 4  # How many times to improve
+        days = 60 # How many days
+        iter = 5  # How many times to improve
         value = MSEValue(
-            genome.train_genome(dataset, torch.optim.Adam(genome.parameters()), days, iter, True)
+            genome.train_genome(dataset, torch.optim.Adam(genome.parameters()), days, iter, False)
         )
         return value
 
