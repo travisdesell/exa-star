@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import genomes.edge
 import torch
 
-from genomes.node import Node
-from genomes.recurrent_edge import RecurrentEdge
-from genomes.edge import Edge
+from genomes.nodes.node import Node
+from genomes.edges.recurrent_edge import RecurrentEdge
+from genomes.edges.edge import Edge
 from innovation.innovation_generator import InnovationGenerator
 from loguru import logger
 

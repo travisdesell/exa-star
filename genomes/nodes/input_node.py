@@ -1,4 +1,4 @@
-from genomes.node import Node
+from genomes.nodes.node import Node
 
 
 class InputNode(Node):

@@ -1,7 +1,7 @@
 import torch
 
-from genomes.edge import Edge
-from genomes.node import Node
+from genomes.edges.edge import Edge
+from genomes.nodes.node import Node
 
 
 class IdentityEdge(Edge):

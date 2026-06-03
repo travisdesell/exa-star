@@ -5,10 +5,10 @@ from evolution.edge_generator import EdgeGenerator
 from evolution.node_generator import NodeGenerator
 
 from genomes.genome import Genome
-from genomes.input_node import InputNode
-from genomes.output_node import OutputNode
-from genomes.bidirectionalAE_input_node import BidirectionalAEInputNode
-from genomes.bidirectionalAE_encoding_node import BidirectionalAEEncodingNode
+from genomes.nodes.input_node import InputNode
+from genomes.nodes.output_node import OutputNode
+from genomes.nodes.bAE_input_node import BidirectionalAEInputNode
+from genomes.nodes.bAE_encoding_node import BidirectionalAEEncodingNode
 
 from reproduction.reproduction_method import ReproductionMethod
 

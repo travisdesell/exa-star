@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from genomes.genome import Genome
-from genomes.node import Node
+from genomes.nodes.node import Node
 
 
 class NodeGenerator(ABC):

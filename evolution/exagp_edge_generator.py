@@ -2,10 +2,10 @@ import random
 
 from evolution.edge_generator import EdgeGenerator
 
-from genomes.edge import Edge
+from genomes.edges.edge import Edge
 from genomes.genome import Genome
-from genomes.node import Node
-from genomes.recurrent_edge import RecurrentEdge
+from genomes.nodes.node import Node
+from genomes.edges.recurrent_edge import RecurrentEdge
 
 from innovation.innovation_generator import InnovationGenerator
 

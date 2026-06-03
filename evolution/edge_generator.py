@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
-from genomes.edge import Edge
+from genomes.edges.edge import Edge
 from genomes.genome import Genome
-from genomes.node import Node
+from genomes.nodes.node import Node
 
 
 class EdgeGenerator(ABC):

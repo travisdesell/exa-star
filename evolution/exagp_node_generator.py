@@ -1,8 +1,8 @@
 from evolution.node_generator import NodeGenerator
 
 from genomes.genome import Genome
-from genomes.node import Node
-from genomes.lstm_node import LSTMNode
+from genomes.nodes.node import Node
+from genomes.nodes.lstm_node import LSTMNode
 
 from innovation.innovation_generator import InnovationGenerator
 

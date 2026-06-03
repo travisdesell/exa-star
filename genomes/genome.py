@@ -9,13 +9,13 @@ import graphviz
 import torch
 
 from abc import ABC, abstractmethod
-from genomes.edge import Edge
-from genomes.node import Node
-from genomes.input_node import InputNode
-from genomes.output_node import OutputNode
-from genomes.bidirectionalAE_input_node import BidirectionalAEInputNode
-from genomes.bidirectionalAE_encoding_node import BidirectionalAEEncodingNode
-from genomes.recurrent_edge import RecurrentEdge
+from genomes.edges.edge import Edge
+from genomes.nodes.node import Node
+from genomes.nodes.input_node import InputNode
+from genomes.nodes.output_node import OutputNode
+from genomes.nodes.bAE_input_node import BidirectionalAEInputNode
+from genomes.nodes.bAE_encoding_node import BidirectionalAEEncodingNode
+from genomes.edges.recurrent_edge import RecurrentEdge
 
 
 class Genome(ABC):

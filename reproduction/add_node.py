@@ -6,7 +6,7 @@ from evolution.edge_generator import EdgeGenerator
 from evolution.node_generator import NodeGenerator
 
 from genomes.genome import Genome
-from genomes.node import Node
+from genomes.nodes.node import Node
 
 from reproduction.reproduction_method import ReproductionMethod
 

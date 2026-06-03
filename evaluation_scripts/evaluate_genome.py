@@ -9,7 +9,7 @@ import pandas as pd
 
 import torch
 
-from genomes.lstm_node import LSTMNode
+from genomes.nodes.lstm_node import LSTMNode
 from time_series.time_series import TimeSeries
 
 
@@ -262,7 +262,7 @@ def get_genome_info(loaded_genome):
         # else:
             # print("disabled edge")
     depths_array = np.array(recurrent_depths)
-    output_filename = f"../results/smap/recurrent edge depths/genome_{loaded_genome.generation_number}.csv"
+    output_filename = f"genome_{loaded_genome.generation_number}.csv"
     np.savetxt(output_filename, depths_array, delimiter=",", fmt="%i")
 
     encoder_depths_array = np.array(encoder_rec_depths)
@@ -330,9 +330,10 @@ def get_genome_info(loaded_genome):
 def get_predictions(genome, testing_filename, output_filename, time_offset=0):
     input_series_names = [input_node.parameter_name for input_node in genome.input_nodes]
 
-    input_series = TimeSeries.create_from_csv(filename=testing_filename).get_inputs(
-            input_series_names=input_series_names, offset=time_offset
-        )
+    # input_series = TimeSeries.create_from_csv(filename=testing_filename).get_inputs(
+    #         input_series_names=input_series_names, offset=time_offset
+    #     )
+    input_series = TimeSeries.create_from_fmri_npz(filename=testing_filename)
 
     for node in genome.nodes:
         node.max_sequence_length = input_series.series_length
@@ -367,7 +368,27 @@ def get_predictions(genome, testing_filename, output_filename, time_offset=0):
                 row.append(outputs[input_feature][i].item())
             writer.writerow(row)
 
+    actual_values = []
+    predicted_values = []
+    for input_feature in input_series.series_dictionary.keys():
+        actual_row = []
+        predicted_row = []
+        for i in range(len(input_series.series_dictionary[input_feature])):
+            actual_row.append(input_series.series_dictionary[input_feature][i].item())
+        for i in range(len(outputs[input_feature])):
+            predicted_row.append(outputs[input_feature][i].item())
+        actual_values.append(actual_row)
+        predicted_values.append(predicted_row)
+
+    all_actual = np.concatenate(actual_values)
+    all_predicted = np.concatenate(predicted_values)
+    mean_absolute_error = float(np.mean(np.abs(all_predicted - all_actual)))
+    mean_absolute_actual = float(np.mean(np.abs(all_actual)))
+    overall_accuracy = max(0.0, 100.0 * (1.0 - (mean_absolute_error / (mean_absolute_actual + 1e-12))))
+
     print(f"Predictions saved to {filename}")
+    print(f"Autoencoder prediction accuracy (time offset 0): {overall_accuracy:.2f}%")
+    print(f"Mean absolute error (time offset 0): {mean_absolute_error:.6f}")
 
 
 def main():

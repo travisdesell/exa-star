@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import genomes.node
+import genomes.nodes.node as node_module
 import torch
 
 from abc import ABC, abstractmethod
@@ -10,8 +10,8 @@ class Edge(ABC):
     def __init__(
         self,
         innovation_number: int,
-        input_node: genomes.node.Node,
-        output_node: genomes.node.Node,
+        input_node: node_module.Node,
+        output_node: node_module.Node,
         max_sequence_length: int,
     ):
         """

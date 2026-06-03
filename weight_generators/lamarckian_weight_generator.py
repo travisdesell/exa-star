@@ -1,7 +1,7 @@
 import torch
 
 from genomes.genome import Genome
-from genomes.node import Node
+from genomes.nodes.node import Node
 
 from weight_generators.weight_generator import WeightGenerator
 

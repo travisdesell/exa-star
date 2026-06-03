@@ -1,9 +1,9 @@
 import math
 import torch
 
-from genomes.bidirectionalAE_input_node import BidirectionalAEInputNode
-from genomes.bidirectionalAE_encoding_node import BidirectionalAEEncodingNode
-from genomes.bidirectionalAE_edge import BidirectionalAEEdge
+from genomes.nodes.bAE_input_node import BidirectionalAEInputNode
+from genomes.nodes.bAE_encoding_node import BidirectionalAEEncodingNode
+from genomes.edges.bAE_edge import BidirectionalAEEdge
 from genomes.genome import Genome
 from innovation.innovation_generator import InnovationGenerator
 from time_series.time_series import TimeSeries

@@ -1,7 +1,7 @@
 from evolution.node_generator import NodeGenerator
 
 from genomes.genome import Genome
-from genomes.bidirectionalAE_node import BidirectionalAENode
+from genomes.nodes.bAE_node import BidirectionalAENode
 
 from innovation.innovation_generator import InnovationGenerator
 

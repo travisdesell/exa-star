@@ -1,16 +1,17 @@
 from __future__ import annotations
-import genomes.node
+
+import genomes.nodes.node as node_module
 import torch
 
-from genomes.edge import Edge
+from genomes.edges.edge import Edge
 
 
 class BidirectionalAEEdge(Edge):
     def __init__(
             self,
             innovation_number: int,
-            input_node: genomes.node.Node,
-            output_node: genomes.node.Node,
+            input_node: node_module.Node,
+            output_node: node_module.Node,
             max_sequence_length: int,
             time_skip: int,
     ):

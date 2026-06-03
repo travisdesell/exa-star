@@ -1,7 +1,7 @@
-from genomes.bidirectionalAE_node import BidirectionalAENode
+from genomes.nodes.node import Node
 
 
-class BidirectionalAEInputNode(BidirectionalAENode):
+class OutputNode(Node):
     def __init__(
         self,
         innovation_number: int,
@@ -10,12 +10,13 @@ class BidirectionalAEInputNode(BidirectionalAENode):
         max_sequence_length: int,
     ):
         """
-        Creates an input node of an autoencoder computational graph.
+        Creates an output node of a computational graph.
 
         Args:
             innovation_number: is the node's unique innovation number
-            parameter_name: is the input parameter name (e.g., time
-                series sequence name).
+            parameter_name: is the parameter name (e.g., time
+                series sequence name) that this output node is supposed
+                to predict/forecast.
             depth: is a number between 0 (input node) and 1 (output node) which
                 represents how deep this node is within the computational graph.
             max_sequence_length: is the maximum length of any time series
@@ -32,6 +33,6 @@ class BidirectionalAEInputNode(BidirectionalAENode):
     def __repr__(self) -> str:
         """Provides an easily readable string representation of this node."""
         return (
-            f"[node {type(self)}, parameter: '{self.parameter_name}', innovation: "
-            f"{self.innovation_number}, depth: {self.depth}]"
+            f"[node {type(self)}, parameter: '{self.parameter_name}', "
+            f"innovation: {self.innovation_number}, depth: {self.depth}]"
         )

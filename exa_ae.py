@@ -10,7 +10,7 @@ from evolution.bidirectionalAE_edge_generator import BidirectionalAEEdgeGenerato
 
 from genomes.minimal_recurrent_genome import MinimalRecurrentGenome
 from genomes.trivial_recurrent_genome import TrivialRecurrentGenome
-from genomes.bidirectionalAE_genome import BidirectionalAEGenome
+from genomes.bAE_genome import BidirectionalAEGenome
 from genomes.autoencoder_genome import AutoencoderGenome
 
 from time_series.time_series import TimeSeries

@@ -1,8 +1,8 @@
 import torch
 
-from genomes.input_node import InputNode
-from genomes.output_node import OutputNode
-from genomes.recurrent_edge import RecurrentEdge
+from genomes.nodes.input_node import InputNode
+from genomes.nodes.output_node import OutputNode
+from genomes.edges.recurrent_edge import RecurrentEdge
 from genomes.recurrent_genome import RecurrentGenome
 
 from innovation.innovation_generator import InnovationGenerator

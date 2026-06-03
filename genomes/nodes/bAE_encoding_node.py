@@ -1,4 +1,4 @@
-from genomes.bidirectionalAE_node import BidirectionalAENode
+from genomes.nodes.bAE_node import BidirectionalAENode
 
 
 class BidirectionalAEEncodingNode(BidirectionalAENode):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import genomes.edge
+import genomes.edges.edge as edge_module
+
 import torch
 
 from abc import ABC
@@ -64,7 +65,7 @@ class Node(ABC):
         else:
             return False
 
-    def add_input_edge(self, edge: genomes.edge.Edge):
+    def add_input_edge(self, edge: edge_module.Edge):
         """
         Adds an input edge to this node, if it is not already present
         in the Node's list of input edges.
@@ -75,7 +76,7 @@ class Node(ABC):
         if edge not in self.input_edges:
             self.input_edges.append(edge)
 
-    def add_output_edge(self, edge: genomes.edge.Edge):
+    def add_output_edge(self, edge: edge_module.Edge):
         """
         Adds an output edge to this node, if it is not already present
         in the Node's list of output edges.
